@@ -1,0 +1,123 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+:root {
+  --background: #0f0f0f;
+  --foreground: #e5e5e5;
+}
+
+body {
+  background: var(--background);
+  color: var(--foreground);
+  font-feature-settings: "rlig" 1, "calt" 1;
+}
+
+/* Custom scrollbar for dark mode */
+::-webkit-scrollbar {
+  width: 8px;
+  height: 8px;
+}
+
+::-webkit-scrollbar-track {
+  background: #1a1a1a;
+}
+
+::-webkit-scrollbar-thumb {
+  background: #333333;
+  border-radius: 4px;
+}
+
+::-webkit-scrollbar-thumb:hover {
+  background: #444444;
+}
+
+/* Focus styles */
+*:focus-visible {
+  outline: 2px solid #6B7FD7;
+  outline-offset: 2px;
+}
+
+/* Selection */
+::selection {
+  background: rgba(107, 127, 215, 0.3);
+}
+
+/* Markdown content styles */
+.prose-dark {
+  color: #e5e5e5;
+}
+
+.prose-dark h1,
+.prose-dark h2,
+.prose-dark h3 {
+  color: #ffffff;
+  font-weight: 600;
+}
+
+.prose-dark h2 {
+  font-size: 1.25rem;
+  margin-top: 1.5rem;
+  margin-bottom: 0.75rem;
+}
+
+.prose-dark h3 {
+  font-size: 1rem;
+  margin-top: 1.25rem;
+  margin-bottom: 0.5rem;
+}
+
+.prose-dark p {
+  margin-bottom: 0.75rem;
+  line-height: 1.7;
+}
+
+.prose-dark ul {
+  margin-bottom: 0.75rem;
+  padding-left: 1.5rem;
+}
+
+.prose-dark li {
+  margin-bottom: 0.25rem;
+}
+
+.prose-dark a {
+  color: #6B7FD7;
+  text-decoration: underline;
+}
+
+.prose-dark code {
+  background: #2a2a2a;
+  padding: 0.125rem 0.25rem;
+  border-radius: 0.25rem;
+  font-size: 0.875rem;
+}
+
+/* Animations */
+@keyframes fadeIn {
+  from {
+    opacity: 0;
+  }
+  to {
+    opacity: 1;
+  }
+}
+
+@keyframes slideUp {
+  from {
+    opacity: 0;
+    transform: translateY(10px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+.animate-fadeIn {
+  animation: fadeIn 0.2s ease-out;
+}
+
+.animate-slideUp {
+  animation: slideUp 0.2s ease-out;
+}

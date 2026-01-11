@@ -1,0 +1,35 @@
+@echo off
+:: ===========================================
+:: Alexandria Launcher for Windows (WSL)
+:: ===========================================
+:: This batch file starts both the backend and frontend servers
+:: in Windows Terminal tabs using WSL.
+::
+:: Setup:
+:: 1. Copy this file to your Desktop as Alexandria.bat
+:: 2. Edit the WSL distribution name below (find yours with: wsl -l -v)
+:: 3. Edit the path to your alexandria installation if different
+:: 4. Double-click to launch!
+
+:: Configuration - EDIT THESE VALUES
+set WSL_DISTRO=Ubuntu
+set ALEXANDRIA_PATH=~/alexandria
+
+:: Start backend in new Windows Terminal tab
+start wt -w 0 new-tab -p "%WSL_DISTRO%" -- wsl -d %WSL_DISTRO% bash -c "cd %ALEXANDRIA_PATH%/backend && source venv/bin/activate && uvicorn app.main:app --reload --port 8000; exec bash"
+
+:: Wait for backend to start
+timeout /t 3 /nobreak > nul
+
+:: Start frontend in new Windows Terminal tab
+start wt -w 0 new-tab -p "%WSL_DISTRO%" -- wsl -d %WSL_DISTRO% bash -c "cd %ALEXANDRIA_PATH%/frontend && npm run dev; exec bash"
+
+:: Wait for frontend to start
+timeout /t 5 /nobreak > nul
+
+:: Open browser
+start http://localhost:3000
+
+echo Alexandria is starting...
+echo Backend: http://localhost:8000
+echo Frontend: http://localhost:3000
