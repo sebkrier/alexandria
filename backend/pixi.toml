@@ -1,0 +1,19 @@
+[workspace]
+authors = ["Seb Krier <s.krier@outlook.com>"]
+channels = ["conda-forge"]
+name = "alexandria"
+platforms = ["linux-64"]
+version = "2.0.0"
+
+[dependencies]
+python = ">=3.11"
+uv = "*"
+
+[tasks]
+dev = "uvicorn app.main:app --reload --port 8000"
+test = "pytest -v"
+sync = "uv sync"
+migrate = "alembic upgrade head"
+
+[pypi-dependencies]
+alexandria = { path = ".", editable = true }
