@@ -4,6 +4,7 @@ from enum import Enum
 from sqlalchemy import String, Text, DateTime, ForeignKey, Index, Integer
 from sqlalchemy.orm import Mapped, mapped_column, relationship
 from sqlalchemy.dialects.postgresql import UUID, JSONB, TSVECTOR
+from pgvector.sqlalchemy import Vector
 from app.database import Base
 
 
@@ -51,6 +52,9 @@ class Article(Base):
 
     # Full-text search vector
     search_vector: Mapped[str | None] = mapped_column(TSVECTOR)
+
+    # Semantic search embedding (768 dims for EmbeddingGemma)
+    embedding: Mapped[list[float] | None] = mapped_column(Vector(768), nullable=True)
 
     created_at: Mapped[datetime] = mapped_column(DateTime, default=datetime.utcnow)
     updated_at: Mapped[datetime] = mapped_column(

@@ -26,12 +26,27 @@ from app.schemas.article import (
     AskRequest,
     AskResponse,
     ArticleReference,
+    MediaType,
+    BulkDeleteRequest,
+    BulkDeleteResponse,
+    BulkColorRequest,
+    BulkColorResponse,
+    BulkReanalyzeRequest,
+    BulkReanalyzeResponse,
 )
 from app.utils.auth import get_current_user
 from app.extractors import extract_content
 from app.ai.service import AIService
 from app.ai.factory import get_default_provider
-from app.ai.prompts import truncate_text
+from app.ai.prompts import truncate_text, METADATA_SYSTEM_PROMPT
+from app.ai.query_router import (
+    QueryType,
+    classify_query,
+    detect_metadata_operation,
+    execute_metadata_query,
+    format_metadata_for_llm,
+)
+from app.ai.embeddings import generate_query_embedding
 
 router = APIRouter()
 
@@ -41,6 +56,61 @@ def calculate_reading_time(word_count: int | None) -> int | None:
     if word_count is None:
         return None
     return max(1, round(word_count / 200))
+
+
+def determine_media_type(source_type: SourceType, original_url: str | None) -> MediaType:
+    """Determine user-friendly media type from source_type and URL"""
+    # Direct mappings from source_type
+    if source_type == SourceType.ARXIV:
+        return MediaType.PAPER
+    if source_type == SourceType.VIDEO:
+        return MediaType.VIDEO
+    if source_type == SourceType.PDF:
+        return MediaType.PDF
+
+    # For URL source type, look at the URL to determine more specific type
+    if source_type == SourceType.URL and original_url:
+        url_lower = original_url.lower()
+
+        # Newsletter platforms
+        if "substack.com" in url_lower or "/p/" in url_lower:
+            return MediaType.NEWSLETTER
+
+        # Common blog platforms
+        blog_indicators = [
+            "medium.com",
+            "dev.to",
+            "hashnode.",
+            "wordpress.com",
+            "/blog/",
+            ".blog.",
+            "blogger.com",
+            "ghost.io",
+        ]
+        if any(indicator in url_lower for indicator in blog_indicators):
+            return MediaType.BLOG
+
+        # Academic/paper indicators
+        paper_indicators = [
+            "arxiv.org",
+            "doi.org",
+            "nature.com",
+            "science.org",
+            "ieee.org",
+            "acm.org",
+            "springer.com",
+            "wiley.com",
+            "researchgate.net",
+            "semanticscholar.org",
+            ".edu/",
+            "pubmed",
+            "ncbi.nlm.nih.gov",
+        ]
+        if any(indicator in url_lower for indicator in paper_indicators):
+            return MediaType.PAPER
+
+    # Default to article
+    return MediaType.ARTICLE
 
 
 def article_to_response(article: Article) -> ArticleResponse:
@@ -64,6 +134,7 @@ def article_to_response(article: Article) -> ArticleResponse:
     return ArticleResponse(
         id=article.id,
         source_type=article.source_type,
+        media_type=determine_media_type(article.source_type, article.original_url),
         original_url=article.original_url,
         title=article.title,
         authors=article.authors or [],
@@ -246,7 +317,23 @@ async def list_articles(
         )
 
     if category_id:
-        query = query.join(ArticleCategory).where(ArticleCategory.category_id == category_id)
+        # Get the category and all its subcategories
+        from app.models.category import Category
+
+        # Get all descendant category IDs (for hierarchical filtering)
+        async def get_descendant_ids(cat_id: UUID) -> list[UUID]:
+            result = await db.execute(
+                select(Category.id).where(Category.parent_id == cat_id)
+            )
+            child_ids = [row[0] for row in result.all()]
+            descendants = list(child_ids)
+            for child_id in child_ids:
+                descendants.extend(await get_descendant_ids(child_id))
+            return descendants
+
+        # Include the category itself plus all descendants
+        category_ids = [category_id] + await get_descendant_ids(category_id)
+        query = query.join(ArticleCategory).where(ArticleCategory.category_id.in_(category_ids))
 
     if tag_id:
         query = query.join(ArticleTag).where(ArticleTag.tag_id == tag_id)
@@ -578,6 +665,122 @@ async def reorganize_articles(
         )
 
 
+# =============================================================================
+# Bulk Operations
+# =============================================================================
+
+@router.post("/bulk/delete", response_model=BulkDeleteResponse)
+async def bulk_delete_articles(
+    data: BulkDeleteRequest,
+    db: AsyncSession = Depends(get_db),
+    current_user: User = Depends(get_current_user),
+):
+    """Delete multiple articles at once"""
+    deleted = 0
+    failed = []
+
+    for article_id in data.article_ids:
+        try:
+            result = await db.execute(
+                select(Article)
+                .where(Article.id == article_id, Article.user_id == current_user.id)
+            )
+            article = result.scalar_one_or_none()
+
+            if not article:
+                failed.append(f"{article_id}: Not found")
+                continue
+
+            await db.delete(article)
+            deleted += 1
+
+        except Exception as e:
+            failed.append(f"{article_id}: {str(e)}")
+
+    await db.commit()
+
+    return BulkDeleteResponse(deleted=deleted, failed=failed)
+
+
+@router.patch("/bulk/color", response_model=BulkColorResponse)
+async def bulk_update_color(
+    data: BulkColorRequest,
+    db: AsyncSession = Depends(get_db),
+    current_user: User = Depends(get_current_user),
+):
+    """Update color for multiple articles at once"""
+    updated = 0
+    failed = []
+
+    for article_id in data.article_ids:
+        try:
+            result = await db.execute(
+                select(Article)
+                .where(Article.id == article_id, Article.user_id == current_user.id)
+            )
+            article = result.scalar_one_or_none()
+
+            if not article:
+                failed.append(f"{article_id}: Not found")
+                continue
+
+            article.color_id = data.color_id
+            updated += 1
+
+        except Exception as e:
+            failed.append(f"{article_id}: {str(e)}")
+
+    await db.commit()
+
+    return BulkColorResponse(updated=updated, failed=failed)
+
+
+@router.post("/bulk/reanalyze", response_model=BulkReanalyzeResponse)
+async def bulk_reanalyze_articles(
+    data: BulkReanalyzeRequest,
+    db: AsyncSession = Depends(get_db),
+    current_user: User = Depends(get_current_user),
+):
+    """Re-analyze multiple articles (regenerate summary, tags, categories)"""
+    queued = 0
+    skipped = 0
+    failed = []
+
+    ai_service = AIService(db)
+
+    for article_id in data.article_ids:
+        try:
+            result = await db.execute(
+                select(Article)
+                .where(Article.id == article_id, Article.user_id == current_user.id)
+            )
+            article = result.scalar_one_or_none()
+
+            if not article:
+                failed.append(f"{article_id}: Not found")
+                continue
+
+            # Skip if already processing
+            if article.processing_status == ProcessingStatus.PROCESSING:
+                skipped += 1
+                continue
+
+            # Process the article (this runs synchronously for simplicity)
+            try:
+                await ai_service.process_article(
+                    article_id=article_id,
+                    user_id=current_user.id,
+                )
+                queued += 1
+            except Exception as e:
+                failed.append(f"{article.title[:30]}: {str(e)}")
+
+        except Exception as e:
+            failed.append(f"{article_id}: {str(e)}")
+
+    return BulkReanalyzeResponse(queued=queued, skipped=skipped, failed=failed)
+
+
 @router.post("/ask", response_model=AskResponse)
 async def ask_question(
     data: AskRequest,
@@ -585,8 +788,10 @@ async def ask_question(
     current_user: User = Depends(get_current_user),
 ):
     """
-    Ask a question about your saved articles using RAG.
-    Searches relevant articles and uses AI to answer based on their content.
+    Ask a question about your saved articles.
+    Automatically routes between:
+    - Content queries (RAG): "What do my articles say about X?"
+    - Metadata queries (database): "How many articles do I have?"
     """
     # Get the user's default AI provider
     provider = await get_default_provider(db, current_user.id)
@@ -596,38 +801,235 @@ async def ask_question(
             detail="No AI provider configured. Please add one in Settings.",
         )
 
-    # Search for relevant articles using full-text search
-    search_terms = data.question
-    query = (
-        select(Article)
-        .where(Article.user_id == current_user.id)
-        .where(Article.processing_status == ProcessingStatus.COMPLETED)
-        .where(
-            or_(
-                Article.title.ilike(f"%{search_terms}%"),
-                Article.search_vector.match(search_terms),
-            )
+    # Classify the query type
+    query_type = classify_query(data.question)
+    logger.info(f"Query classified as: {query_type.value}")
+
+    # Route based on query type
+    if query_type == QueryType.METADATA:
+        return await _handle_metadata_query(db, current_user.id, data.question, provider)
+    else:
+        return await _handle_content_query(db, current_user.id, data.question, provider)
+
+
+async def _handle_metadata_query(
+    db: AsyncSession,
+    user_id,
+    question: str,
+    provider,
+) -> AskResponse:
+    """Handle metadata queries by running database queries and formatting with LLM."""
+    try:
+        # Detect which operation and parameters
+        operation, params = detect_metadata_operation(question)
+        logger.info(f"Metadata operation: {operation.value}, params: {params}")
+
+        # Execute the database query
+        data = await execute_metadata_query(db, user_id, operation, params)
+
+        # Format for LLM
+        formatted_data = format_metadata_for_llm(operation, data)
+
+        # Build context for the LLM (metadata as "article context")
+        metadata_context = f"{METADATA_SYSTEM_PROMPT}\n\n---\n\n{formatted_data}"
+
+        # Use LLM to create a natural language response
+        # Reuse answer_question since it's designed for Q&A with context
+        answer = await provider.answer_question(
+            question=question,
+            context=metadata_context,
         )
-        .order_by(Article.created_at.desc())
-        .limit(5)
-    )
 
-    result = await db.execute(query)
-    articles = result.scalars().all()
+        return AskResponse(
+            answer=answer,
+            articles=[],  # Metadata queries don't reference specific articles
+        )
 
-    if not articles:
-        # If no matches, get recent articles as fallback
+    except Exception as e:
+        logger.error(f"Metadata query failed: {e}")
+        raise HTTPException(
+            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+            detail=f"Failed to process metadata query: {str(e)}",
+        )
+
+
+async def _handle_content_query(
+    db: AsyncSession,
+    user_id,
+    question: str,
+    provider,
+) -> AskResponse:
+    """
+    Handle content queries using hybrid search (semantic + keyword).
+
+    Combines:
+    1. Semantic search: Find conceptually related articles via embeddings
+    2. Keyword search: Find articles with literal term matches
+
+    This ensures we find both articles that discuss related concepts AND
+    articles with exact keyword matches.
+    """
+    from sqlalchemy import func as sqla_func, text
+    from app.models.category import Category
+    from app.models.tag import Tag
+
+    logger.info(f"Content query: '{question[:80]}'")
+
+    # =========================================================================
+    # STEP 1: Semantic Search (using local EmbeddingGemma model)
+    # =========================================================================
+    semantic_results: list[tuple[Article, float]] = []
+
+    # Check if pgvector/embeddings are available
+    has_embeddings = hasattr(Article, 'embedding')
+
+    if has_embeddings:
+        try:
+            # Generate embedding for the user's question using local model
+            query_embedding = generate_query_embedding(question)
+
+            if query_embedding:
+                # Semantic search using pgvector cosine distance
+                # Lower distance = more similar
+                distance = Article.embedding.cosine_distance(query_embedding)
+
+                semantic_query = (
+                    select(Article, distance.label('distance'))
+                    .where(Article.user_id == user_id)
+                    .where(Article.processing_status == ProcessingStatus.COMPLETED)
+                    .where(Article.embedding.isnot(None))
+                    .order_by(distance)
+                    .limit(10)
+                )
+
+                result = await db.execute(semantic_query)
+                semantic_results = [(row[0], row[1]) for row in result.all()]
+
+                logger.info(f"Semantic search found {len(semantic_results)} articles:")
+                for article, dist in semantic_results:
+                    logger.info(f"  - [dist={dist:.4f}] {article.title[:60]}")
+
+        except Exception as e:
+            logger.warning(f"Semantic search failed, falling back to keyword-only: {e}")
+
+    # =========================================================================
+    # STEP 2: Keyword Search (full-text + title + category/tag matching)
+    # =========================================================================
+    keyword_results: list[tuple[Article, float]] = []
+
+    try:
+        # Build search terms
+        search_words = question.lower().split()[:10]
+        valid_words = [w for w in search_words if len(w) >= 3]
+
+        # Build conditions for keyword matching
+        conditions = []
+
+        # Title substring match
+        for word in valid_words[:5]:
+            conditions.append(Article.title.ilike(f"%{word}%"))
+
+        # Full-text search
+        ts_query = sqla_func.plainto_tsquery('english', question)
+        conditions.append(Article.search_vector.op('@@')(ts_query))
+
+        # Category name match
+        if valid_words:
+            category_subq = (
+                select(ArticleCategory.article_id)
+                .join(Category, Category.id == ArticleCategory.category_id)
+                .where(Category.user_id == user_id)
+                .where(or_(*[Category.name.ilike(f"%{w}%") for w in valid_words[:5]]))
+            )
+            conditions.append(Article.id.in_(category_subq))
+
+            # Tag name match
+            tag_subq = (
+                select(ArticleTag.article_id)
+                .join(Tag, Tag.id == ArticleTag.tag_id)
+                .where(Tag.user_id == user_id)
+                .where(or_(*[Tag.name.ilike(f"%{w}%") for w in valid_words[:5]]))
+            )
+            conditions.append(Article.id.in_(tag_subq))
+
+        if conditions:
+            # ts_rank for relevance scoring
+            ts_rank = sqla_func.ts_rank(Article.search_vector, ts_query)
+
+            keyword_query = (
+                select(Article, ts_rank.label('rank'))
+                .where(Article.user_id == user_id)
+                .where(Article.processing_status == ProcessingStatus.COMPLETED)
+                .where(or_(*conditions))
+                .order_by(ts_rank.desc())
+                .limit(10)
+            )
+
+            result = await db.execute(keyword_query)
+            keyword_results = [(row[0], row[1]) for row in result.all()]
+
+            logger.info(f"Keyword search found {len(keyword_results)} articles:")
+            for article, rank in keyword_results:
+                logger.info(f"  - [rank={rank:.4f}] {article.title[:60]}")
+
+    except Exception as e:
+        logger.warning(f"Keyword search failed: {e}")
+
+    # =========================================================================
+    # STEP 3: Merge Results (Hybrid Ranking)
+    # =========================================================================
+    # Combine semantic and keyword results, deduplicate by article ID
+    # Prioritize articles that appear in both result sets
+
+    seen_ids = set()
+    merged_articles: list[Article] = []
+
+    # Score articles: appearing in both sets gets priority
+    article_scores: dict[str, float] = {}
+
+    # Add semantic results (convert distance to score: lower distance = higher score)
+    for article, distance in semantic_results:
+        article_id = str(article.id)
+        # Convert distance (0-2 for cosine) to score (1-0)
+        semantic_score = max(0, 1 - distance)
+        article_scores[article_id] = article_scores.get(article_id, 0) + semantic_score
+
+    # Add keyword results (rank is already a score, normalize)
+    max_rank = max((r for _, r in keyword_results), default=1) or 1
+    for article, rank in keyword_results:
+        article_id = str(article.id)
+        keyword_score = rank / max_rank if max_rank > 0 else 0
+        article_scores[article_id] = article_scores.get(article_id, 0) + keyword_score
+
+    # Create lookup for articles
+    all_articles = {str(a.id): a for a, _ in semantic_results + keyword_results}
+
+    # Sort by combined score
+    sorted_ids = sorted(article_scores.keys(), key=lambda x: article_scores[x], reverse=True)
+
+    for article_id in sorted_ids[:15]:  # Top 15 results
+        if article_id not in seen_ids:
+            seen_ids.add(article_id)
+            merged_articles.append(all_articles[article_id])
+
+    logger.info(f"Hybrid search merged to {len(merged_articles)} unique articles")
+
+    # =========================================================================
+    # STEP 4: Fallback if no results
+    # =========================================================================
+    if not merged_articles:
+        logger.info("No matches found, falling back to recent articles")
         query = (
             select(Article)
-            .where(Article.user_id == current_user.id)
+            .where(Article.user_id == user_id)
             .where(Article.processing_status == ProcessingStatus.COMPLETED)
             .order_by(Article.created_at.desc())
-            .limit(5)
+            .limit(10)
         )
         result = await db.execute(query)
-        articles = result.scalars().all()
+        merged_articles = list(result.scalars().all())
 
-    if not articles:
+    if not merged_articles:
         return AskResponse(
             answer="You don't have any processed articles yet. Add some articles and process them first.",
             articles=[],
@@ -636,7 +1038,7 @@ async def ask_question(
     # Build context from articles
     context_parts = []
     article_refs = []
-    for article in articles:
+    for article in merged_articles:
         # Include title, summary, and excerpt of extracted text
         article_context = f"### {article.title}\n\n"
         if article.summary:
@@ -652,7 +1054,7 @@ async def ask_question(
     try:
         # Get answer from AI
         answer = await provider.answer_question(
-            question=data.question,
+            question=question,
             context=context,
         )
 
@@ -662,7 +1064,7 @@ async def ask_question(
         )
 
     except Exception as e:
-        logger.error(f"Question answering failed: {e}")
+        logger.error(f"Content query failed: {e}")
         raise HTTPException(
             status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
             detail=f"Failed to answer question: {str(e)}",

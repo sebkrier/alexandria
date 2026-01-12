@@ -19,7 +19,7 @@ async def build_category_tree(
     user_id: UUID,
     parent_id: UUID | None = None
 ) -> list[CategoryTree]:
-    """Recursively build category tree"""
+    """Recursively build category tree with cumulative article counts"""
     result = await db.execute(
         select(Category)
         .where(Category.user_id == user_id, Category.parent_id == parent_id)
@@ -29,22 +29,26 @@ async def build_category_tree(
 
     tree = []
     for cat in categories:
-        # Get article count
+        # Get direct article count for this category
         count_result = await db.execute(
             select(func.count(ArticleCategory.article_id))
             .where(ArticleCategory.category_id == cat.id)
         )
-        article_count = count_result.scalar()
+        direct_count = count_result.scalar() or 0
 
         # Get children recursively
         children = await build_category_tree(db, user_id, cat.id)
+
+        # For parent categories, show cumulative count (sum of children's articles)
+        # This makes sense since articles are assigned to subcategories, not parents
+        cumulative_count = direct_count + sum(child.article_count for child in children)
 
         tree.append(CategoryTree(
             id=cat.id,
             name=cat.name,
             description=cat.description,
             position=cat.position,
-            article_count=article_count,
+            article_count=cumulative_count,
             children=children,
         ))
 

@@ -8,6 +8,7 @@ sqlalchemy==2.0.25
 alembic==1.13.1
 asyncpg==0.29.0
 psycopg2-binary==2.9.9
+pgvector==0.2.5
 
 # Authentication
 python-jose[cryptography]==3.3.0
@@ -30,6 +31,9 @@ aiohttp==3.9.3
 anthropic==0.18.1
 openai==1.12.0
 google-generativeai==0.3.2
+
+# Local embeddings
+sentence-transformers>=3.0.0
 
 # Storage (S3-compatible)
 boto3==1.34.34

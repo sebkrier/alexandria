@@ -1,11 +1,13 @@
 "use client";
 
 import Link from "next/link";
-import { FileText, Globe, GraduationCap, Loader2, AlertCircle, Clock, Paperclip, Video } from "lucide-react";
+import { FileText, Globe, GraduationCap, Loader2, AlertCircle, Clock, Paperclip, Video, Check } from "lucide-react";
 import { Badge } from "@/components/ui/Badge";
+import { MediaTypeBadge } from "@/components/ui/MediaTypeBadge";
 import type { Article } from "@/types";
 import { clsx } from "clsx";
 import { useColors } from "@/hooks/useProviders";
+import { useStore } from "@/lib/store";
 
 interface ArticleCardProps {
   article: Article;
@@ -28,12 +30,20 @@ const statusIcons = {
 
 export function ArticleCard({ article, viewMode }: ArticleCardProps) {
   const { data: colors } = useColors();
+  const { selectedArticleIds, toggleArticleSelection } = useStore();
   const SourceIcon = sourceIcons[article.source_type] || Globe;
   const StatusIcon = statusIcons[article.processing_status];
   const articleColor = colors?.find((c) => c.id === article.color_id);
 
   const isProcessing = article.processing_status === "processing";
   const isFailed = article.processing_status === "failed";
+  const isSelected = selectedArticleIds.has(article.id);
+
+  const handleCheckboxClick = (e: React.MouseEvent) => {
+    e.preventDefault();
+    e.stopPropagation();
+    toggleArticleSelection(article.id);
+  };
 
   // Get summary preview (first paragraph)
   const summaryPreview = article.summary
@@ -51,8 +61,10 @@ export function ArticleCard({ article, viewMode }: ArticleCardProps) {
       <Link
         href={`/article/${article.id}`}
         className={clsx(
-          "flex items-start gap-4 p-4 bg-dark-surface border border-dark-border rounded-lg",
-          "hover:border-dark-hover hover:bg-dark-hover/50 transition-colors"
+          "flex items-start gap-4 p-4 bg-dark-surface border rounded-lg transition-colors",
+          isSelected
+            ? "border-article-blue bg-article-blue/5"
+            : "border-dark-border hover:border-dark-hover hover:bg-dark-hover/50"
         )}
       >
         {/* Color indicator */}
@@ -101,6 +113,7 @@ export function ArticleCard({ article, viewMode }: ArticleCardProps) {
               className={clsx("w-4 h-4", isProcessing && "animate-spin", isFailed && "text-article-red")}
             />
           )}
+          <MediaTypeBadge type={article.media_type} />
           <a
             href={externalLink}
             target="_blank"
@@ -111,6 +124,18 @@ export function ArticleCard({ article, viewMode }: ArticleCardProps) {
           >
             📎
           </a>
+          {/* Checkbox */}
+          <button
+            onClick={handleCheckboxClick}
+            className={clsx(
+              "w-5 h-5 rounded border-2 flex-shrink-0 flex items-center justify-center transition-colors",
+              isSelected
+                ? "bg-article-blue border-article-blue"
+                : "border-dark-border hover:border-dark-muted"
+            )}
+          >
+            {isSelected && <Check className="w-3 h-3 text-white" />}
+          </button>
         </div>
       </Link>
     );
@@ -121,9 +146,10 @@ export function ArticleCard({ article, viewMode }: ArticleCardProps) {
     <Link
       href={`/article/${article.id}`}
       className={clsx(
-        "flex flex-col p-4 bg-dark-surface border border-dark-border rounded-lg",
-        "hover:border-dark-hover hover:bg-dark-hover/50 transition-colors",
-        "h-full"
+        "flex flex-col p-4 bg-dark-surface border rounded-lg transition-colors h-full",
+        isSelected
+          ? "border-article-blue bg-article-blue/5"
+          : "border-dark-border hover:border-dark-hover hover:bg-dark-hover/50"
       )}
     >
       {/* Header */}
@@ -137,15 +163,29 @@ export function ArticleCard({ article, viewMode }: ArticleCardProps) {
             />
           )}
         </div>
-        {StatusIcon && (
-          <StatusIcon
+        <div className="flex items-center gap-2">
+          {StatusIcon && (
+            <StatusIcon
+              className={clsx(
+                "w-4 h-4",
+                isProcessing && "animate-spin text-article-blue",
+                isFailed && "text-article-red"
+              )}
+            />
+          )}
+          {/* Checkbox */}
+          <button
+            onClick={handleCheckboxClick}
             className={clsx(
-              "w-4 h-4",
-              isProcessing && "animate-spin text-article-blue",
-              isFailed && "text-article-red"
+              "w-5 h-5 rounded border-2 flex-shrink-0 flex items-center justify-center transition-colors",
+              isSelected
+                ? "bg-article-blue border-article-blue"
+                : "border-dark-border hover:border-dark-muted"
             )}
-          />
-        )}
+          >
+            {isSelected && <Check className="w-3 h-3 text-white" />}
+          </button>
+        </div>
       </div>
 
       {/* Title */}
@@ -180,16 +220,19 @@ export function ArticleCard({ article, viewMode }: ArticleCardProps) {
         ) : (
           <span />
         )}
-        <a
-          href={externalLink}
-          target="_blank"
-          rel="noopener noreferrer"
-          onClick={(e) => e.stopPropagation()}
-          className="text-dark-muted hover:text-article-blue transition-colors"
-          title={article.original_url ? "Open source" : "Search on Google"}
-        >
-          📎
-        </a>
+        <div className="flex items-center gap-2">
+          <MediaTypeBadge type={article.media_type} />
+          <a
+            href={externalLink}
+            target="_blank"
+            rel="noopener noreferrer"
+            onClick={(e) => e.stopPropagation()}
+            className="text-dark-muted hover:text-article-blue transition-colors"
+            title={article.original_url ? "Open source" : "Search on Google"}
+          >
+            📎
+          </a>
+        </div>
       </div>
     </Link>
   );

@@ -35,6 +35,13 @@ interface AppState {
   addArticleModalOpen: boolean;
   setAddArticleModalOpen: (open: boolean) => void;
 
+  // Article selection (for bulk operations)
+  selectedArticleIds: Set<string>;
+  toggleArticleSelection: (id: string) => void;
+  selectAllArticles: (ids: string[]) => void;
+  deselectAllArticles: () => void;
+  isArticleSelected: (id: string) => boolean;
+
   // Reset filters
   resetFilters: () => void;
 }
@@ -72,6 +79,24 @@ export const useStore = create<AppState>((set) => ({
   // Modal state
   addArticleModalOpen: false,
   setAddArticleModalOpen: (open) => set({ addArticleModalOpen: open }),
+
+  // Article selection (for bulk operations)
+  selectedArticleIds: new Set(),
+  toggleArticleSelection: (id) =>
+    set((state) => {
+      const newSet = new Set(state.selectedArticleIds);
+      if (newSet.has(id)) {
+        newSet.delete(id);
+      } else {
+        newSet.add(id);
+      }
+      return { selectedArticleIds: newSet };
+    }),
+  selectAllArticles: (ids) =>
+    set({ selectedArticleIds: new Set(ids) }),
+  deselectAllArticles: () =>
+    set({ selectedArticleIds: new Set() }),
+  isArticleSelected: (id) => false, // This is handled by component checking the Set directly
 
   // Reset filters
   resetFilters: () =>

@@ -1,6 +1,7 @@
 // API Types
 
 export type SourceType = "url" | "pdf" | "arxiv" | "video";
+export type MediaType = "article" | "paper" | "video" | "blog" | "pdf" | "newsletter";
 export type ProcessingStatus = "pending" | "processing" | "completed" | "failed";
 export type ProviderName = "anthropic" | "openai" | "google";
 
@@ -13,6 +14,7 @@ export interface User {
 export interface Article {
   id: string;
   source_type: SourceType;
+  media_type: MediaType;
   original_url: string | null;
   title: string;
   authors: string[];

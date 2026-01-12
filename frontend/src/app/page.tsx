@@ -6,6 +6,7 @@ import { Sidebar } from "@/components/layout/Sidebar";
 import { Header } from "@/components/layout/Header";
 import { ArticleCard } from "@/components/articles/ArticleCard";
 import { AddArticleModal } from "@/components/articles/AddArticleModal";
+import { BulkActionBar } from "@/components/articles/BulkActionBar";
 import { Button } from "@/components/ui/Button";
 import { useStore } from "@/lib/store";
 import { useCurrentUser } from "@/hooks/useAuth";
@@ -123,6 +124,11 @@ export default function HomePage() {
       </div>
 
       <AddArticleModal />
+
+      {/* Bulk action bar - shows when articles are selected */}
+      <BulkActionBar
+        articleIds={articles.data?.items.map((a) => a.id) || []}
+      />
     </div>
   );
 }
