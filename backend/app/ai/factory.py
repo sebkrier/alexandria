@@ -1,5 +1,6 @@
 """
 Factory for creating AI provider instances from database configuration.
+Uses LiteLLM for unified provider interface.
 """
 
 import logging
@@ -9,25 +10,14 @@ from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.ai.base import AIProvider
-from app.ai.providers import AnthropicProvider, OpenAIProvider, GoogleProvider
+from app.ai.llm import LiteLLMProvider, PROVIDER_MODELS
 from app.models.ai_provider import AIProvider as AIProviderModel
 from app.utils.encryption import decrypt_api_key
 
 logger = logging.getLogger(__name__)
 
-# Provider class mapping (use string keys for database compatibility)
-PROVIDER_CLASSES = {
-    "anthropic": AnthropicProvider,
-    "openai": OpenAIProvider,
-    "google": GoogleProvider,
-}
-
-# Available models per provider (for UI display)
-PROVIDER_MODELS = {
-    "anthropic": AnthropicProvider.MODELS,
-    "openai": OpenAIProvider.MODELS,
-    "google": GoogleProvider.MODELS,
-}
+# Supported providers (LiteLLM handles all of them)
+SUPPORTED_PROVIDERS = {"anthropic", "openai", "google"}
 
 
 async def get_ai_provider(
@@ -129,18 +119,22 @@ async def get_all_providers(
 
 
 def _instantiate_provider(config: AIProviderModel) -> AIProvider:
-    """Create an AI provider instance from database configuration."""
+    """Create an AI provider instance from database configuration using LiteLLM."""
     # Handle both enum and string values from database
     provider_key = config.provider_name.value if hasattr(config.provider_name, 'value') else str(config.provider_name)
-    provider_class = PROVIDER_CLASSES.get(provider_key)
 
-    if not provider_class:
+    if provider_key not in SUPPORTED_PROVIDERS:
         raise ValueError(f"Unsupported provider: {provider_key}")
 
     # Decrypt the API key
     api_key = decrypt_api_key(config.api_key_encrypted)
 
-    return provider_class(api_key=api_key, model_id=config.model_id)
+    # Use LiteLLMProvider for all providers
+    return LiteLLMProvider(
+        api_key=api_key,
+        model_id=config.model_id,
+        provider_name=provider_key,
+    )
 
 
 def get_available_providers() -> dict:
