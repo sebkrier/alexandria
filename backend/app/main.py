@@ -1,3 +1,4 @@
+import logging
 from contextlib import asynccontextmanager
 
 from fastapi import FastAPI
@@ -5,15 +6,21 @@ from fastapi.middleware.cors import CORSMiddleware
 
 from app.config import get_settings
 from app.api import api_router
+from app.db.raw import init_pool, close_pool
 
+logger = logging.getLogger(__name__)
 settings = get_settings()
 
 
 @asynccontextmanager
 async def lifespan(app: FastAPI):
     # Startup
+    logger.info("Starting Alexandria API")
+    await init_pool()
     yield
     # Shutdown
+    logger.info("Shutting down Alexandria API")
+    await close_pool()
 
 
 app = FastAPI(
