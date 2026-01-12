@@ -20,11 +20,13 @@ A personal research library for storing, organizing, and retrieving articles wit
 
 ## Tech Stack
 
-- **Backend**: Python 3.11+ / FastAPI / SQLAlchemy / PostgreSQL
+- **Backend**: Python 3.11+ / FastAPI / SQLAlchemy + psycopg3 / PostgreSQL
 - **Frontend**: Next.js 14 / React / Tailwind CSS
-- **AI Providers**: Anthropic Claude, OpenAI GPT-4, or Google Gemini
+- **Package Management**: pixi + uv (fast, reproducible Python environments)
+- **AI Integration**: LiteLLM (unified interface for Anthropic, OpenAI, Google)
 - **Embeddings**: sentence-transformers (all-mpnet-base-v2) — runs locally, no API key needed
 - **Vector Search**: pgvector extension for PostgreSQL
+- **Database Queries**: SQLAlchemy ORM + psycopg3 parameterized queries for security-critical operations
 - **Storage**: Cloudflare R2 (optional, for PDF storage)
 
 ## Quick Start (Local Development)
@@ -60,22 +62,24 @@ Or use an existing PostgreSQL installation with pgvector extension installed.
 ```bash
 cd backend
 
-# Create virtual environment
-python -m venv venv
-source venv/bin/activate  # Windows: venv\Scripts\activate
+# Install pixi if not already installed
+curl -fsSL https://pixi.sh/install.sh | bash
+# Or from GitHub releases if pixi.sh is unavailable:
+# curl -fsSL https://github.com/prefix-dev/pixi/releases/latest/download/pixi-x86_64-unknown-linux-musl.tar.gz | tar -xzf - -C ~/.local/bin
 
 # Install dependencies (includes sentence-transformers for embeddings)
-pip install -r requirements.txt
+pixi install
+pixi run sync
 
 # Configure environment
 cp .env.example .env
 # Edit .env if needed (defaults work for local development)
 
 # Run database migrations (creates tables and enables pgvector)
-alembic upgrade head
+pixi run migrate
 
 # Start the server
-uvicorn app.main:app --reload --port 8000
+pixi run dev
 ```
 
 **Note:** The first time you add an article, the embedding model (~420MB) will be downloaded from Hugging Face. This is a one-time download.
@@ -114,6 +118,24 @@ After creating your account:
 
 Your API keys are encrypted and stored securely in the database.
 
+## Running Tests
+
+```bash
+cd backend
+pixi run test
+```
+
+To run tests with the test database (for parameterized query tests):
+
+```bash
+# Create test database (one-time setup)
+sudo -u postgres psql -c "CREATE DATABASE alexandria_test;"
+sudo -u postgres psql -d alexandria_test -c "CREATE EXTENSION IF NOT EXISTS vector;"
+
+# Run all tests
+pixi run test
+```
+
 ## Windows Launcher (WSL)
 
 If you're using Windows with WSL, you can create a batch file to launch everything with one click.
@@ -127,7 +149,7 @@ Save this as `Alexandria.bat` on your Desktop:
 :: Alexandria - Start Backend and Frontend
 
 :: Start backend
-start wt -w 0 new-tab -p "Ubuntu" -- wsl bash -c "cd ~/alexandria/backend && source venv/bin/activate && uvicorn app.main:app --reload --port 8000; exec bash"
+start wt -w 0 new-tab -p "Ubuntu" -- wsl bash -c "cd ~/alexandria/backend && ~/.local/bin/pixi run dev; exec bash"
 
 :: Wait for backend to start
 timeout /t 3 /nobreak > nul
@@ -158,12 +180,15 @@ start http://localhost:3000
 alexandria/
 ├── backend/
 │   ├── app/
-│   │   ├── ai/              # AI provider abstraction
+│   │   ├── ai/              # AI provider abstraction (LiteLLM)
 │   │   ├── api/             # FastAPI routes
+│   │   ├── db/              # psycopg3 connection pool & parameterized queries
 │   │   ├── extractors/      # Content extraction (URL, PDF, arXiv, YouTube)
 │   │   ├── models/          # SQLAlchemy models
 │   │   └── schemas/         # Pydantic schemas
 │   ├── alembic/             # Database migrations
+│   ├── pixi.toml            # Pixi configuration
+│   ├── pyproject.toml       # Python dependencies
 │   └── tests/
 ├── frontend/
 │   ├── src/
