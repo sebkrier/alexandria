@@ -46,13 +46,10 @@ class AnthropicProvider(AIProvider):
         source_type: str | None = None,
     ) -> Summary:
         """Generate a structured summary using Claude"""
-        # Prepare the content with title context
-        content_with_context = text
-        if title:
-            content_with_context = f"Title: {title}\n\n{text}"
-
         user_prompt = EXTRACT_SUMMARY_PROMPT.format(
-            content=truncate_text(content_with_context),
+            title=title or "Untitled",
+            source_type=source_type or "article",
+            content=truncate_text(text),
         )
 
         try:
