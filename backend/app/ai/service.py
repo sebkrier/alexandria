@@ -6,11 +6,12 @@ Coordinates summarization, tagging, and categorization.
 import logging
 from uuid import UUID
 
-from sqlalchemy import select
+from sqlalchemy import select, delete
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.ai.base import AIProvider, Summary, TagSuggestion, CategorySuggestion
 from app.ai.factory import get_default_provider, get_ai_provider
+from app.ai.embeddings import generate_embedding
 from app.models.article import Article, ProcessingStatus
 from app.models.category import Category
 from app.models.tag import Tag
@@ -102,6 +103,17 @@ class AIService:
 
             # Apply category
             await self._apply_category(article, user_id, category_suggestion)
+
+            # 4. Recalculate word count (for reading time)
+            if article.extracted_text:
+                article.word_count = len(article.extracted_text.split())
+
+            # 5. Generate embedding for semantic search (using local EmbeddingGemma)
+            if hasattr(article, 'embedding'):
+                logger.info(f"Generating embedding for article {article_id}")
+                embedding = self._generate_article_embedding(article)
+                if embedding:
+                    article.embedding = embedding
 
             # Mark as completed
             article.processing_status = ProcessingStatus.COMPLETED
@@ -242,78 +254,132 @@ class AIService:
         user_id: UUID,
         suggestion: CategorySuggestion,
     ) -> None:
-        """Apply category suggestion to an article"""
+        """
+        Apply two-level category suggestion to an article.
+
+        Articles are assigned to the SUBCATEGORY only. The parent category
+        is just for organizational hierarchy.
+        """
         if suggestion.confidence < 0.5:
             logger.info(f"Category suggestion confidence too low ({suggestion.confidence}), skipping")
             return
 
-        category = None
-        parent_id = None
-
-        # If parent specified, find or create it
-        if suggestion.parent_category:
-            parent_result = await self.db.execute(
-                select(Category).where(
-                    Category.user_id == user_id,
-                    Category.name == suggestion.parent_category,
-                )
+        # Step 1: Find or create the parent category
+        parent_result = await self.db.execute(
+            select(Category).where(
+                Category.user_id == user_id,
+                Category.name == suggestion.category.name,
+                Category.parent_id == None,  # Must be a top-level category
             )
-            parent = parent_result.scalar_one_or_none()
-            if parent:
-                parent_id = parent.id
-            elif suggestion.is_new_category:
-                # Create parent category first
-                parent = Category(
+        )
+        parent_category = parent_result.scalar_one_or_none()
+
+        if not parent_category:
+            if suggestion.category.is_new:
+                # Create new parent category
+                parent_category = Category(
                     user_id=user_id,
-                    name=suggestion.parent_category,
+                    name=suggestion.category.name,
                     parent_id=None,
                 )
-                self.db.add(parent)
+                self.db.add(parent_category)
                 await self.db.flush()
-                parent_id = parent.id
-                logger.info(f"Created new parent category: {suggestion.parent_category}")
-
-        # Find existing category
-        query = select(Category).where(
-            Category.user_id == user_id,
-            Category.name == suggestion.category_name,
-        )
-        if parent_id:
-            query = query.where(Category.parent_id == parent_id)
-
-        result = await self.db.execute(query)
-        category = result.scalar_one_or_none()
-
-        # Create new category if suggested and not found
-        if not category and suggestion.is_new_category:
-            category = Category(
-                user_id=user_id,
-                name=suggestion.category_name,
-                parent_id=parent_id,
-            )
-            self.db.add(category)
-            await self.db.flush()
-            logger.info(f"Created new category: {suggestion.category_name}")
-
-        if category:
-            # Check if article-category association already exists
-            existing = await self.db.execute(
-                select(ArticleCategory).where(
-                    ArticleCategory.article_id == article.id,
-                    ArticleCategory.category_id == category.id,
+                logger.info(f"Created new category: {suggestion.category.name}")
+            else:
+                # Parent should exist but doesn't - log and create anyway to avoid data loss
+                logger.warning(f"Category '{suggestion.category.name}' not found, creating it")
+                parent_category = Category(
+                    user_id=user_id,
+                    name=suggestion.category.name,
+                    parent_id=None,
                 )
-            )
-            if existing.scalar_one_or_none():
-                logger.info(f"Article already in category '{suggestion.category_name}', skipping")
-                return
+                self.db.add(parent_category)
+                await self.db.flush()
 
-            # Create article-category association
-            article_category = ArticleCategory(
-                article_id=article.id,
-                category_id=category.id,
-                is_primary=True,
-                suggested_by_ai=True,
+        # Step 2: Find or create the subcategory under the parent
+        subcategory_result = await self.db.execute(
+            select(Category).where(
+                Category.user_id == user_id,
+                Category.name == suggestion.subcategory.name,
+                Category.parent_id == parent_category.id,
             )
-            self.db.add(article_category)
-        else:
-            logger.warning(f"Category '{suggestion.category_name}' not found and is_new_category=False, skipping")
+        )
+        subcategory = subcategory_result.scalar_one_or_none()
+
+        if not subcategory:
+            if suggestion.subcategory.is_new:
+                # Create new subcategory
+                subcategory = Category(
+                    user_id=user_id,
+                    name=suggestion.subcategory.name,
+                    parent_id=parent_category.id,
+                )
+                self.db.add(subcategory)
+                await self.db.flush()
+                logger.info(f"Created new subcategory: {suggestion.category.name} → {suggestion.subcategory.name}")
+            else:
+                # Subcategory should exist but doesn't - create it anyway
+                logger.warning(f"Subcategory '{suggestion.subcategory.name}' not found under '{suggestion.category.name}', creating it")
+                subcategory = Category(
+                    user_id=user_id,
+                    name=suggestion.subcategory.name,
+                    parent_id=parent_category.id,
+                )
+                self.db.add(subcategory)
+                await self.db.flush()
+
+        # Step 3: Remove any existing category assignments for this article
+        # This prevents double-counting when re-analyzing or changing categories
+        await self.db.execute(
+            delete(ArticleCategory).where(ArticleCategory.article_id == article.id)
+        )
+
+        # Step 4: Assign article to the subcategory (not the parent)
+        article_category = ArticleCategory(
+            article_id=article.id,
+            category_id=subcategory.id,
+            is_primary=True,
+            suggested_by_ai=True,
+        )
+        self.db.add(article_category)
+        logger.info(f"Assigned article to: {suggestion.category.name} → {suggestion.subcategory.name}")
+
+    def _generate_article_embedding(
+        self,
+        article: Article,
+    ) -> list[float] | None:
+        """
+        Generate embedding for an article using local EmbeddingGemma model.
+
+        Combines title, summary, and content into a single text for embedding.
+        This captures both the high-level topic and detailed content.
+        """
+        # Build text to embed: title + summary + content excerpt
+        parts = []
+
+        if article.title:
+            parts.append(f"Title: {article.title}")
+
+        if article.summary:
+            # Include full summary (it's already condensed)
+            parts.append(f"Summary: {article.summary}")
+
+        if article.extracted_text:
+            # Include first ~4000 chars of content (within embedding limits)
+            content_excerpt = article.extracted_text[:4000]
+            parts.append(f"Content: {content_excerpt}")
+
+        if not parts:
+            logger.warning(f"No content to embed for article {article.id}")
+            return None
+
+        text_to_embed = "\n\n".join(parts)
+
+        try:
+            embedding = generate_embedding(text_to_embed)
+            if embedding:
+                logger.info(f"Generated embedding ({len(embedding)} dims) for article {article.id}")
+            return embedding
+        except Exception as e:
+            logger.error(f"Failed to generate embedding for article {article.id}: {e}")
+            return None

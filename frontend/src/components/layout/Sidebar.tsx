@@ -25,6 +25,7 @@ function CategoryItem({ category, depth = 0 }: { category: Category; depth?: num
   const { selectedCategoryId, setSelectedCategoryId } = useStore();
   const hasChildren = category.children && category.children.length > 0;
   const isSelected = selectedCategoryId === category.id;
+  const isParentCategory = depth === 0;
 
   return (
     <div>
@@ -40,11 +41,12 @@ function CategoryItem({ category, depth = 0 }: { category: Category; depth?: num
           "w-full flex items-center gap-2 px-3 py-1.5 text-sm rounded-lg transition-colors",
           isSelected
             ? "bg-article-blue/20 text-article-blue"
-            : "text-dark-muted hover:text-dark-text hover:bg-dark-hover"
+            : "text-dark-muted hover:text-dark-text hover:bg-dark-hover",
+          isParentCategory && "font-medium"
         )}
         style={{ paddingLeft: `${12 + depth * 16}px` }}
       >
-        {hasChildren && (
+        {hasChildren ? (
           <button
             onClick={(e) => {
               e.stopPropagation();
@@ -58,13 +60,19 @@ function CategoryItem({ category, depth = 0 }: { category: Category; depth?: num
               <ChevronRight className="w-3.5 h-3.5" />
             )}
           </button>
+        ) : (
+          <Circle className={clsx("w-2 h-2 ml-1 mr-1", isSelected ? "fill-article-blue" : "fill-dark-muted/50")} />
         )}
-        {!hasChildren && <span className="w-4" />}
         <span className="flex-1 text-left truncate">{category.name}</span>
-        <span className="text-xs text-dark-muted">{category.article_count}</span>
+        <span className={clsx(
+          "text-xs",
+          isSelected ? "text-article-blue" : "text-dark-muted"
+        )}>
+          {category.article_count}
+        </span>
       </button>
       {hasChildren && expanded && (
-        <div>
+        <div className="border-l border-dark-border/50 ml-5">
           {category.children!.map((child) => (
             <CategoryItem key={child.id} category={child} depth={depth + 1} />
           ))}

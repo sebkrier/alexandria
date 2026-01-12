@@ -10,7 +10,8 @@ Alexandria is a personal research library with AI-powered summarization. Single-
 |-------|------------|-----|
 | Backend | Python + FastAPI | AI SDKs are Python-first, async support |
 | Frontend | Next.js 14 + Tailwind | React ecosystem, server components |
-| Database | PostgreSQL | Full-text search, pgvector ready |
+| Database | PostgreSQL + pgvector | Full-text search + vector similarity |
+| Embeddings | sentence-transformers | Local embeddings, no API key needed |
 | Storage | Cloudflare R2 | S3-compatible, free egress |
 | AI | Claude (default) | Best summarization quality |
 
@@ -18,8 +19,8 @@ Alexandria is a personal research library with AI-powered summarization. Single-
 
 ```
 users           - Single user auth
-articles        - Main content store with full-text search
-categories      - Hierarchical tree (parent_id self-reference)
+articles        - Main content store with full-text search + embedding vector (768 dims)
+categories      - Hierarchical tree (parent_id self-reference), two-level max
 tags            - Flat tags with optional colors
 article_categories / article_tags - Junction tables
 notes           - Markdown notes per article
@@ -27,6 +28,11 @@ ai_providers    - Encrypted API key storage
 colors          - User's color palette
 reorganization_suggestions - AI suggestions for restructuring
 ```
+
+**Key columns on articles:**
+- `search_vector` (tsvector) - PostgreSQL full-text search
+- `embedding` (vector(768)) - Semantic search via pgvector
+- `word_count` (int) - For reading time calculation
 
 ## Key API Endpoints
 
@@ -36,7 +42,11 @@ POST   /api/auth/login          - Get JWT token
 POST   /api/articles            - Create from URL
 POST   /api/articles/upload     - Upload PDF
 POST   /api/articles/{id}/process - Run AI summarization
-GET    /api/categories          - Get category tree
+POST   /api/articles/ask        - Ask questions (RAG with query routing)
+POST   /api/articles/bulk/delete - Bulk delete articles
+POST   /api/articles/bulk/color  - Bulk recolor articles
+POST   /api/articles/bulk/reanalyze - Bulk re-analyze articles
+GET    /api/categories          - Get category tree with article counts
 POST   /api/settings/providers  - Add AI provider
 ```
 
@@ -48,8 +58,39 @@ class AIProvider(ABC):
     async def summarize(text, title, source_type) -> Summary
     async def suggest_tags(text, summary, existing_tags) -> list[TagSuggestion]
     async def suggest_category(text, summary, categories) -> CategorySuggestion
+    async def answer_question(context, question) -> str  # For Ask feature
     async def health_check() -> bool
 ```
+
+## Key Modules
+
+### Embeddings (`app/ai/embeddings.py`)
+Local embedding generation using sentence-transformers. No API key required.
+
+```python
+from app.ai.embeddings import generate_embedding, generate_query_embedding
+
+# For documents (during article processing)
+embedding = generate_embedding(text)  # Returns 768-dim vector
+
+# For search queries (in Ask feature)
+query_embedding = generate_query_embedding(question)
+```
+
+- Model: `sentence-transformers/all-mpnet-base-v2`
+- Dimensions: 768
+- First call downloads ~420MB model from Hugging Face
+
+### Query Router (`app/ai/query_router.py`)
+Routes Ask questions to appropriate handler:
+- **Content queries** → Hybrid search (semantic + keyword) + RAG
+- **Metadata queries** → Direct database queries (counts, lists, filters)
+
+### Content Extractors (`app/extractors/`)
+- `pdf.py` - Handles both uploaded PDFs and PDF URLs (downloads automatically)
+- `url.py` - Generic webpage extraction with readability fallback
+- `arxiv.py`, `substack.py`, `youtube.py` - Specialized extractors
+- Automatic Content-Type detection for URLs that don't match patterns
 
 ## Running Locally
 
@@ -130,6 +171,16 @@ NEXT_PUBLIC_API_URL  - Backend URL
 - React components: `frontend/src/components/`
 - API client: `frontend/src/lib/api.ts`
 
+## Scripts
+
+```bash
+# Backfill embeddings for existing articles (after enabling pgvector)
+cd backend && python scripts/backfill_embeddings.py
+
+# Run migrations
+cd backend && alembic upgrade head
+```
+
 ## Testing
 
 ```bash
@@ -139,3 +190,10 @@ cd backend && python tests/test_extractors.py
 # AI tests (requires API key)
 ANTHROPIC_API_KEY=sk-... python tests/test_ai.py
 ```
+
+## What NOT to Do
+
+- **Don't switch embedding models** without re-running the backfill script. Different models produce incompatible vectors.
+- **Don't remove pgvector dependency** — semantic search and the Ask feature depend on it.
+- **Don't assign articles to parent categories** — always assign to subcategories. Parent counts are cumulative.
+- **Don't skip migrations** — pgvector extension must be enabled before adding articles with embeddings.

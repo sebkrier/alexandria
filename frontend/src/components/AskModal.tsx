@@ -40,6 +40,13 @@ export function AskModal({ open, onClose }: AskModalProps) {
   return (
     <Modal open={open} onClose={handleClose} title="Ask your library" size="lg">
       <div className="space-y-4">
+        {/* Library assistant illustration */}
+        <img
+          src="/bonzi.jpg"
+          alt="Library assistant"
+          className="mx-auto mb-4 h-96 w-auto"
+        />
+
         {/* Question input */}
         <form onSubmit={handleSubmit}>
           <div className="flex gap-2">

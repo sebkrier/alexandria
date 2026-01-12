@@ -194,3 +194,39 @@ class OpenAIProvider(AIProvider):
         except Exception as e:
             logger.error(f"OpenAI health check failed: {e}")
             return False
+
+    # Embedding support
+    EMBEDDING_MODEL = "text-embedding-3-small"  # 1536 dimensions, cost-effective
+    EMBEDDING_MAX_TOKENS = 8191  # Max input tokens for embedding model
+
+    @property
+    def supports_embeddings(self) -> bool:
+        """OpenAI supports embeddings"""
+        return True
+
+    async def generate_embedding(self, text: str) -> list[float] | None:
+        """
+        Generate an embedding vector using OpenAI's embedding model.
+
+        Args:
+            text: The text to embed (will be truncated if too long)
+
+        Returns:
+            1536-dimensional embedding vector
+        """
+        try:
+            # Truncate text if too long (rough estimate: 4 chars per token)
+            max_chars = self.EMBEDDING_MAX_TOKENS * 4
+            if len(text) > max_chars:
+                text = text[:max_chars]
+
+            response = await self.client.embeddings.create(
+                model=self.EMBEDDING_MODEL,
+                input=text,
+            )
+
+            return response.data[0].embedding
+
+        except Exception as e:
+            logger.error(f"OpenAI embedding generation failed: {e}")
+            return None

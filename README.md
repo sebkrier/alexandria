@@ -7,12 +7,15 @@ A personal research library for storing, organizing, and retrieving articles wit
 - **Multi-source ingestion**: Import from URLs, PDFs, arXiv, Substack, and YouTube
 - **AI summarization**: Generate structured summaries with key contributions, findings, and relevance notes
 - **Auto-tagging**: AI suggests relevant tags based on content
-- **Auto-categorization**: Articles are automatically placed in your category hierarchy
-- **Ask your library**: RAG-powered Q&A across all your saved articles
+- **Hierarchical categories**: Two-level category system (parent → subcategory) with automatic AI categorization
+- **Semantic search**: Find conceptually related articles using local embeddings (all-mpnet-base-v2)
+- **Ask your library**: Hybrid RAG with intelligent query routing — content questions use semantic + keyword search, metadata questions query the database directly
+- **Bulk actions**: Select multiple articles for bulk delete, recolor, or re-analyze
+- **Media type badges**: Visual indicators for article sources (URL, PDF, arXiv, Video)
 - **Rich notes**: Markdown notes with formatting toolbar on each article
-- **Full-text search**: Find articles by content, title, or metadata
+- **Full-text search**: PostgreSQL full-text search across content, title, and metadata
 - **Color coding**: Visual organization with customizable colors
-- **Reading time**: Estimated reading time for each article
+- **Reading time**: Estimated reading time based on word count
 - **Dark mode UI**: Easy on the eyes, content-forward design
 
 ## Tech Stack
@@ -20,6 +23,8 @@ A personal research library for storing, organizing, and retrieving articles wit
 - **Backend**: Python 3.11+ / FastAPI / SQLAlchemy / PostgreSQL
 - **Frontend**: Next.js 14 / React / Tailwind CSS
 - **AI Providers**: Anthropic Claude, OpenAI GPT-4, or Google Gemini
+- **Embeddings**: sentence-transformers (all-mpnet-base-v2) — runs locally, no API key needed
+- **Vector Search**: pgvector extension for PostgreSQL
 - **Storage**: Cloudflare R2 (optional, for PDF storage)
 
 ## Quick Start (Local Development)
@@ -28,7 +33,7 @@ A personal research library for storing, organizing, and retrieving articles wit
 
 - Python 3.11+
 - Node.js 20+
-- PostgreSQL (via Docker or local install)
+- PostgreSQL 15+ with pgvector extension (via Docker or local install)
 
 ### 1. Clone and setup
 
@@ -37,7 +42,7 @@ git clone https://github.com/yourusername/alexandria.git
 cd alexandria
 ```
 
-### 2. Start PostgreSQL
+### 2. Start PostgreSQL with pgvector
 
 Using Docker (recommended):
 ```bash
@@ -45,10 +50,10 @@ docker run -d --name alexandria-db \
   -e POSTGRES_DB=alexandria \
   -e POSTGRES_PASSWORD=localdev \
   -p 5432:5432 \
-  postgres:15
+  pgvector/pgvector:pg15
 ```
 
-Or use an existing PostgreSQL installation.
+Or use an existing PostgreSQL installation with pgvector extension installed.
 
 ### 3. Setup the backend
 
@@ -59,19 +64,21 @@ cd backend
 python -m venv venv
 source venv/bin/activate  # Windows: venv\Scripts\activate
 
-# Install dependencies
+# Install dependencies (includes sentence-transformers for embeddings)
 pip install -r requirements.txt
 
 # Configure environment
 cp .env.example .env
 # Edit .env if needed (defaults work for local development)
 
-# Run database migrations
+# Run database migrations (creates tables and enables pgvector)
 alembic upgrade head
 
 # Start the server
 uvicorn app.main:app --reload --port 8000
 ```
+
+**Note:** The first time you add an article, the embedding model (~420MB) will be downloaded from Hugging Face. This is a one-time download.
 
 ### 4. Setup the frontend
 

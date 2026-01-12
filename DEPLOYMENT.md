@@ -46,11 +46,12 @@ Your R2 endpoint will be: `https://<account-id>.r2.cloudflarestorage.com`
 2. Click "New Project" → "Deploy from GitHub repo"
 3. Select your `alexandria` repository
 
-### 3.2 Add PostgreSQL
+### 3.2 Add PostgreSQL with pgvector
 
 1. In your project, click "New" → "Database" → "PostgreSQL"
 2. Railway automatically creates and connects the database
 3. The `DATABASE_URL` is auto-injected into services
+4. **Enable pgvector extension** — Railway's PostgreSQL includes pgvector. The migration will enable it automatically on first run.
 
 ### 3.3 Deploy Backend
 
@@ -102,6 +103,22 @@ CORS_ORIGINS=["https://alexandria-frontend-production.up.railway.app"]
 ## Step 4: Initialize the Database
 
 The database migrations run automatically on deploy. Your first visit to the frontend will show the setup page.
+
+### Embedding Model Download
+
+The first time you add an article, the embedding model (~420MB) will be downloaded from Hugging Face. This happens once per deployment and may take a few minutes.
+
+### Backfill Embeddings (if upgrading)
+
+If you're upgrading an existing installation, run the embedding backfill to generate embeddings for existing articles:
+
+```bash
+# In Railway shell or local environment
+cd backend
+python scripts/backfill_embeddings.py
+```
+
+This generates semantic search embeddings for all articles that don't have them.
 
 ## Step 5: Set Up Backups (Optional but Recommended)
 
@@ -163,6 +180,16 @@ Railway's free tier includes $5/month credit, so you may pay nothing initially.
 - Check bucket name matches
 - Ensure bucket permissions allow write
 
+### Semantic search not working
+- Check pgvector extension is enabled: `SELECT * FROM pg_extension WHERE extname = 'vector';`
+- Run migrations: `alembic upgrade head`
+- Run embedding backfill: `python scripts/backfill_embeddings.py`
+- Check logs for embedding model download errors
+
+### Slow first article processing
+- First article triggers ~420MB model download from Hugging Face
+- Subsequent articles are fast (model cached in memory)
+
 ## Security Checklist
 
 - [ ] JWT_SECRET is unique and random (32+ bytes)
@@ -171,6 +198,7 @@ Railway's free tier includes $5/month credit, so you may pay nothing initially.
 - [ ] CORS_ORIGINS only includes your frontend URL
 - [ ] R2 bucket is private (default)
 - [ ] Database is not publicly accessible (Railway default)
+- [ ] pgvector extension is enabled (check with `\dx` in psql)
 
 ## Monitoring
 

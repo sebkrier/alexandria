@@ -1,8 +1,19 @@
 from datetime import datetime
+from enum import Enum
 from uuid import UUID
 from pydantic import BaseModel, HttpUrl
 
 from app.models.article import SourceType, ProcessingStatus
+
+
+class MediaType(str, Enum):
+    """User-friendly media type for display purposes"""
+    ARTICLE = "article"
+    PAPER = "paper"
+    VIDEO = "video"
+    BLOG = "blog"
+    PDF = "pdf"
+    NEWSLETTER = "newsletter"
 
 
 class ArticleCreateURL(BaseModel):
@@ -44,6 +55,7 @@ class ArticleResponse(BaseModel):
     """Schema for article responses"""
     id: UUID
     source_type: SourceType
+    media_type: MediaType  # Computed from source_type + URL
     original_url: str | None
     title: str
     authors: list[str]
@@ -107,6 +119,42 @@ class AskResponse(BaseModel):
     """Schema for ask response"""
     answer: str
     articles: list[ArticleReference]
+
+
+# Bulk operation schemas
+class BulkDeleteRequest(BaseModel):
+    """Schema for bulk delete request"""
+    article_ids: list[UUID]
+
+
+class BulkDeleteResponse(BaseModel):
+    """Schema for bulk delete response"""
+    deleted: int
+    failed: list[str] = []
+
+
+class BulkColorRequest(BaseModel):
+    """Schema for bulk color update request"""
+    article_ids: list[UUID]
+    color_id: UUID | None  # None to clear color
+
+
+class BulkColorResponse(BaseModel):
+    """Schema for bulk color update response"""
+    updated: int
+    failed: list[str] = []
+
+
+class BulkReanalyzeRequest(BaseModel):
+    """Schema for bulk re-analyze request"""
+    article_ids: list[UUID]
+
+
+class BulkReanalyzeResponse(BaseModel):
+    """Schema for bulk re-analyze response"""
+    queued: int
+    skipped: int  # Already processing
+    failed: list[str] = []
 
 
 # Update forward references

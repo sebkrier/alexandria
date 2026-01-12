@@ -149,32 +149,53 @@ Article text (excerpt):
 {text_excerpt}"""
 
 
-CATEGORY_SYSTEM_PROMPT = """You are a research librarian helping organize a personal knowledge base. Your task is to suggest which category an article belongs to.
+CATEGORY_SYSTEM_PROMPT = """You are a research librarian organizing a personal knowledge base with a two-level taxonomy: Categories (broad topics) and Subcategories (specific areas within each category).
 
-Guidelines:
-- Choose the single best-fitting category from the provided options
-- If the article fits multiple categories, choose the primary one
-- Only suggest creating a new category if the article truly doesn't fit existing ones
-- Consider subcategories when available - be as specific as appropriate"""
+## Structure Rules
+- Every article MUST be assigned to exactly one Category AND one Subcategory
+- Categories are broad domains (e.g., "Technology", "Science", "Economics", "Philosophy")
+- Subcategories are specific areas within a category (e.g., Technology → "Machine Learning", Technology → "Web Development")
+- Maximum two levels - no deeper nesting
 
-CATEGORY_USER_PROMPT = """Suggest a category for this article. Return a JSON object:
+## When to Create New Items
+- Create a NEW CATEGORY only if the article's domain is truly distinct from all existing categories
+- Create a NEW SUBCATEGORY more freely - if the article's specific topic doesn't fit existing subcategories, propose one
+- New subcategories should be specific enough to be useful but broad enough to potentially contain multiple articles
+- Good subcategory names: "Reinforcement Learning", "Climate Policy", "Startup Funding"
+- Bad subcategory names: too generic ("Other", "Misc") or too specific ("GPT-4 March 2024 Update")
+
+## Selection Priority
+1. First, identify the best-fitting top-level Category (existing or new)
+2. Then, within that category, find or propose the best Subcategory"""
+
+CATEGORY_USER_PROMPT = """Categorize this article into the two-level taxonomy. Return a JSON object:
 
 {{
-  "category_name": "Name of the category",
-  "parent_category": "Parent category name if subcategory, otherwise null",
+  "category": {{
+    "name": "Category Name",
+    "is_new": false
+  }},
+  "subcategory": {{
+    "name": "Subcategory Name",
+    "is_new": true
+  }},
   "confidence": 0.85,
-  "reasoning": "Why this category fits",
-  "is_new_category": false
+  "reasoning": "Brief explanation of why this categorization fits"
 }}
 
-Available categories:
+## Current Taxonomy
 {categories}
 
-Article summary:
+## Article Summary
 {summary}
 
-Article text (excerpt):
-{text_excerpt}"""
+## Article Text (excerpt)
+{text_excerpt}
+
+Remember:
+- ALWAYS provide both category AND subcategory
+- Set is_new: true if suggesting a category/subcategory that doesn't exist yet
+- Prefer existing categories but feel free to create new subcategories when needed"""
 
 
 def format_categories_for_prompt(categories: list[dict], indent: int = 0) -> str:
@@ -230,3 +251,28 @@ QUESTION_USER_PROMPT = """Based on the following articles from my library, pleas
 ---
 
 Please answer the question based on the information in these articles. If the articles don't contain relevant information, let me know."""
+
+
+# Metadata query response prompt
+METADATA_SYSTEM_PROMPT = """You are a helpful assistant providing information about the user's personal article library. You've been given real data from their library database.
+
+## Guidelines
+
+1. **Present the data naturally**: Convert the structured data into a clear, conversational response.
+
+2. **Be helpful**: If the data shows patterns or insights, briefly mention them.
+
+3. **Be accurate**: Only report what's in the data. Don't invent or guess numbers.
+
+4. **Format for readability**: Use markdown (bullets, bold, etc.) when it helps.
+
+5. **Keep it concise**: The user asked a specific question - answer it directly without unnecessary padding."""
+
+
+METADATA_USER_PROMPT = """The user asked: "{question}"
+
+Here is the actual data from their library:
+
+{metadata}
+
+Please answer their question based on this data. Be conversational and helpful, but stick to what the data shows."""

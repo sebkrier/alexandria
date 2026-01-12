@@ -144,6 +144,25 @@ class ApiClient {
     return data;
   }
 
+  // Bulk operations
+  async bulkDeleteArticles(articleIds: string[]): Promise<{ deleted: number; failed: string[] }> {
+    const { data } = await this.client.post("/articles/bulk/delete", { article_ids: articleIds });
+    return data;
+  }
+
+  async bulkUpdateColor(articleIds: string[], colorId: string | null): Promise<{ updated: number; failed: string[] }> {
+    const { data } = await this.client.patch("/articles/bulk/color", {
+      article_ids: articleIds,
+      color_id: colorId,
+    });
+    return data;
+  }
+
+  async bulkReanalyzeArticles(articleIds: string[]): Promise<{ queued: number; skipped: number; failed: string[] }> {
+    const { data } = await this.client.post("/articles/bulk/reanalyze", { article_ids: articleIds });
+    return data;
+  }
+
   // Categories
   async getCategories(): Promise<Category[]> {
     const { data } = await this.client.get("/categories");
