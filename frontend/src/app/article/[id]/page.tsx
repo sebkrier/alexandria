@@ -240,7 +240,7 @@ export default function ArticlePage() {
     <div className="min-h-screen bg-dark-bg">
       {/* Header */}
       <header className="bg-dark-surface border-b border-dark-border sticky top-0 z-10">
-        <div className="max-w-5xl mx-auto px-6 py-4 flex items-center justify-between">
+        <div className="max-w-7xl mx-auto px-6 py-4 flex items-center justify-between">
           <Link
             href="/"
             className="flex items-center gap-2 text-dark-muted hover:text-dark-text transition-colors"
@@ -278,7 +278,7 @@ export default function ArticlePage() {
         </div>
       </header>
 
-      <main className="max-w-5xl mx-auto px-6 py-8">
+      <main className="max-w-7xl mx-auto px-6 py-8">
         <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">
           {/* Main content */}
           <div className="lg:col-span-2">

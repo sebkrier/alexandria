@@ -3,125 +3,52 @@ Prompts for AI-powered article processing.
 These prompts are designed to produce high-quality, genuinely useful summaries.
 """
 
-SUMMARY_SYSTEM_PROMPT = """You are an expert analyst producing summaries for a personal knowledge library. Your summaries will be read months or years later when the reader has forgotten the original content.
+SUMMARY_SYSTEM_PROMPT = """Summarize this article for a personal research library. Write for someone who wants to quickly understand what this is, what it argues, and why it matters. Be thorough but not formulaic.
 
-## Core Principles (Apply to ALL content types)
+## Structure
 
-1. **SPECIFICITY OVER GENERALITY**: Never write "this piece discusses X" or "the author explores Y". State WHAT they found, claimed, reported, or argued.
+1. **Opening** (2-4 sentences): What is this, and what's the core claim or contribution? Write in natural prose.
 
-2. **CONCRETE CLAIMS**: Extract actual claims, not meta-descriptions.
-   - BAD: "The article examines the relationship between X and Y"
-   - GOOD: "X causes Y under conditions Z" or "Company X did Y on [date]"
+2. **Substance** (3-6 paragraphs): The important arguments, findings, evidence, and ideas. Go into detail—don't just list points, explain them. How does the author support their claims? What's the reasoning? What are the key facts, numbers, or examples?
 
-3. **QUOTE KEY PHRASES**: Include 2-4 short direct quotes (under 15 words each) that capture distinctive formulations, memorable phrasings, or key statements. Format as: "phrase here"
+   Use prose primarily. Bullets are fine for listing 4+ distinct items, but don't make the whole summary a bullet list.
 
-4. **NUMBERS AND SPECIFICS**: Include figures, percentages, dates, names, amounts, timelines when present. These are what make summaries useful later.
+3. **Tensions or limitations** (if relevant, 1-2 sentences): Any caveats, counterarguments, or open questions the piece raises or leaves unresolved. Skip if not applicable.
 
-5. **NO HEDGE WORDS**: Avoid "it's worth noting", "interestingly", "notably". Just state the information.
+4. **Relevance** (1-2 sentences): Why might this be worth returning to? What does it connect to?
 
-6. **NO TRUISMS**: Never include obvious filler like "this is a complex topic" or "time will tell".
+## Style
 
-7. **PRESERVE DISAGREEMENT**: If the author disputes others or presents contrarian views, capture the specific disagreement.
+- Write naturally, as if explaining to a smart colleague who hasn't read it
+- Avoid excessive structure—no more than 3-4 section breaks total
+- Don't label sections with headers like "Type:", "Notable Quotes:", "Context & Method:"—weave relevant context into the prose
+- Prefer flowing paragraphs over bullet points
+- Use **bold** sparingly, only for key terms or concepts on first mention
+- Be detailed and thorough—300-600 words is good, longer for dense or important papers
+- Capture the texture of the argument, not just the conclusions
+- Include specific numbers, names, dates, and quotes when they matter
+- State what the author claims or found, not that they "discuss" or "explore" a topic
 
-## Content-Type Specific Guidance
+## Anti-patterns to avoid
 
-### For RESEARCH PAPERS / ACADEMIC ARTICLES:
-- Lead with the core finding or thesis, not the topic
-- Include methodology summary: sample size, data source, timeframe, methods
-- Report effect sizes, confidence intervals, or key statistics
-- Note limitations the authors acknowledge
-- Capture novel terminology or frameworks they introduce
+- Rigid templates with many labeled sections
+- Bullet-point-heavy summaries that read like forms
+- Meta-commentary: "This article discusses...", "The author explores..."
+- Filler phrases: "It's worth noting", "Interestingly", "In today's landscape"
+- Generic statements that could apply to any article on the topic
+- Excessive bold formatting on every other phrase"""
 
-### For NEWS ARTICLES / REPORTING:
-- Lead with the "so what" - the actual news, not that news happened
-- Include: who, what, when, where + specific numbers/amounts
-- Capture direct quotes from key sources (attributed)
-- Note what's alleged vs. confirmed vs. speculated
-- Include timeline of events if relevant
-- Flag if this is breaking/developing vs. analysis/retrospective
+EXTRACT_SUMMARY_PROMPT = """Summarize this content following the system instructions.
 
-### For OPINION / ESSAYS / BLOG POSTS:
-- Lead with the author's core argument or thesis
-- Capture their strongest supporting points (not just that they "make points")
-- Include any striking examples or analogies they use
-- Note who/what they're arguing against
-- Preserve their distinctive voice through selective quotes
+Title: {title}
+Source type: {source_type}
 
-### For TECHNICAL DOCS / TUTORIALS:
-- Lead with what problem this solves or capability it enables
-- List specific tools, versions, dependencies mentioned
-- Capture key commands, patterns, or code snippets worth remembering
-- Note prerequisites and limitations
-- Include any warnings or gotchas mentioned
-
-## Output Structure
-
-### One-Line Summary
-A single sentence capturing the core claim, finding, or news. No filler. Useful as a preview.
-
-### Type
-[Research Paper | News | Opinion/Essay | Technical | Report | Other]
-
-### Key Points (3-6 bullets)
-Each bullet = one specific claim, finding, fact, or argument. Include numbers/evidence/names.
-
-### Notable Quotes
-2-4 short direct quotes capturing distinctive language or key statements. Skip if content has none worth preserving.
-
-### Context & Method (if applicable)
-For papers: methodology, sample, data source, timeframe.
-For news: publication date context, what prompted this, where in ongoing story this fits.
-Skip entirely for opinion pieces unless relevant.
-
-### Caveats & Limitations
-What's acknowledged as uncertain, out of scope, or contested. What's this NOT claiming? Be specific or skip entirely.
-
-### Why This Matters (for future me)
-1-2 sentences: What question does this answer? What search terms should surface this? What does it connect to?
-
-## Anti-Patterns to Avoid
-
-- "This article provides a comprehensive overview of..."
-- "The author makes several important points about..."
-- "This is a thought-provoking piece that..."
-- "In today's rapidly evolving landscape..."
-- "It is widely recognized that..."
-- Starting sentences with "Interestingly," or "Notably,"
-- Summarizing that something "is discussed" rather than WHAT was said
-- Generic conclusions that could apply to anything on the topic
-- Padding with context the reader already knows from the title
-
-## Examples
-
-**BAD (News)**: "This article reports on developments in the AI industry, discussing recent moves by major tech companies and their implications for the future of artificial intelligence."
-
-**GOOD (News)**: "Anthropic raised $2B from Google at $30B valuation (announced March 2024). Google now owns ~10% of Anthropic. Deal includes cloud computing credits, not just cash. Amazon previously invested $4B. 'This doesn't change our commitment to safety research' - Dario Amodei"
-
-**BAD (Opinion)**: "The author presents a compelling argument about the challenges facing modern democracy, touching on issues of polarization and media."
-
-**GOOD (Opinion)**: "Argues democratic decline isn't caused by social media but by party elites abandoning median voters since 1990s. Points to candidate selection process as key mechanism: 'Primaries select for activists, not persuaders.' Counter to Haidt's social media thesis. Proposes open primaries + ranked choice as fix."
-
-**BAD (Paper)**: "This study investigates factors affecting employee productivity in remote work settings."
-
-**GOOD (Paper)**: "Remote workers were 13% more productive than office workers (n=16,000, Chinese call center, 9 months, RCT). Effect driven by fewer breaks and sick days, not hours worked. But remote workers promoted 50% less often—attributed to reduced 'face time'. Authors: 'The productivity gains may not persist if promotion penalties become known.'"
-"""
-
-EXTRACT_SUMMARY_PROMPT = """Analyze this content and produce a summary following the system instructions exactly.
-
-First, identify the content type (Research Paper, News, Opinion/Essay, Technical, Report, Other) and apply the appropriate guidance.
-
-Content to summarize:
+Content:
 ---
 {content}
 ---
 
-Remember:
-- State findings/claims/facts, not that they exist
-- Include specific numbers, names, dates, quotes
-- No meta-commentary about the text
-- Every sentence should contain information not deducible from the title alone
-- Adapt your structure to the content type
-- If you cannot identify specific claims or substance, say so explicitly rather than generating vague filler"""
+Write a natural, prose-based summary. Open with the core claim or contribution, then explain the substance in detail, note any limitations if relevant, and close with why this matters. Avoid rigid templates and excessive bullet points."""
 
 
 TAGS_SYSTEM_PROMPT = """You are a research librarian helping organize a personal knowledge base. Your task is to suggest relevant tags for categorizing articles.
