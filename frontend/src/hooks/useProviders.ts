@@ -97,6 +97,22 @@ export function useColors() {
   });
 }
 
+export function useUpdateColor() {
+  const queryClient = useQueryClient();
+
+  return useMutation({
+    mutationFn: ({ id, name }: { id: string; name: string }) =>
+      api.updateColor(id, { name }),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["colors"] });
+      toast.success("Color updated");
+    },
+    onError: (error: Error) => {
+      toast.error(`Failed to update color: ${error.message}`);
+    },
+  });
+}
+
 export function useSummaryPrompt() {
   return useQuery({
     queryKey: ["summary-prompt"],

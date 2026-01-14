@@ -13,15 +13,16 @@ import {
   ChevronDown,
   Circle,
   Palette,
+  Smartphone,
 } from "lucide-react";
 import { useStore } from "@/lib/store";
 import { useCategories } from "@/hooks/useCategories";
 import { useColors } from "@/hooks/useProviders";
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import type { Category } from "@/types";
 
 function CategoryItem({ category, depth = 0 }: { category: Category; depth?: number }) {
-  const [expanded, setExpanded] = useState(true);
+  const [expanded, setExpanded] = useState(false);
   const { selectedCategoryId, setSelectedCategoryId } = useStore();
   const hasChildren = category.children && category.children.length > 0;
   const isSelected = selectedCategoryId === category.id;
@@ -38,7 +39,7 @@ function CategoryItem({ category, depth = 0 }: { category: Category; depth?: num
           }
         }}
         className={clsx(
-          "w-full flex items-center gap-2 px-3 py-1.5 text-sm rounded-lg transition-colors",
+          "w-full flex items-center gap-2 px-3 py-1 text-xs rounded-lg transition-colors",
           isSelected
             ? "bg-article-blue/20 text-article-blue"
             : "text-dark-muted hover:text-dark-text hover:bg-dark-hover",
@@ -87,11 +88,27 @@ export function Sidebar() {
   const { sidebarOpen, setAddArticleModalOpen, resetFilters, selectedColorId, setSelectedColorId } = useStore();
   const { data: categories } = useCategories();
   const { data: colors } = useColors();
+  const [isClicking, setIsClicking] = useState(false);
+
+  // Change logo to red eyes during any click
+  useEffect(() => {
+    const handleMouseDown = () => setIsClicking(true);
+    const handleMouseUp = () => setIsClicking(false);
+
+    document.addEventListener("mousedown", handleMouseDown);
+    document.addEventListener("mouseup", handleMouseUp);
+
+    return () => {
+      document.removeEventListener("mousedown", handleMouseDown);
+      document.removeEventListener("mouseup", handleMouseUp);
+    };
+  }, []);
 
   if (!sidebarOpen) return null;
 
   const navItems = [
     { href: "/", icon: Library, label: "Library" },
+    { href: "/remote", icon: Smartphone, label: "Remote Add" },
     { href: "/settings", icon: Settings, label: "Settings" },
   ];
 
@@ -105,14 +122,14 @@ export function Sidebar() {
         </Link>
       </div>
 
-      {/* Add Article Button */}
+      {/* Add Article/Video Button */}
       <div className="px-3 py-3">
         <button
           onClick={() => setAddArticleModalOpen(true)}
           className="w-full flex items-center justify-center gap-2 px-4 py-2.5 bg-article-blue text-white rounded-lg hover:bg-article-blue/90 transition-colors"
         >
           <Plus className="w-4 h-4" />
-          <span className="font-medium">Add Article</span>
+          <span className="font-medium">Add Article/Video</span>
         </button>
       </div>
 
@@ -196,7 +213,7 @@ export function Sidebar() {
       {/* Footer with logo */}
       <div className="px-4 py-6 border-t border-dark-border flex justify-center">
         <img
-          src="/logo.jpg"
+          src={isClicking ? "/logo-eyes.png" : "/logo.jpg"}
           alt="Alexandria"
           className="h-48 w-auto object-contain opacity-80"
         />

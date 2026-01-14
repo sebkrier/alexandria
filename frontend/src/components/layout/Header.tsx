@@ -1,9 +1,8 @@
 "use client";
 
 import { useState } from "react";
-import { Search, LayoutGrid, List, Menu, LogOut, MessageSquare } from "lucide-react";
+import { Search, LayoutGrid, List, Menu, MessageSquare } from "lucide-react";
 import { useStore } from "@/lib/store";
-import { useLogout } from "@/hooks/useAuth";
 import { Button } from "@/components/ui/Button";
 import { AskModal } from "@/components/AskModal";
 
@@ -15,9 +14,7 @@ export function Header() {
     searchQuery,
     setSearchQuery,
     toggleSidebar,
-    user,
   } = useStore();
-  const logout = useLogout();
 
   return (
     <header className="h-14 bg-dark-surface border-b border-dark-border px-4 flex items-center gap-4">
@@ -77,21 +74,6 @@ export function Header() {
           <List className="w-4 h-4" />
         </button>
       </div>
-
-      {/* User menu */}
-      {user && (
-        <div className="flex items-center gap-3">
-          <span className="text-sm text-dark-muted">{user.email}</span>
-          <Button
-            variant="ghost"
-            size="sm"
-            onClick={() => logout.mutate()}
-            className="text-dark-muted hover:text-dark-text"
-          >
-            <LogOut className="w-4 h-4" />
-          </Button>
-        </div>
-      )}
 
       {/* Ask Modal */}
       <AskModal open={askModalOpen} onClose={() => setAskModalOpen(false)} />

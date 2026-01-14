@@ -5,12 +5,6 @@ export type MediaType = "article" | "paper" | "video" | "blog" | "pdf" | "newsle
 export type ProcessingStatus = "pending" | "processing" | "completed" | "failed";
 export type ProviderName = "anthropic" | "openai" | "google";
 
-export interface User {
-  id: string;
-  email: string;
-  created_at: string;
-}
-
 export interface Article {
   id: string;
   source_type: SourceType;
@@ -104,11 +98,6 @@ export interface ArticleListResponse {
   total_pages: number;
 }
 
-export interface Token {
-  access_token: string;
-  token_type: string;
-}
-
 export interface AvailableProviders {
   providers: Record<
     string,
@@ -121,15 +110,6 @@ export interface AvailableProviders {
 }
 
 // Request Types
-
-export interface LoginRequest {
-  email: string;
-  password: string;
-}
-
-export interface CreateArticleRequest {
-  url: string;
-}
 
 export interface CreateProviderRequest {
   provider_name: ProviderName;

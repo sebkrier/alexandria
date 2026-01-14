@@ -10,11 +10,12 @@ A personal research library for storing, organizing, and retrieving articles wit
 - **Hierarchical categories**: Two-level category system (parent → subcategory) with automatic AI categorization
 - **Semantic search**: Find conceptually related articles using local embeddings (all-mpnet-base-v2)
 - **Ask your library**: Hybrid RAG with intelligent query routing — content questions use semantic + keyword search, metadata questions query the database directly
+- **Remote add via WhatsApp**: Add articles from anywhere by sending links to a WhatsApp bot
 - **Bulk actions**: Select multiple articles for bulk delete, recolor, or re-analyze
 - **Media type badges**: Visual indicators for article sources (URL, PDF, arXiv, Video)
 - **Rich notes**: Markdown notes with formatting toolbar on each article
 - **Full-text search**: PostgreSQL full-text search across content, title, and metadata
-- **Color coding**: Visual organization with customizable colors
+- **Color coding**: Visual organization with customizable color labels (editable in settings)
 - **Reading time**: Estimated reading time based on word count
 - **Dark mode UI**: Easy on the eyes, content-forward design
 
@@ -102,13 +103,13 @@ npm run dev
 
 ### 5. Open the app
 
-Visit **http://localhost:3000** and create your account.
+Visit **http://localhost:3000** — the app is ready to use immediately (no login required).
 
 ## Adding AI Providers
 
-After creating your account:
+To enable AI-powered summarization and categorization:
 
-1. Go to **Settings** (gear icon)
+1. Go to **Settings** (gear icon in sidebar)
 2. Click **"Add Provider"**
 3. Select your provider (Anthropic, OpenAI, or Google)
 4. Enter your API key
@@ -117,6 +118,32 @@ After creating your account:
 7. Set as default if desired
 
 Your API keys are encrypted and stored securely in the database.
+
+## Remote Add via WhatsApp
+
+Add articles to Alexandria from anywhere using WhatsApp. See the **Remote Add** page in the app for setup instructions, or:
+
+### Quick Setup
+
+```bash
+cd whatsapp-bot
+npm install
+npm start
+```
+
+1. A QR code will appear in the terminal
+2. Open WhatsApp → Settings → Linked Devices → Link a Device
+3. Scan the QR code
+4. Send any URL to yourself on WhatsApp — it will be added to Alexandria
+
+### Keep the bot running
+
+Use PM2 to run the bot in the background:
+```bash
+npm install -g pm2
+pm2 start bot.js --name alexandria-whatsapp
+pm2 startup && pm2 save
+```
 
 ## Running Tests
 
@@ -197,6 +224,9 @@ alexandria/
 │   │   ├── hooks/           # React Query hooks
 │   │   └── lib/             # API client, state
 │   └── public/
+├── whatsapp-bot/            # WhatsApp bot for remote article adding
+│   ├── bot.js               # Bot implementation
+│   └── package.json
 ├── scripts/                 # Utility scripts
 ├── DEPLOYMENT.md            # Production deployment guide
 └── docker-compose.yml       # Docker setup (alternative)
@@ -227,7 +257,6 @@ See [DEPLOYMENT.md](./DEPLOYMENT.md) for Railway deployment instructions.
 | Variable | Description | Default |
 |----------|-------------|---------|
 | `DATABASE_URL` | PostgreSQL connection string | `postgresql+asyncpg://postgres:localdev@localhost:5432/alexandria` |
-| `JWT_SECRET` | Secret for JWT tokens (generate with `openssl rand -hex 32`) | Required |
 | `ENCRYPTION_KEY` | Key for encrypting API keys (generate with `openssl rand -hex 32`) | Required |
 | `DEBUG` | Enable debug mode | `true` |
 | `CORS_ORIGINS` | Allowed frontend origins | `["http://localhost:3000"]` |
@@ -238,6 +267,13 @@ See [DEPLOYMENT.md](./DEPLOYMENT.md) for Railway deployment instructions.
 | Variable | Description | Default |
 |----------|-------------|---------|
 | `NEXT_PUBLIC_API_URL` | Backend API URL | `http://localhost:8000` |
+
+### WhatsApp Bot (`whatsapp-bot/`)
+
+| Variable | Description | Default |
+|----------|-------------|---------|
+| `ALEXANDRIA_API` | Alexandria API URL | `http://localhost:8000/api` |
+| `ALLOWED_NUMBERS` | Comma-separated phone numbers to allow (empty = all) | - |
 
 ## License
 

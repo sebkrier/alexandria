@@ -1,11 +1,7 @@
 import { create } from "zustand";
-import type { User, Category, Color } from "@/types";
+import type { Category, Color } from "@/types";
 
 interface AppState {
-  // User state
-  user: User | null;
-  setUser: (user: User | null) => void;
-
   // UI state
   sidebarOpen: boolean;
   setSidebarOpen: (open: boolean) => void;
@@ -47,10 +43,6 @@ interface AppState {
 }
 
 export const useStore = create<AppState>((set) => ({
-  // User state
-  user: null,
-  setUser: (user) => set({ user }),
-
   // UI state
   sidebarOpen: true,
   setSidebarOpen: (open) => set({ sidebarOpen: open }),
