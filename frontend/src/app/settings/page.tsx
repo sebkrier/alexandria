@@ -1,7 +1,6 @@
 "use client";
 
 import { useEffect, useState } from "react";
-import { useRouter } from "next/navigation";
 import {
   Plus,
   Trash2,
@@ -23,7 +22,6 @@ import { AddArticleModal } from "@/components/articles/AddArticleModal";
 import { Button } from "@/components/ui/Button";
 import { Input } from "@/components/ui/Input";
 import { Modal } from "@/components/ui/Modal";
-import { useCurrentUser } from "@/hooks/useAuth";
 import {
   useProviders,
   useAvailableProviders,
@@ -32,14 +30,13 @@ import {
   useDeleteProvider,
   useTestProvider,
   useColors,
+  useUpdateColor,
   useSummaryPrompt,
 } from "@/hooks/useProviders";
 import { clsx } from "clsx";
 import type { ProviderName } from "@/types";
 
 export default function SettingsPage() {
-  const router = useRouter();
-  const user = useCurrentUser();
   const providers = useProviders();
   const availableProviders = useAvailableProviders();
   const createProvider = useCreateProvider();
@@ -47,7 +44,9 @@ export default function SettingsPage() {
   const deleteProvider = useDeleteProvider();
   const testProvider = useTestProvider();
   const { data: colors } = useColors();
+  const updateColor = useUpdateColor();
   const { data: promptData, isLoading: promptLoading } = useSummaryPrompt();
+  const [editingColors, setEditingColors] = useState<Record<string, string>>({});
 
   const [showAddModal, setShowAddModal] = useState(false);
   const [showSystemPrompt, setShowSystemPrompt] = useState(false);
@@ -60,13 +59,6 @@ export default function SettingsPage() {
     model_id: "",
     api_key: "",
   });
-
-  // Redirect to login if not authenticated
-  useEffect(() => {
-    if (user.isError) {
-      router.push("/login");
-    }
-  }, [user.isError, router]);
 
   // Set default model when provider changes
   useEffect(() => {
@@ -104,18 +96,6 @@ export default function SettingsPage() {
       setTimeout(() => setCopiedUser(false), 2000);
     }
   };
-
-  if (user.isLoading) {
-    return (
-      <div className="min-h-screen bg-dark-bg flex items-center justify-center">
-        <Loader2 className="w-8 h-8 text-article-blue animate-spin" />
-      </div>
-    );
-  }
-
-  if (!user.data) {
-    return null;
-  }
 
   return (
     <div className="min-h-screen bg-dark-bg flex">
@@ -259,7 +239,28 @@ export default function SettingsPage() {
                         className="w-4 h-4 rounded-full flex-shrink-0"
                         style={{ backgroundColor: color.hex_value }}
                       />
-                      <span className="text-dark-text">{color.name}</span>
+                      <input
+                        type="text"
+                        value={editingColors[color.id] ?? color.name}
+                        onChange={(e) =>
+                          setEditingColors((prev) => ({
+                            ...prev,
+                            [color.id]: e.target.value,
+                          }))
+                        }
+                        onBlur={() => {
+                          const newName = editingColors[color.id];
+                          if (newName && newName !== color.name) {
+                            updateColor.mutate({ id: color.id, name: newName });
+                          }
+                        }}
+                        onKeyDown={(e) => {
+                          if (e.key === "Enter") {
+                            e.currentTarget.blur();
+                          }
+                        }}
+                        className="flex-1 bg-transparent text-dark-text border-none outline-none focus:ring-1 focus:ring-article-blue rounded px-1"
+                      />
                     </div>
                   ))}
                 </div>

@@ -1,20 +1,33 @@
-from datetime import datetime, timedelta
-from uuid import UUID
-
-from fastapi import Depends, HTTPException, status, Request
-from fastapi.security import HTTPBearer, HTTPAuthorizationCredentials
-from jose import JWTError, jwt
+from fastapi import Depends
 from passlib.context import CryptContext
 from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
 
-from app.config import get_settings
 from app.database import get_db
 from app.models.user import User
+from app.models.category import Category
+from app.models.color import Color
 
-settings = get_settings()
+# Default categories to bootstrap
+DEFAULT_CATEGORIES = [
+    {"name": "AI & Machine Learning", "children": ["Safety", "Capabilities", "Governance/Policy"]},
+    {"name": "Economics", "children": []},
+    {"name": "Philosophy", "children": []},
+    {"name": "Policy & Regulation", "children": []},
+    {"name": "Technical/Engineering", "children": []},
+]
+
+# Default colors
+DEFAULT_COLORS = [
+    {"name": "Unread", "hex_value": "#6B7FD7"},
+    {"name": "Important", "hex_value": "#5BA37C"},
+    {"name": "To Revisit", "hex_value": "#D4915D"},
+    {"name": "Interesting", "hex_value": "#9B7FC7"},
+    {"name": "Urgent", "hex_value": "#D46A6A"},
+    {"name": "Archived", "hex_value": "#6B7280"},
+]
+
 pwd_context = CryptContext(schemes=["bcrypt"], deprecated="auto")
-security = HTTPBearer(auto_error=False)
 
 
 def hash_password(password: str) -> str:
@@ -22,71 +35,53 @@ def hash_password(password: str) -> str:
     return pwd_context.hash(password)
 
 
-def verify_password(plain_password: str, hashed_password: str) -> bool:
-    """Verify a password against its hash"""
-    return pwd_context.verify(plain_password, hashed_password)
-
-
-def create_access_token(user_id: UUID) -> str:
-    """Create a JWT access token"""
-    expire = datetime.utcnow() + timedelta(days=settings.jwt_expire_days)
-    to_encode = {
-        "sub": str(user_id),
-        "exp": expire,
-    }
-    return jwt.encode(to_encode, settings.jwt_secret, algorithm=settings.jwt_algorithm)
-
-
-def decode_token(token: str) -> dict:
-    """Decode and validate a JWT token"""
-    try:
-        payload = jwt.decode(
-            token, settings.jwt_secret, algorithms=[settings.jwt_algorithm]
-        )
-        return payload
-    except JWTError:
-        raise HTTPException(
-            status_code=status.HTTP_401_UNAUTHORIZED,
-            detail="Invalid or expired token",
-        )
-
-
 async def get_current_user(
-    request: Request,
-    credentials: HTTPAuthorizationCredentials = Depends(security),
     db: AsyncSession = Depends(get_db),
 ) -> User:
-    """Get the current authenticated user from JWT token"""
-    # Try to get token from Authorization header first
-    token = None
-    if credentials:
-        token = credentials.credentials
-    else:
-        # Fall back to cookie
-        token = request.cookies.get("access_token")
-
-    if not token:
-        raise HTTPException(
-            status_code=status.HTTP_401_UNAUTHORIZED,
-            detail="Not authenticated",
-        )
-
-    payload = decode_token(token)
-    user_id = payload.get("sub")
-
-    if not user_id:
-        raise HTTPException(
-            status_code=status.HTTP_401_UNAUTHORIZED,
-            detail="Invalid token payload",
-        )
-
-    result = await db.execute(select(User).where(User.id == UUID(user_id)))
+    """Get or create the default user (no authentication required)"""
+    # Get the first user, or create a default one
+    result = await db.execute(select(User).limit(1))
     user = result.scalar_one_or_none()
 
     if not user:
-        raise HTTPException(
-            status_code=status.HTTP_401_UNAUTHORIZED,
-            detail="User not found",
+        # Create default user
+        user = User(
+            email="default@alexandria.local",
+            password_hash=hash_password("not-used"),
         )
+        db.add(user)
+        await db.flush()
+
+        # Bootstrap default categories
+        for position, cat_data in enumerate(DEFAULT_CATEGORIES):
+            parent = Category(
+                user_id=user.id,
+                name=cat_data["name"],
+                position=position,
+            )
+            db.add(parent)
+            await db.flush()
+
+            for child_pos, child_name in enumerate(cat_data["children"]):
+                child = Category(
+                    user_id=user.id,
+                    name=child_name,
+                    parent_id=parent.id,
+                    position=child_pos,
+                )
+                db.add(child)
+
+        # Bootstrap default colors
+        for position, color_data in enumerate(DEFAULT_COLORS):
+            color = Color(
+                user_id=user.id,
+                name=color_data["name"],
+                hex_value=color_data["hex_value"],
+                position=position,
+            )
+            db.add(color)
+
+        await db.commit()
+        await db.refresh(user)
 
     return user

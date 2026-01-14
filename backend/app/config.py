@@ -7,9 +7,6 @@ class Settings(BaseSettings):
     database_url: str = "postgresql+asyncpg://postgres:localdev@localhost:5432/alexandria"
 
     # Security
-    jwt_secret: str = "CHANGE_ME_IN_PRODUCTION"
-    jwt_algorithm: str = "HS256"
-    jwt_expire_days: int = 7
     encryption_key: str = "CHANGE_ME_IN_PRODUCTION"  # For API key encryption
 
     # Storage (Cloudflare R2)

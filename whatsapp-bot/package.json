@@ -1,0 +1,14 @@
+{
+  "name": "alexandria-whatsapp-bot",
+  "version": "1.0.0",
+  "description": "WhatsApp bot for adding articles to Alexandria",
+  "main": "bot.js",
+  "scripts": {
+    "start": "node bot.js"
+  },
+  "dependencies": {
+    "whatsapp-web.js": "^1.26.0",
+    "qrcode-terminal": "^0.12.0",
+    "axios": "^1.6.0"
+  }
+}

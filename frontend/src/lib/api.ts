@@ -6,11 +6,7 @@ import type {
   Tag,
   Color,
   AIProvider,
-  Token,
-  User,
   AvailableProviders,
-  LoginRequest,
-  CreateArticleRequest,
   CreateProviderRequest,
   Note,
   AskResponse,
@@ -29,45 +25,6 @@ class ApiClient {
         "Content-Type": "application/json",
       },
     });
-
-    // Add response interceptor for auth errors
-    this.client.interceptors.response.use(
-      (response) => response,
-      (error) => {
-        if (error.response?.status === 401) {
-          // Redirect to login if not authenticated
-          if (typeof window !== "undefined" && !window.location.pathname.includes("/login")) {
-            window.location.href = "/login";
-          }
-        }
-        return Promise.reject(error);
-      }
-    );
-  }
-
-  // Auth
-  async checkSetup(): Promise<{ setup_required: boolean }> {
-    const { data } = await this.client.get("/auth/check-setup");
-    return data;
-  }
-
-  async setup(email: string, password: string): Promise<User> {
-    const { data } = await this.client.post("/auth/setup", { email, password });
-    return data;
-  }
-
-  async login(credentials: LoginRequest): Promise<Token> {
-    const { data } = await this.client.post("/auth/login", credentials);
-    return data;
-  }
-
-  async logout(): Promise<void> {
-    await this.client.post("/auth/logout");
-  }
-
-  async getMe(): Promise<User> {
-    const { data } = await this.client.get("/auth/me");
-    return data;
   }
 
   // Articles

@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { useState } from "react";
 import { useRouter, useParams } from "next/navigation";
 import Link from "next/link";
 import ReactMarkdown from "react-markdown";
@@ -26,7 +26,6 @@ import {
 import { Button } from "@/components/ui/Button";
 import { Badge } from "@/components/ui/Badge";
 import { MarkdownEditor } from "@/components/ui/MarkdownEditor";
-import { useCurrentUser } from "@/hooks/useAuth";
 import { useArticle, useProcessArticle, useDeleteArticle, useUpdateArticle } from "@/hooks/useArticles";
 import { useArticleNotes, useCreateNote, useUpdateNote, useDeleteNote } from "@/hooks/useNotes";
 import { useTags, useCreateTag } from "@/hooks/useTags";
@@ -54,7 +53,6 @@ export default function ArticlePage() {
   const params = useParams();
   const id = params.id as string;
 
-  const user = useCurrentUser();
   const article = useArticle(id);
   const processArticle = useProcessArticle();
   const deleteArticle = useDeleteArticle();
@@ -82,14 +80,7 @@ export default function ArticlePage() {
   const [showCategoryDropdown, setShowCategoryDropdown] = useState(false);
   const [selectedParentCategory, setSelectedParentCategory] = useState<string | null>(null);
 
-  // Redirect to login if not authenticated
-  useEffect(() => {
-    if (user.isError) {
-      router.push("/login");
-    }
-  }, [user.isError, router]);
-
-  if (user.isLoading || article.isLoading) {
+  if (article.isLoading) {
     return (
       <div className="min-h-screen bg-dark-bg flex items-center justify-center">
         <Loader2 className="w-8 h-8 text-article-blue animate-spin" />

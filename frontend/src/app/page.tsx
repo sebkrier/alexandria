@@ -1,7 +1,5 @@
 "use client";
 
-import { useEffect } from "react";
-import { useRouter } from "next/navigation";
 import { Sidebar } from "@/components/layout/Sidebar";
 import { Header } from "@/components/layout/Header";
 import { ArticleCard } from "@/components/articles/ArticleCard";
@@ -9,38 +7,14 @@ import { AddArticleModal } from "@/components/articles/AddArticleModal";
 import { BulkActionBar } from "@/components/articles/BulkActionBar";
 import { Button } from "@/components/ui/Button";
 import { useStore } from "@/lib/store";
-import { useCurrentUser } from "@/hooks/useAuth";
 import { useArticles, useReorganizeArticles } from "@/hooks/useArticles";
 import { Loader2, BookOpen, FolderSync } from "lucide-react";
 
 export default function HomePage() {
-  const router = useRouter();
   const { viewMode, selectedCategoryId, selectedColorId, searchQuery } = useStore();
 
-  const user = useCurrentUser();
   const articles = useArticles();
   const reorganize = useReorganizeArticles();
-
-  // Redirect to login if not authenticated
-  useEffect(() => {
-    if (user.isError) {
-      router.push("/login");
-    }
-  }, [user.isError, router]);
-
-  // Loading state
-  if (user.isLoading) {
-    return (
-      <div className="min-h-screen bg-dark-bg flex items-center justify-center">
-        <Loader2 className="w-8 h-8 text-article-blue animate-spin" />
-      </div>
-    );
-  }
-
-  // Not authenticated
-  if (!user.data) {
-    return null;
-  }
 
   return (
     <div className="min-h-screen bg-dark-bg flex">
