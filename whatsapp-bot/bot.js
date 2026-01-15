@@ -4,7 +4,6 @@ const axios = require('axios');
 
 // Configuration
 const ALEXANDRIA_API = process.env.ALEXANDRIA_API || 'http://localhost:8000/api';
-const ALLOWED_NUMBERS = process.env.ALLOWED_NUMBERS?.split(',') || []; // Empty = allow all
 
 // URL regex pattern
 const URL_REGEX = /https?:\/\/[^\s<>"{}|\\^`\[\]]+/gi;
@@ -42,11 +41,9 @@ client.on('ready', () => {
     console.log('\n========================================');
     console.log('  WHATSAPP BOT IS READY!');
     console.log('========================================');
-    console.log('\nSend a URL to this WhatsApp number to add articles to Alexandria.');
-    console.log('Commands:');
-    console.log('  - Send any URL to add an article');
-    console.log('  - Send "status" to check bot status');
-    console.log('  - Send "help" for instructions\n');
+    console.log('\nSend a URL in any chat to add articles to Alexandria.');
+    console.log('Only YOUR messages are processed (not messages from others).');
+    console.log('Tip: Send links to yourself or any chat - they\'ll be captured!\n');
 });
 
 // Authentication success
@@ -64,34 +61,42 @@ client.on('disconnected', (reason) => {
     console.log('Client was disconnected:', reason);
 });
 
-// Message handler
-client.on('message', async (message) => {
-    const sender = message.from;
-    const body = message.body.trim();
+// Helper to send message to a chat (may fail for self-chats due to whatsapp-web.js bug)
+async function sendToChat(message, text) {
+    try {
+        const chat = await message.getChat();
+        await client.sendMessage(chat.id._serialized, text);
+    } catch (err) {
+        // Silently fail - whatsapp-web.js has a bug with self-chat messages
+        // The article was still added successfully, just can't send confirmation
+        console.log(`(Could not send WhatsApp reply: ${err.message})`);
+    }
+}
 
-    // Check if sender is allowed (if whitelist is configured)
-    if (ALLOWED_NUMBERS.length > 0) {
-        const senderNumber = sender.replace('@c.us', '');
-        if (!ALLOWED_NUMBERS.some(num => senderNumber.includes(num))) {
-            console.log(`Ignored message from unauthorized number: ${sender}`);
-            return;
-        }
+// Message handler - using message_create to catch all messages including self-sent
+client.on('message_create', async (message) => {
+    // Only process messages sent BY you (not messages from others)
+    if (!message.fromMe) {
+        return;
     }
 
-    console.log(`Message from ${sender}: ${body}`);
+    const body = message.body.trim();
+
+    console.log(`Processing self-sent message: ${body}`);
 
     // Handle commands
     const lowerBody = body.toLowerCase();
 
     if (lowerBody === 'status') {
-        await message.reply('Alexandria WhatsApp Bot is running and connected!');
+        await sendToChat(message, 'Alexandria WhatsApp Bot is running and connected!');
         return;
     }
 
     if (lowerBody === 'help') {
-        await message.reply(
+        await sendToChat(message,
             '*Alexandria WhatsApp Bot*\n\n' +
-            'Send me any URL and I\'ll add it to your Alexandria library.\n\n' +
+            'Send any URL in any chat and it\'ll be added to your Alexandria library.\n' +
+            'Only YOUR messages are captured (links from others are ignored).\n\n' +
             'Supported:\n' +
             '• Web articles\n' +
             '• YouTube videos\n' +
@@ -110,7 +115,7 @@ client.on('message', async (message) => {
     if (!urls || urls.length === 0) {
         // Don't reply to random messages, only URL-related ones
         if (body.includes('http') || body.includes('www.')) {
-            await message.reply("I couldn't detect a valid URL. Please send a complete link starting with http:// or https://");
+            await sendToChat(message, "I couldn't detect a valid URL. Please send a complete link starting with http:// or https://");
         }
         return;
     }
@@ -139,7 +144,7 @@ client.on('message', async (message) => {
                 replyMsg += '\n\n_AI summary will be generated shortly._';
             }
 
-            await message.reply(replyMsg);
+            await sendToChat(message, replyMsg);
             console.log(`Successfully added: ${title}`);
 
         } catch (error) {
@@ -158,7 +163,7 @@ client.on('message', async (message) => {
                 errorMsg = 'Request timed out. The article might still be processing.';
             }
 
-            await message.reply(errorMsg);
+            await sendToChat(message, errorMsg);
         }
     }
 });
