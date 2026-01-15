@@ -4,7 +4,7 @@ A personal research library for storing, organizing, and retrieving articles wit
 
 ## Features
 
-- **Multi-source ingestion**: Import from URLs, PDFs, arXiv, Substack, and YouTube
+- **Multi-source ingestion**: Import from URLs, PDFs, arXiv, Substack, YouTube, and LessWrong/Alignment Forum
 - **AI summarization**: Generate structured summaries with key contributions, findings, and relevance notes
 - **Auto-tagging**: AI suggests relevant tags based on content
 - **Hierarchical categories**: Two-level category system (parent → subcategory) with automatic AI categorization
@@ -134,7 +134,8 @@ npm start
 1. A QR code will appear in the terminal
 2. Open WhatsApp → Settings → Linked Devices → Link a Device
 3. Scan the QR code
-4. Send any URL to yourself on WhatsApp — it will be added to Alexandria
+4. Send any URL in any chat — only YOUR messages are captured (links from others are ignored)
+5. Articles are automatically processed with AI summaries in the background
 
 ### Keep the bot running
 
@@ -210,7 +211,7 @@ alexandria/
 │   │   ├── ai/              # AI provider abstraction (LiteLLM)
 │   │   ├── api/             # FastAPI routes
 │   │   ├── db/              # psycopg3 connection pool & parameterized queries
-│   │   ├── extractors/      # Content extraction (URL, PDF, arXiv, YouTube)
+│   │   ├── extractors/      # Content extraction (URL, PDF, arXiv, YouTube, LessWrong)
 │   │   ├── models/          # SQLAlchemy models
 │   │   └── schemas/         # Pydantic schemas
 │   ├── alembic/             # Database migrations
@@ -273,7 +274,6 @@ See [DEPLOYMENT.md](./DEPLOYMENT.md) for Railway deployment instructions.
 | Variable | Description | Default |
 |----------|-------------|---------|
 | `ALEXANDRIA_API` | Alexandria API URL | `http://localhost:8000/api` |
-| `ALLOWED_NUMBERS` | Comma-separated phone numbers to allow (empty = all) | - |
 
 ## License
 

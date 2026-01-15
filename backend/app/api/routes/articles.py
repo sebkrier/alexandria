@@ -3,7 +3,7 @@ import tempfile
 from pathlib import Path
 from uuid import UUID
 
-from fastapi import APIRouter, Depends, HTTPException, status, UploadFile, File, Query
+from fastapi import APIRouter, Depends, HTTPException, status, UploadFile, File, Query, BackgroundTasks
 
 logger = logging.getLogger(__name__)
 from sqlalchemy import select, func, or_, delete
@@ -47,8 +47,20 @@ from app.ai.query_router import (
     format_metadata_for_llm,
 )
 from app.ai.embeddings import generate_query_embedding
+from app.database import async_session_maker
 
 router = APIRouter()
+
+
+async def process_article_background(article_id: UUID, user_id: UUID):
+    """Background task to process article with AI after creation"""
+    async with async_session_maker() as db:
+        try:
+            ai_service = AIService(db)
+            await ai_service.process_article(article_id=article_id, user_id=user_id)
+            logger.info(f"Background processing completed for article {article_id}")
+        except Exception as e:
+            logger.error(f"Background processing failed for article {article_id}: {e}")
 
 
 def calculate_reading_time(word_count: int | None) -> int | None:
@@ -159,6 +171,7 @@ def article_to_response(article: Article) -> ArticleResponse:
 @router.post("", response_model=ArticleResponse, status_code=status.HTTP_201_CREATED)
 async def create_article_from_url(
     data: ArticleCreateURL,
+    background_tasks: BackgroundTasks,
     db: AsyncSession = Depends(get_db),
     current_user: User = Depends(get_current_user),
 ):
@@ -190,6 +203,10 @@ async def create_article_from_url(
         await db.commit()
         await db.refresh(article)
 
+        # Schedule AI processing in background
+        background_tasks.add_task(process_article_background, article.id, current_user.id)
+        logger.info(f"Scheduled background processing for article {article.id}")
+
         # Load relationships
         result = await db.execute(
             select(Article)
@@ -216,6 +233,7 @@ async def create_article_from_url(
 
 @router.post("/upload", response_model=ArticleResponse, status_code=status.HTTP_201_CREATED)
 async def create_article_from_upload(
+    background_tasks: BackgroundTasks,
     file: UploadFile = File(...),
     db: AsyncSession = Depends(get_db),
     current_user: User = Depends(get_current_user),
@@ -260,6 +278,10 @@ async def create_article_from_upload(
 
         # Clean up temp file
         Path(temp_path).unlink(missing_ok=True)
+
+        # Schedule AI processing in background
+        background_tasks.add_task(process_article_background, article.id, current_user.id)
+        logger.info(f"Scheduled background processing for uploaded PDF {article.id}")
 
         # Load relationships
         result = await db.execute(
