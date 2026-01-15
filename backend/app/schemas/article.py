@@ -39,6 +39,7 @@ class ArticleUpdate(BaseModel):
     color_id: UUID | None = None
     category_ids: list[UUID] | None = None
     tag_ids: list[UUID] | None = None
+    is_read: bool | None = None
 
 
 class ArticleSummary(BaseModel):
@@ -69,6 +70,7 @@ class ArticleResponse(BaseModel):
     processing_error: str | None
     word_count: int | None
     reading_time_minutes: int | None
+    is_read: bool
     created_at: datetime
     updated_at: datetime
 
@@ -155,6 +157,21 @@ class BulkReanalyzeResponse(BaseModel):
     queued: int
     skipped: int  # Already processing
     failed: list[str] = []
+
+
+# Unread Reader schemas
+class UnreadNavigationResponse(BaseModel):
+    """Schema for unread article navigation"""
+    current_position: int
+    total_unread: int
+    prev_id: UUID | None
+    next_id: UUID | None
+
+
+class UnreadListResponse(BaseModel):
+    """Schema for list of unread article IDs"""
+    items: list[UUID]
+    total: int
 
 
 # Update forward references

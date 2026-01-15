@@ -10,6 +10,8 @@ import type {
   CreateProviderRequest,
   Note,
   AskResponse,
+  UnreadNavigationResponse,
+  UnreadListResponse,
 } from "@/types";
 
 const API_URL = process.env.NEXT_PUBLIC_API_URL || "http://localhost:8000";
@@ -36,6 +38,7 @@ class ApiClient {
     tag_id?: string;
     color_id?: string;
     status?: string;
+    is_read?: boolean;
   }): Promise<ArticleListResponse> {
     const { data } = await this.client.get("/articles", { params });
     return data;
@@ -67,7 +70,7 @@ class ApiClient {
 
   async updateArticle(
     id: string,
-    updates: { title?: string; color_id?: string; category_ids?: string[]; tag_ids?: string[] }
+    updates: { title?: string; color_id?: string; category_ids?: string[]; tag_ids?: string[]; is_read?: boolean }
   ): Promise<Article> {
     const { data } = await this.client.patch(`/articles/${id}`, updates);
     return data;
@@ -117,6 +120,17 @@ class ApiClient {
 
   async bulkReanalyzeArticles(articleIds: string[]): Promise<{ queued: number; skipped: number; failed: string[] }> {
     const { data } = await this.client.post("/articles/bulk/reanalyze", { article_ids: articleIds });
+    return data;
+  }
+
+  // Unread Reader
+  async getUnreadList(): Promise<UnreadListResponse> {
+    const { data } = await this.client.get("/articles/unread/list");
+    return data;
+  }
+
+  async getUnreadNavigation(articleId: string): Promise<UnreadNavigationResponse> {
+    const { data } = await this.client.get(`/articles/unread/navigation/${articleId}`);
     return data;
   }
 
