@@ -147,7 +147,37 @@ pm2 start bot.js --name alexandria-whatsapp
 pm2 startup && pm2 save
 ```
 
-## Running Tests
+## Development
+
+### Linting & Formatting
+
+**Backend (Python):**
+```bash
+cd backend
+
+# Check for issues
+pixi run lint
+
+# Auto-fix and format
+pixi run lint-fix
+pixi run format
+```
+
+**Frontend (TypeScript):**
+```bash
+cd frontend
+
+# Check for issues
+npm run lint
+
+# Auto-fix
+npm run lint:fix
+
+# Type check
+npm run typecheck
+```
+
+### Running Tests
 
 ```bash
 cd backend
@@ -211,6 +241,7 @@ alexandria/
 │   ├── app/
 │   │   ├── ai/              # AI provider abstraction (LiteLLM)
 │   │   ├── api/             # FastAPI routes
+│   │   ├── core/            # Constants and shared utilities
 │   │   ├── db/              # psycopg3 connection pool & parameterized queries
 │   │   ├── extractors/      # Content extraction (URL, PDF, arXiv, YouTube, LessWrong)
 │   │   ├── models/          # SQLAlchemy models
@@ -224,7 +255,7 @@ alexandria/
 │   │   ├── app/             # Next.js pages
 │   │   ├── components/      # React components
 │   │   ├── hooks/           # React Query hooks
-│   │   └── lib/             # API client, state
+│   │   └── lib/             # API client, state, constants
 │   └── public/
 ├── whatsapp-bot/            # WhatsApp bot for remote article adding
 │   ├── bot.js               # Bot implementation
@@ -275,6 +306,14 @@ See [DEPLOYMENT.md](./DEPLOYMENT.md) for Railway deployment instructions.
 | Variable | Description | Default |
 |----------|-------------|---------|
 | `ALEXANDRIA_API` | Alexandria API URL | `http://localhost:8000/api` |
+
+## Contributing
+
+See [CONTRIBUTING.md](./CONTRIBUTING.md) for development setup and guidelines.
+
+## Security
+
+See [SECURITY.md](./SECURITY.md) for security practices and vulnerability reporting.
 
 ## License
 
