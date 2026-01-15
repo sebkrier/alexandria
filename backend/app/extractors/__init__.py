@@ -7,6 +7,7 @@ from app.extractors.pdf import PDFExtractor
 from app.extractors.arxiv import ArxivExtractor
 from app.extractors.substack import SubstackExtractor
 from app.extractors.youtube import YouTubeExtractor
+from app.extractors.lesswrong import LessWrongExtractor
 
 logger = logging.getLogger(__name__)
 
@@ -15,6 +16,7 @@ EXTRACTORS = [
     ArxivExtractor,
     SubstackExtractor,  # Before generic URL extractor
     YouTubeExtractor,  # Video platforms
+    LessWrongExtractor,  # LessWrong/Alignment Forum (React SPA, needs API)
     PDFExtractor,
     URLExtractor,  # Generic fallback
 ]
@@ -90,6 +92,7 @@ __all__ = [
     "ArxivExtractor",
     "SubstackExtractor",
     "YouTubeExtractor",
+    "LessWrongExtractor",
     "extract_content",
     "EXTRACTORS",
 ]
