@@ -14,6 +14,9 @@ dev = "uvicorn app.main:app --reload --port 8000"
 test = "pytest -v"
 sync = "uv sync"
 migrate = "alembic upgrade head"
+lint = "ruff check ."
+format = "ruff format ."
+lint-fix = "ruff check --fix ."
 
 [pypi-dependencies]
 alexandria = { path = ".", editable = true }
