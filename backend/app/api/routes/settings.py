@@ -1,25 +1,25 @@
 from uuid import UUID
-from pydantic import BaseModel
 
 from fastapi import APIRouter, Depends, HTTPException, status
+from pydantic import BaseModel
 from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
 
+from app.ai.factory import get_ai_provider, get_available_providers
+from app.ai.prompts import EXTRACT_SUMMARY_PROMPT, SUMMARY_SYSTEM_PROMPT
 from app.database import get_db
-from app.models.user import User
-from app.models.ai_provider import AIProvider as AIProviderModel, ProviderName
+from app.models.ai_provider import AIProvider as AIProviderModel
 from app.models.color import Color
+from app.models.user import User
 from app.schemas.ai_provider import (
     AIProviderCreate,
-    AIProviderUpdate,
     AIProviderResponse,
     AIProviderTestResult,
+    AIProviderUpdate,
     AvailableProvidersResponse,
 )
 from app.utils.auth import get_current_user
-from app.utils.encryption import encrypt_api_key, decrypt_api_key, mask_api_key
-from app.ai.factory import get_ai_provider, get_available_providers
-from app.ai.prompts import SUMMARY_SYSTEM_PROMPT, EXTRACT_SUMMARY_PROMPT
+from app.utils.encryption import decrypt_api_key, encrypt_api_key, mask_api_key
 
 router = APIRouter()
 
@@ -164,8 +164,7 @@ async def update_provider(
     if data.is_default is True:
         # Unset other defaults
         await db.execute(
-            select(AIProviderModel)
-            .where(
+            select(AIProviderModel).where(
                 AIProviderModel.user_id == current_user.id,
                 AIProviderModel.is_default == True,
             )
@@ -216,9 +215,7 @@ async def delete_provider(
     # If deleted provider was default, make another one default
     if was_default:
         result = await db.execute(
-            select(AIProviderModel)
-            .where(AIProviderModel.user_id == current_user.id)
-            .limit(1)
+            select(AIProviderModel).where(AIProviderModel.user_id == current_user.id).limit(1)
         )
         new_default = result.scalar_one_or_none()
         if new_default:
@@ -270,6 +267,7 @@ async def test_provider(
 
 # Color settings endpoints
 
+
 @router.get("/colors")
 async def list_colors(
     db: AsyncSession = Depends(get_db),
@@ -277,9 +275,7 @@ async def list_colors(
 ):
     """List all color configurations"""
     result = await db.execute(
-        select(Color)
-        .where(Color.user_id == current_user.id)
-        .order_by(Color.position)
+        select(Color).where(Color.user_id == current_user.id).order_by(Color.position)
     )
     colors = result.scalars().all()
 
@@ -334,6 +330,7 @@ async def update_color(
 
 
 # Prompt settings endpoints
+
 
 @router.get("/prompts/summary", response_model=PromptResponse)
 async def get_summary_prompt(

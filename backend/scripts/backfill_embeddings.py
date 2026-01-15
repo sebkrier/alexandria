@@ -28,21 +28,19 @@ sys.path.insert(0, str(Path(__file__).parent.parent))
 # Check pgvector availability
 try:
     from pgvector.sqlalchemy import Vector
+
     PGVECTOR_AVAILABLE = True
 except ImportError:
     PGVECTOR_AVAILABLE = False
 
-from sqlalchemy import select, func
+from sqlalchemy import func, select
 from sqlalchemy.ext.asyncio import AsyncSession
 
+from app.ai.embeddings import EMBEDDING_DIM, generate_embedding, is_model_available
 from app.database import async_session_maker
 from app.models.article import Article, ProcessingStatus
-from app.ai.embeddings import generate_embedding, is_model_available, EMBEDDING_DIM
 
-logging.basicConfig(
-    level=logging.INFO,
-    format='%(asctime)s - %(levelname)s - %(message)s'
-)
+logging.basicConfig(level=logging.INFO, format="%(asctime)s - %(levelname)s - %(message)s")
 logger = logging.getLogger(__name__)
 
 # Configuration
@@ -136,7 +134,7 @@ async def main():
         return
 
     # Check if Article model has embedding attribute
-    if not hasattr(Article, 'embedding'):
+    if not hasattr(Article, "embedding"):
         logger.error("Article model doesn't have embedding column.")
         logger.error("Run the migration first: alembic upgrade head")
         return

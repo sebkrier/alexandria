@@ -15,7 +15,7 @@ from app.config import get_settings
 logger = logging.getLogger(__name__)
 
 
-@lru_cache()
+@lru_cache
 def get_fernet() -> Fernet:
     """
     Get a Fernet instance for encryption/decryption.

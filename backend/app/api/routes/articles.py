@@ -3,44 +3,25 @@ import tempfile
 from pathlib import Path
 from uuid import UUID
 
-from fastapi import APIRouter, Depends, HTTPException, status, UploadFile, File, Query, BackgroundTasks
+from fastapi import (
+    APIRouter,
+    BackgroundTasks,
+    Depends,
+    File,
+    HTTPException,
+    Query,
+    UploadFile,
+    status,
+)
 
 logger = logging.getLogger(__name__)
-from sqlalchemy import select, func, or_, delete
+from sqlalchemy import delete, func, or_, select
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy.orm import selectinload
 
-from app.database import get_db
-from app.models.user import User
-from app.models.article import Article, SourceType, ProcessingStatus
-from app.models.article_category import ArticleCategory
-from app.models.article_tag import ArticleTag
-from app.models.note import Note
-from app.schemas.article import (
-    ArticleCreateURL,
-    ArticleResponse,
-    ArticleListResponse,
-    ArticleUpdate,
-    CategoryBrief,
-    TagBrief,
-    AskRequest,
-    AskResponse,
-    ArticleReference,
-    MediaType,
-    BulkDeleteRequest,
-    BulkDeleteResponse,
-    BulkColorRequest,
-    BulkColorResponse,
-    BulkReanalyzeRequest,
-    BulkReanalyzeResponse,
-    UnreadNavigationResponse,
-    UnreadListResponse,
-)
-from app.utils.auth import get_current_user
-from app.extractors import extract_content
-from app.ai.service import AIService
+from app.ai.embeddings import generate_query_embedding
 from app.ai.factory import get_default_provider
-from app.ai.prompts import truncate_text, METADATA_SYSTEM_PROMPT
+from app.ai.prompts import METADATA_SYSTEM_PROMPT, truncate_text
 from app.ai.query_router import (
     QueryType,
     classify_query,
@@ -48,8 +29,34 @@ from app.ai.query_router import (
     execute_metadata_query,
     format_metadata_for_llm,
 )
-from app.ai.embeddings import generate_query_embedding
-from app.database import async_session_maker
+from app.ai.service import AIService
+from app.database import async_session_maker, get_db
+from app.extractors import extract_content
+from app.models.article import Article, ProcessingStatus, SourceType
+from app.models.article_category import ArticleCategory
+from app.models.article_tag import ArticleTag
+from app.models.user import User
+from app.schemas.article import (
+    ArticleCreateURL,
+    ArticleListResponse,
+    ArticleReference,
+    ArticleResponse,
+    ArticleUpdate,
+    AskRequest,
+    AskResponse,
+    BulkColorRequest,
+    BulkColorResponse,
+    BulkDeleteRequest,
+    BulkDeleteResponse,
+    BulkReanalyzeRequest,
+    BulkReanalyzeResponse,
+    CategoryBrief,
+    MediaType,
+    TagBrief,
+    UnreadListResponse,
+    UnreadNavigationResponse,
+)
+from app.utils.auth import get_current_user
 
 router = APIRouter()
 
@@ -131,19 +138,23 @@ def article_to_response(article: Article) -> ArticleResponse:
     """Convert Article model to response schema"""
     categories = []
     for ac in article.categories:
-        categories.append(CategoryBrief(
-            id=ac.category.id,
-            name=ac.category.name,
-            is_primary=ac.is_primary,
-        ))
+        categories.append(
+            CategoryBrief(
+                id=ac.category.id,
+                name=ac.category.name,
+                is_primary=ac.is_primary,
+            )
+        )
 
     tags = []
     for at in article.tags:
-        tags.append(TagBrief(
-            id=at.tag.id,
-            name=at.tag.name,
-            color=at.tag.color,
-        ))
+        tags.append(
+            TagBrief(
+                id=at.tag.id,
+                name=at.tag.name,
+                color=at.tag.color,
+            )
+        )
 
     return ArticleResponse(
         id=article.id,
@@ -177,8 +188,24 @@ async def create_article_from_url(
     background_tasks: BackgroundTasks,
     db: AsyncSession = Depends(get_db),
     current_user: User = Depends(get_current_user),
-):
-    """Create a new article from a URL"""
+) -> ArticleResponse:
+    """Create a new article from a URL.
+
+    Extracts content from the provided URL, creates an article record,
+    and schedules background AI processing for summarization and tagging.
+
+    Args:
+        data: Request body containing the URL to process.
+        background_tasks: FastAPI background task manager.
+        db: Database session (injected).
+        current_user: Authenticated user (injected).
+
+    Returns:
+        The created article with metadata.
+
+    Raises:
+        HTTPException: 400 if content extraction fails.
+    """
     url = str(data.url)
 
     try:
@@ -226,6 +253,7 @@ async def create_article_from_url(
 
     except Exception as e:
         import traceback
+
         print(f"ERROR extracting URL {url}:")
         print(traceback.format_exc())
         raise HTTPException(
@@ -319,8 +347,26 @@ async def list_articles(
     is_read: bool | None = None,
     db: AsyncSession = Depends(get_db),
     current_user: User = Depends(get_current_user),
-):
-    """List articles with filtering and pagination"""
+) -> ArticleListResponse:
+    """List articles with filtering and pagination.
+
+    Supports filtering by category (including subcategories), tags, color,
+    processing status, and read status. Full-text search is supported
+    via the search parameter.
+
+    Args:
+        page: Page number (1-indexed).
+        page_size: Number of items per page (max 100).
+        search: Optional full-text search query.
+        category_id: Filter by category (includes subcategories).
+        tag_id: Filter by tag.
+        color_id: Filter by color label.
+        status: Filter by processing status.
+        is_read: Filter by read/unread status.
+
+    Returns:
+        Paginated list of articles with total count.
+    """
     # Base query
     query = (
         select(Article)
@@ -348,9 +394,7 @@ async def list_articles(
 
         # Get all descendant category IDs (for hierarchical filtering)
         async def get_descendant_ids(cat_id: UUID) -> list[UUID]:
-            result = await db.execute(
-                select(Category.id).where(Category.parent_id == cat_id)
-            )
+            result = await db.execute(select(Category.id).where(Category.parent_id == cat_id))
             child_ids = [row[0] for row in result.all()]
             descendants = list(child_ids)
             for child_id in child_ids:
@@ -429,8 +473,7 @@ async def get_article_text(
 ):
     """Get the extracted text of an article"""
     result = await db.execute(
-        select(Article)
-        .where(Article.id == article_id, Article.user_id == current_user.id)
+        select(Article).where(Article.id == article_id, Article.user_id == current_user.id)
     )
     article = result.scalar_one_or_none()
 
@@ -446,6 +489,7 @@ async def get_article_text(
 # =============================================================================
 # Unread Reader Endpoints
 # =============================================================================
+
 
 @router.get("/unread/list", response_model=UnreadListResponse)
 async def get_unread_list(
@@ -516,8 +560,7 @@ async def update_article(
 ):
     """Update an article"""
     result = await db.execute(
-        select(Article)
-        .where(Article.id == article_id, Article.user_id == current_user.id)
+        select(Article).where(Article.id == article_id, Article.user_id == current_user.id)
     )
     article = result.scalar_one_or_none()
 
@@ -538,9 +581,7 @@ async def update_article(
     # Update categories if provided
     if data.category_ids is not None:
         # Remove existing categories using DELETE statement
-        await db.execute(
-            delete(ArticleCategory).where(ArticleCategory.article_id == article_id)
-        )
+        await db.execute(delete(ArticleCategory).where(ArticleCategory.article_id == article_id))
 
         # Add new categories
         for i, cat_id in enumerate(data.category_ids):
@@ -554,9 +595,7 @@ async def update_article(
     # Update tags if provided
     if data.tag_ids is not None:
         # Remove existing tags using DELETE statement
-        await db.execute(
-            delete(ArticleTag).where(ArticleTag.article_id == article_id)
-        )
+        await db.execute(delete(ArticleTag).where(ArticleTag.article_id == article_id))
 
         # Add new tags
         for tag_id in data.tag_ids:
@@ -591,8 +630,7 @@ async def delete_article(
 ):
     """Delete an article"""
     result = await db.execute(
-        select(Article)
-        .where(Article.id == article_id, Article.user_id == current_user.id)
+        select(Article).where(Article.id == article_id, Article.user_id == current_user.id)
     )
     article = result.scalar_one_or_none()
 
@@ -701,7 +739,6 @@ async def reorganize_articles(
 
     if uncategorized_only:
         # Find articles with no category assignments
-        from sqlalchemy import not_, exists
         has_category = (
             select(ArticleCategory.article_id)
             .where(ArticleCategory.article_id == Article.id)
@@ -734,15 +771,8 @@ async def reorganize_articles(
             except Exception as e:
                 errors.append(f"{article.title[:50]}: {str(e)}")
 
-        # Count new categories created (those suggested by AI)
-        cat_result = await db.execute(
-            select(func.count(ArticleCategory.article_id))
-            .where(ArticleCategory.suggested_by_ai == True)
-        )
-        ai_categorized = cat_result.scalar()
-
         return {
-            "message": f"Reorganization complete",
+            "message": "Reorganization complete",
             "processed": processed,
             "total_articles": len(articles),
             "errors": errors[:5] if errors else [],  # Return first 5 errors
@@ -764,6 +794,7 @@ async def reorganize_articles(
 # Bulk Operations
 # =============================================================================
 
+
 @router.post("/bulk/delete", response_model=BulkDeleteResponse)
 async def bulk_delete_articles(
     data: BulkDeleteRequest,
@@ -777,8 +808,7 @@ async def bulk_delete_articles(
     for article_id in data.article_ids:
         try:
             result = await db.execute(
-                select(Article)
-                .where(Article.id == article_id, Article.user_id == current_user.id)
+                select(Article).where(Article.id == article_id, Article.user_id == current_user.id)
             )
             article = result.scalar_one_or_none()
 
@@ -810,8 +840,7 @@ async def bulk_update_color(
     for article_id in data.article_ids:
         try:
             result = await db.execute(
-                select(Article)
-                .where(Article.id == article_id, Article.user_id == current_user.id)
+                select(Article).where(Article.id == article_id, Article.user_id == current_user.id)
             )
             article = result.scalar_one_or_none()
 
@@ -846,8 +875,7 @@ async def bulk_reanalyze_articles(
     for article_id in data.article_ids:
         try:
             result = await db.execute(
-                select(Article)
-                .where(Article.id == article_id, Article.user_id == current_user.id)
+                select(Article).where(Article.id == article_id, Article.user_id == current_user.id)
             )
             article = result.scalar_one_or_none()
 
@@ -964,7 +992,8 @@ async def _handle_content_query(
     This ensures we find both articles that discuss related concepts AND
     articles with exact keyword matches.
     """
-    from sqlalchemy import func as sqla_func, text
+    from sqlalchemy import func as sqla_func
+
     from app.models.category import Category
     from app.models.tag import Tag
 
@@ -976,7 +1005,7 @@ async def _handle_content_query(
     semantic_results: list[tuple[Article, float]] = []
 
     # Check if pgvector/embeddings are available
-    has_embeddings = hasattr(Article, 'embedding')
+    has_embeddings = hasattr(Article, "embedding")
 
     if has_embeddings:
         try:
@@ -989,7 +1018,7 @@ async def _handle_content_query(
                 distance = Article.embedding.cosine_distance(query_embedding)
 
                 semantic_query = (
-                    select(Article, distance.label('distance'))
+                    select(Article, distance.label("distance"))
                     .where(Article.user_id == user_id)
                     .where(Article.processing_status == ProcessingStatus.COMPLETED)
                     .where(Article.embedding.isnot(None))
@@ -1025,8 +1054,8 @@ async def _handle_content_query(
             conditions.append(Article.title.ilike(f"%{word}%"))
 
         # Full-text search
-        ts_query = sqla_func.plainto_tsquery('english', question)
-        conditions.append(Article.search_vector.op('@@')(ts_query))
+        ts_query = sqla_func.plainto_tsquery("english", question)
+        conditions.append(Article.search_vector.op("@@")(ts_query))
 
         # Category name match
         if valid_words:
@@ -1052,7 +1081,7 @@ async def _handle_content_query(
             ts_rank = sqla_func.ts_rank(Article.search_vector, ts_query)
 
             keyword_query = (
-                select(Article, ts_rank.label('rank'))
+                select(Article, ts_rank.label("rank"))
                 .where(Article.user_id == user_id)
                 .where(Article.processing_status == ProcessingStatus.COMPLETED)
                 .where(or_(*conditions))

@@ -11,16 +11,16 @@ from typing import TypeVar
 import litellm
 from pydantic import BaseModel
 
-from app.ai.base import AIProvider, Summary, TagSuggestion, CategorySuggestion, CategoryInfo
+from app.ai.base import AIProvider, CategoryInfo, CategorySuggestion, Summary, TagSuggestion
 from app.ai.prompts import (
-    SUMMARY_SYSTEM_PROMPT,
-    EXTRACT_SUMMARY_PROMPT,
-    TAGS_SYSTEM_PROMPT,
-    TAGS_USER_PROMPT,
     CATEGORY_SYSTEM_PROMPT,
     CATEGORY_USER_PROMPT,
+    EXTRACT_SUMMARY_PROMPT,
     QUESTION_SYSTEM_PROMPT,
     QUESTION_USER_PROMPT,
+    SUMMARY_SYSTEM_PROMPT,
+    TAGS_SYSTEM_PROMPT,
+    TAGS_USER_PROMPT,
     format_categories_for_prompt,
     truncate_text,
 )
@@ -135,7 +135,7 @@ def _extract_json(text: str) -> dict | list:
                 end_idx = i
                 break
 
-    json_str = text[start_idx:end_idx + 1]
+    json_str = text[start_idx : end_idx + 1]
     return json.loads(json_str)
 
 
@@ -269,12 +269,16 @@ class LiteLLMProvider(AIProvider):
                 # Old format - convert to new
                 json_data = {
                     "category": CategoryInfo(
-                        name=json_data.get("parent_category", json_data.get("category", "Uncategorized")),
+                        name=json_data.get(
+                            "parent_category", json_data.get("category", "Uncategorized")
+                        ),
                         is_new=json_data.get("is_new_category", False),
                     ),
                     "subcategory": CategoryInfo(
                         name=json_data.get("category_name", json_data.get("category")),
-                        is_new=json_data.get("is_new_subcategory", json_data.get("is_new_category", False)),
+                        is_new=json_data.get(
+                            "is_new_subcategory", json_data.get("is_new_category", False)
+                        ),
                     ),
                     "confidence": json_data.get("confidence", 0.8),
                     "reasoning": json_data.get("reasoning", ""),

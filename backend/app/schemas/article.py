@@ -1,13 +1,15 @@
 from datetime import datetime
 from enum import Enum
 from uuid import UUID
+
 from pydantic import BaseModel, HttpUrl
 
-from app.models.article import SourceType, ProcessingStatus
+from app.models.article import ProcessingStatus, SourceType
 
 
 class MediaType(str, Enum):
     """User-friendly media type for display purposes"""
+
     ARTICLE = "article"
     PAPER = "paper"
     VIDEO = "video"
@@ -18,11 +20,13 @@ class MediaType(str, Enum):
 
 class ArticleCreateURL(BaseModel):
     """Schema for creating an article from a URL"""
+
     url: HttpUrl
 
 
 class ArticleCreate(BaseModel):
     """Internal schema for creating an article"""
+
     source_type: SourceType
     original_url: str | None = None
     title: str
@@ -35,6 +39,7 @@ class ArticleCreate(BaseModel):
 
 class ArticleUpdate(BaseModel):
     """Schema for updating an article"""
+
     title: str | None = None
     color_id: UUID | None = None
     category_ids: list[UUID] | None = None
@@ -44,6 +49,7 @@ class ArticleUpdate(BaseModel):
 
 class ArticleSummary(BaseModel):
     """Embedded summary in article response"""
+
     abstract: str | None = None
     key_contributions: list[str] = []
     methodology: str | None = None
@@ -54,6 +60,7 @@ class ArticleSummary(BaseModel):
 
 class ArticleResponse(BaseModel):
     """Schema for article responses"""
+
     id: UUID
     source_type: SourceType
     media_type: MediaType  # Computed from source_type + URL
@@ -85,6 +92,7 @@ class ArticleResponse(BaseModel):
 
 class CategoryBrief(BaseModel):
     """Brief category info for article responses"""
+
     id: UUID
     name: str
     is_primary: bool = False
@@ -92,6 +100,7 @@ class CategoryBrief(BaseModel):
 
 class TagBrief(BaseModel):
     """Brief tag info for article responses"""
+
     id: UUID
     name: str
     color: str | None
@@ -99,6 +108,7 @@ class TagBrief(BaseModel):
 
 class ArticleListResponse(BaseModel):
     """Schema for paginated article list"""
+
     items: list[ArticleResponse]
     total: int
     page: int
@@ -108,17 +118,20 @@ class ArticleListResponse(BaseModel):
 
 class AskRequest(BaseModel):
     """Schema for asking a question about articles"""
+
     question: str
 
 
 class ArticleReference(BaseModel):
     """Brief article reference in ask response"""
+
     id: UUID
     title: str
 
 
 class AskResponse(BaseModel):
     """Schema for ask response"""
+
     answer: str
     articles: list[ArticleReference]
 
@@ -126,34 +139,40 @@ class AskResponse(BaseModel):
 # Bulk operation schemas
 class BulkDeleteRequest(BaseModel):
     """Schema for bulk delete request"""
+
     article_ids: list[UUID]
 
 
 class BulkDeleteResponse(BaseModel):
     """Schema for bulk delete response"""
+
     deleted: int
     failed: list[str] = []
 
 
 class BulkColorRequest(BaseModel):
     """Schema for bulk color update request"""
+
     article_ids: list[UUID]
     color_id: UUID | None  # None to clear color
 
 
 class BulkColorResponse(BaseModel):
     """Schema for bulk color update response"""
+
     updated: int
     failed: list[str] = []
 
 
 class BulkReanalyzeRequest(BaseModel):
     """Schema for bulk re-analyze request"""
+
     article_ids: list[UUID]
 
 
 class BulkReanalyzeResponse(BaseModel):
     """Schema for bulk re-analyze response"""
+
     queued: int
     skipped: int  # Already processing
     failed: list[str] = []
@@ -162,6 +181,7 @@ class BulkReanalyzeResponse(BaseModel):
 # Unread Reader schemas
 class UnreadNavigationResponse(BaseModel):
     """Schema for unread article navigation"""
+
     current_position: int
     total_unread: int
     prev_id: UUID | None
@@ -170,6 +190,7 @@ class UnreadNavigationResponse(BaseModel):
 
 class UnreadListResponse(BaseModel):
     """Schema for list of unread article IDs"""
+
     items: list[UUID]
     total: int
 

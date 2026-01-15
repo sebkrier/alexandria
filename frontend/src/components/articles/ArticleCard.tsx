@@ -1,7 +1,7 @@
 "use client";
 
 import Link from "next/link";
-import { FileText, Globe, GraduationCap, Loader2, AlertCircle, Clock, Paperclip, Video, Check } from "lucide-react";
+import { FileText, Globe, GraduationCap, Loader2, AlertCircle, Clock, Video, Check } from "lucide-react";
 import { Badge } from "@/components/ui/Badge";
 import { MediaTypeBadge } from "@/components/ui/MediaTypeBadge";
 import type { Article } from "@/types";

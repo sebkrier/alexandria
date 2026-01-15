@@ -5,14 +5,11 @@ import { usePathname } from "next/navigation";
 import { clsx } from "clsx";
 import {
   Library,
-  FolderTree,
-  Tag,
   Settings,
   Plus,
   ChevronRight,
   ChevronDown,
   Circle,
-  Palette,
   Smartphone,
   BookOpen,
 } from "lucide-react";

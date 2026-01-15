@@ -1,7 +1,9 @@
 import uuid
+
 from sqlalchemy import Boolean, ForeignKey
-from sqlalchemy.orm import Mapped, mapped_column, relationship
 from sqlalchemy.dialects.postgresql import UUID
+from sqlalchemy.orm import Mapped, mapped_column, relationship
+
 from app.database import Base
 
 

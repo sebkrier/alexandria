@@ -5,16 +5,17 @@ Revises: 004
 Create Date: 2025-01-11
 
 """
-from typing import Sequence, Union
 
-from alembic import op
-import sqlalchemy as sa
+from collections.abc import Sequence
+
 from sqlalchemy import text
 
-revision: str = '005'
-down_revision: Union[str, None] = '004'
-branch_labels: Union[str, Sequence[str], None] = None
-depends_on: Union[str, Sequence[str], None] = None
+from alembic import op
+
+revision: str = "005"
+down_revision: str | None = "004"
+branch_labels: str | Sequence[str] | None = None
+depends_on: str | Sequence[str] | None = None
 
 # New dimension for EmbeddingGemma (768) vs OpenAI (1536)
 NEW_EMBEDDING_DIM = 768
@@ -33,10 +34,12 @@ def upgrade() -> None:
     conn.execute(text(f"ALTER TABLE articles ADD COLUMN embedding vector({NEW_EMBEDDING_DIM})"))
 
     # Recreate HNSW index
-    conn.execute(text(
-        "CREATE INDEX ix_articles_embedding ON articles "
-        "USING hnsw (embedding vector_cosine_ops)"
-    ))
+    conn.execute(
+        text(
+            "CREATE INDEX ix_articles_embedding ON articles "
+            "USING hnsw (embedding vector_cosine_ops)"
+        )
+    )
 
 
 def downgrade() -> None:
@@ -50,7 +53,9 @@ def downgrade() -> None:
     conn.execute(text(f"ALTER TABLE articles ADD COLUMN embedding vector({OLD_EMBEDDING_DIM})"))
 
     # Recreate index
-    conn.execute(text(
-        "CREATE INDEX ix_articles_embedding ON articles "
-        "USING hnsw (embedding vector_cosine_ops)"
-    ))
+    conn.execute(
+        text(
+            "CREATE INDEX ix_articles_embedding ON articles "
+            "USING hnsw (embedding vector_cosine_ops)"
+        )
+    )

@@ -31,7 +31,7 @@ export function useUpdateNote() {
   const queryClient = useQueryClient();
 
   return useMutation({
-    mutationFn: ({ noteId, content, articleId }: { noteId: string; content: string; articleId: string }) =>
+    mutationFn: ({ noteId, content }: { noteId: string; content: string; articleId: string }) =>
       api.updateNote(noteId, content),
     onSuccess: (_, { articleId }) => {
       queryClient.invalidateQueries({ queryKey: ["notes", articleId] });
@@ -47,7 +47,7 @@ export function useDeleteNote() {
   const queryClient = useQueryClient();
 
   return useMutation({
-    mutationFn: ({ noteId, articleId }: { noteId: string; articleId: string }) =>
+    mutationFn: ({ noteId }: { noteId: string; articleId: string }) =>
       api.deleteNote(noteId),
     onSuccess: (_, { articleId }) => {
       queryClient.invalidateQueries({ queryKey: ["notes", articleId] });

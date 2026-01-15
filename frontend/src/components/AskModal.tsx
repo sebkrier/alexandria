@@ -26,8 +26,8 @@ export function AskModal({ open, onClose }: AskModalProps) {
     try {
       const result = await askQuestion.mutateAsync(question);
       setResponse(result);
-    } catch (error) {
-      // Error handled by mutation
+    } catch {
+      // Error handled by mutation's onError callback
     }
   };
 

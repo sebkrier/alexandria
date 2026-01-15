@@ -3,17 +3,16 @@ Pytest fixtures for Alexandria tests.
 """
 
 import os
-import pytest
-import pytest_asyncio
 from uuid import uuid4
 
 import psycopg_pool
+import pytest
+import pytest_asyncio
 from psycopg import AsyncConnection
 
 # Test database URL - uses separate test database
 TEST_DB_URL = os.environ.get(
-    "TEST_DATABASE_URL",
-    "postgresql://postgres:localdev@localhost:5432/alexandria_test"
+    "TEST_DATABASE_URL", "postgresql://postgres:localdev@localhost:5432/alexandria_test"
 )
 
 # Check if database is available
@@ -27,9 +26,7 @@ async def check_db_available():
         return _db_available
 
     try:
-        pool = psycopg_pool.AsyncConnectionPool(
-            TEST_DB_URL, min_size=1, max_size=1, open=False
-        )
+        pool = psycopg_pool.AsyncConnectionPool(TEST_DB_URL, min_size=1, max_size=1, open=False)
         await pool.open(wait=True, timeout=5)
         async with pool.connection() as conn:
             async with conn.cursor() as cur:
@@ -72,12 +69,15 @@ async def db(db_pool: psycopg_pool.AsyncConnectionPool):
 
         # Create test user
         async with conn.cursor() as cur:
-            await cur.execute("""
+            await cur.execute(
+                """
                 INSERT INTO users (id, email, hashed_password)
                 VALUES (%s, %s, %s)
                 ON CONFLICT (email) DO UPDATE SET id = EXCLUDED.id
                 RETURNING id
-            """, (test_user_id, test_email, "fakehash"))
+            """,
+                (test_user_id, test_email, "fakehash"),
+            )
             row = await cur.fetchone()
             conn.test_user_id = row[0]
             await conn.commit()
@@ -86,22 +86,10 @@ async def db(db_pool: psycopg_pool.AsyncConnectionPool):
 
         # Cleanup - delete test data
         async with conn.cursor() as cur:
-            await cur.execute(
-                "DELETE FROM articles WHERE user_id = %s",
-                (conn.test_user_id,)
-            )
-            await cur.execute(
-                "DELETE FROM categories WHERE user_id = %s",
-                (conn.test_user_id,)
-            )
-            await cur.execute(
-                "DELETE FROM tags WHERE user_id = %s",
-                (conn.test_user_id,)
-            )
-            await cur.execute(
-                "DELETE FROM users WHERE id = %s",
-                (conn.test_user_id,)
-            )
+            await cur.execute("DELETE FROM articles WHERE user_id = %s", (conn.test_user_id,))
+            await cur.execute("DELETE FROM categories WHERE user_id = %s", (conn.test_user_id,))
+            await cur.execute("DELETE FROM tags WHERE user_id = %s", (conn.test_user_id,))
+            await cur.execute("DELETE FROM users WHERE id = %s", (conn.test_user_id,))
             await conn.commit()
 
 

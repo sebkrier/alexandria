@@ -36,7 +36,7 @@ interface AppState {
   toggleArticleSelection: (id: string) => void;
   selectAllArticles: (ids: string[]) => void;
   deselectAllArticles: () => void;
-  isArticleSelected: (id: string) => boolean;
+  isArticleSelected: () => boolean;
 
   // Reset filters
   resetFilters: () => void;
@@ -88,7 +88,7 @@ export const useStore = create<AppState>((set) => ({
     set({ selectedArticleIds: new Set(ids) }),
   deselectAllArticles: () =>
     set({ selectedArticleIds: new Set() }),
-  isArticleSelected: (id) => false, // This is handled by component checking the Set directly
+  isArticleSelected: () => false, // Stub - components check selectedArticleIds.has() directly
 
   // Reset filters
   resetFilters: () =>

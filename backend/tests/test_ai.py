@@ -158,6 +158,7 @@ async def test_anthropic_provider():
     except Exception as e:
         print(f"\n[FAIL] Anthropic test failed: {e}")
         import traceback
+
         traceback.print_exc()
         return False
 
@@ -204,6 +205,7 @@ async def test_openai_provider():
     except Exception as e:
         print(f"\n[FAIL] OpenAI test failed: {e}")
         import traceback
+
         traceback.print_exc()
         return False
 
@@ -250,6 +252,7 @@ async def test_google_provider():
     except Exception as e:
         print(f"\n[FAIL] Google test failed: {e}")
         import traceback
+
         traceback.print_exc()
         return False
 
@@ -264,7 +267,8 @@ async def test_encryption():
     os.environ["ENCRYPTION_KEY"] = "test-encryption-key-for-unit-tests"
 
     # Clear the cache to use new key
-    from app.utils.encryption import get_fernet, encrypt_api_key, decrypt_api_key, mask_api_key
+    from app.utils.encryption import decrypt_api_key, encrypt_api_key, get_fernet, mask_api_key
+
     get_fernet.cache_clear()
 
     try:
@@ -293,6 +297,7 @@ async def test_encryption():
     except Exception as e:
         print(f"\n[FAIL] Encryption test failed: {e}")
         import traceback
+
         traceback.print_exc()
         return False
 

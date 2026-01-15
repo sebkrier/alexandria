@@ -24,4 +24,10 @@ export default [
     },
   },
   ...tseslint.configs.recommended,
+  {
+    // Allow underscore-prefixed unused variables
+    rules: {
+      "@typescript-eslint/no-unused-vars": ["error", { argsIgnorePattern: "^_", varsIgnorePattern: "^_" }],
+    },
+  },
 ];

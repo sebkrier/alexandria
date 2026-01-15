@@ -6,7 +6,7 @@ These tests don't require API keys or database connections.
 import pytest
 from pydantic import ValidationError
 
-from app.ai.base import Summary, TagSuggestion, CategorySuggestion, CategoryInfo
+from app.ai.base import CategoryInfo, CategorySuggestion, Summary, TagSuggestion
 from app.ai.llm import PROVIDER_MODELS
 
 
@@ -50,9 +50,7 @@ class TestTagSuggestion:
     def test_valid_tag_suggestion(self):
         """Test creating valid tag suggestion."""
         tag = TagSuggestion(
-            name="machine-learning",
-            confidence=0.95,
-            reasoning="Article discusses ML concepts"
+            name="machine-learning", confidence=0.95, reasoning="Article discusses ML concepts"
         )
         assert tag.name == "machine-learning"
         assert tag.confidence == 0.95
@@ -63,14 +61,14 @@ class TestTagSuggestion:
             TagSuggestion(
                 name="test",
                 confidence=1.5,  # Invalid: > 1
-                reasoning="test"
+                reasoning="test",
             )
 
         with pytest.raises(ValidationError):
             TagSuggestion(
                 name="test",
                 confidence=-0.1,  # Invalid: < 0
-                reasoning="test"
+                reasoning="test",
             )
 
     def test_tag_edge_confidence(self):
@@ -91,7 +89,7 @@ class TestCategorySuggestion:
             category=CategoryInfo(name="Technology", is_new=False),
             subcategory=CategoryInfo(name="Machine Learning", is_new=True),
             confidence=0.85,
-            reasoning="Article is about ML techniques"
+            reasoning="Article is about ML techniques",
         )
         assert suggestion.category.name == "Technology"
         assert suggestion.subcategory.name == "Machine Learning"
@@ -103,7 +101,7 @@ class TestCategorySuggestion:
             category=CategoryInfo(name="Science", is_new=False),
             subcategory=CategoryInfo(name="Physics", is_new=False),
             confidence=0.9,
-            reasoning="test"
+            reasoning="test",
         )
         # Legacy properties for backward compatibility
         assert suggestion.category_name == "Physics"  # Returns subcategory
@@ -115,7 +113,8 @@ class TestCategorySuggestion:
         s1 = CategorySuggestion(
             category=CategoryInfo(name="New Cat", is_new=True),
             subcategory=CategoryInfo(name="Existing", is_new=False),
-            confidence=0.8, reasoning="test"
+            confidence=0.8,
+            reasoning="test",
         )
         assert s1.is_new_category is True
 
@@ -123,7 +122,8 @@ class TestCategorySuggestion:
         s2 = CategorySuggestion(
             category=CategoryInfo(name="Existing", is_new=False),
             subcategory=CategoryInfo(name="New Sub", is_new=True),
-            confidence=0.8, reasoning="test"
+            confidence=0.8,
+            reasoning="test",
         )
         assert s2.is_new_category is True
 
@@ -131,7 +131,8 @@ class TestCategorySuggestion:
         s3 = CategorySuggestion(
             category=CategoryInfo(name="Existing", is_new=False),
             subcategory=CategoryInfo(name="Also Existing", is_new=False),
-            confidence=0.8, reasoning="test"
+            confidence=0.8,
+            reasoning="test",
         )
         assert s3.is_new_category is False
 

@@ -3,16 +3,16 @@ import logging
 
 from anthropic import AsyncAnthropic
 
-from app.ai.base import AIProvider, Summary, TagSuggestion, CategorySuggestion
+from app.ai.base import AIProvider, CategorySuggestion, Summary, TagSuggestion
 from app.ai.prompts import (
-    SUMMARY_SYSTEM_PROMPT,
-    EXTRACT_SUMMARY_PROMPT,
-    TAGS_SYSTEM_PROMPT,
-    TAGS_USER_PROMPT,
     CATEGORY_SYSTEM_PROMPT,
     CATEGORY_USER_PROMPT,
+    EXTRACT_SUMMARY_PROMPT,
     QUESTION_SYSTEM_PROMPT,
     QUESTION_USER_PROMPT,
+    SUMMARY_SYSTEM_PROMPT,
+    TAGS_SYSTEM_PROMPT,
+    TAGS_USER_PROMPT,
     format_categories_for_prompt,
     truncate_text,
 )
@@ -169,7 +169,7 @@ class AnthropicProvider(AIProvider):
         """Check if the API key is valid"""
         try:
             # Make a minimal API call to verify the key works
-            response = await self.client.messages.create(
+            _ = await self.client.messages.create(
                 model=self.model_id,
                 max_tokens=10,
                 messages=[{"role": "user", "content": "Hi"}],
@@ -183,6 +183,7 @@ class AnthropicProvider(AIProvider):
         """Extract JSON from model response, handling markdown code blocks"""
         # Try to find JSON in code blocks first
         import re
+
         code_block_match = re.search(r"```(?:json)?\s*([\s\S]*?)```", text)
         if code_block_match:
             text = code_block_match.group(1)
@@ -218,5 +219,5 @@ class AnthropicProvider(AIProvider):
                     end_idx = i
                     break
 
-        json_str = text[start_idx:end_idx + 1]
+        json_str = text[start_idx : end_idx + 1]
         return json.loads(json_str)

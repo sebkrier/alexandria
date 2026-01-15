@@ -1,10 +1,12 @@
 from abc import ABC, abstractmethod
 from datetime import datetime
+
 from pydantic import BaseModel
 
 
 class ExtractedContent(BaseModel):
     """Standardized content extraction result"""
+
     title: str
     text: str
     authors: list[str] = []
@@ -38,9 +40,10 @@ class BaseExtractor(ABC):
             return ""
         # Replace multiple newlines with double newlines
         import re
-        text = re.sub(r'\n{3,}', '\n\n', text)
+
+        text = re.sub(r"\n{3,}", "\n\n", text)
         # Replace multiple spaces with single space
-        text = re.sub(r' {2,}', ' ', text)
+        text = re.sub(r" {2,}", " ", text)
         return text.strip()
 
     def _truncate_text(self, text: str, max_length: int = 100000) -> str:

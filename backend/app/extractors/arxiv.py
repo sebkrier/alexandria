@@ -45,7 +45,7 @@ class ArxivExtractor(BaseExtractor):
             raise ValueError(f"Could not extract arXiv ID from URL: {url}")
 
         # Strip version suffix for API lookup if present
-        base_id = re.sub(r'v\d+$', '', arxiv_id)
+        base_id = re.sub(r"v\d+$", "", arxiv_id)
 
         # Fetch paper metadata from arXiv API (run in thread pool since it's blocking)
         paper = await asyncio.to_thread(self._fetch_paper, base_id)
@@ -77,7 +77,7 @@ class ArxivExtractor(BaseExtractor):
                 "doi": paper.doi,
                 "journal_ref": paper.journal_ref,
                 "comment": paper.comment,
-            }
+            },
         )
 
     def _fetch_paper(self, arxiv_id: str):

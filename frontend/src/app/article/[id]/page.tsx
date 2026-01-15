@@ -4,7 +4,7 @@ import { useState } from "react";
 import { useRouter, useParams } from "next/navigation";
 import Link from "next/link";
 import ReactMarkdown from "react-markdown";
-import { formatDistanceToNow, format } from "date-fns";
+import { format } from "date-fns";
 import {
   ArrowLeft,
   ExternalLink,
