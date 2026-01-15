@@ -65,6 +65,10 @@ secrets/
 .env.production
 .env.staging
 
+# WhatsApp bot session data (contains auth tokens)
+.wwebjs_auth/
+.wwebjs_cache/
+
 # Uploads (local development)
 uploads/
 
