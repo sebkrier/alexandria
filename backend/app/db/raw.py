@@ -4,8 +4,8 @@ Provides parameterized query support for security-critical operations.
 """
 
 import logging
+from collections.abc import AsyncGenerator
 from contextlib import asynccontextmanager
-from typing import AsyncGenerator
 
 import psycopg_pool
 from psycopg import AsyncConnection

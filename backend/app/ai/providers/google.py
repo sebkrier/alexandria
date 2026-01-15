@@ -4,16 +4,16 @@ import re
 
 import google.generativeai as genai
 
-from app.ai.base import AIProvider, Summary, TagSuggestion, CategorySuggestion
+from app.ai.base import AIProvider, CategorySuggestion, Summary, TagSuggestion
 from app.ai.prompts import (
-    SUMMARY_SYSTEM_PROMPT,
-    EXTRACT_SUMMARY_PROMPT,
-    TAGS_SYSTEM_PROMPT,
-    TAGS_USER_PROMPT,
     CATEGORY_SYSTEM_PROMPT,
     CATEGORY_USER_PROMPT,
+    EXTRACT_SUMMARY_PROMPT,
     QUESTION_SYSTEM_PROMPT,
     QUESTION_USER_PROMPT,
+    SUMMARY_SYSTEM_PROMPT,
+    TAGS_SYSTEM_PROMPT,
+    TAGS_USER_PROMPT,
     format_categories_for_prompt,
     truncate_text,
 )
@@ -180,7 +180,7 @@ class GoogleProvider(AIProvider):
     async def health_check(self) -> bool:
         """Check if the API key is valid"""
         try:
-            response = await self.model.generate_content_async(
+            _ = await self.model.generate_content_async(
                 "Hi",
                 generation_config=genai.GenerationConfig(max_output_tokens=10),
             )
@@ -226,5 +226,5 @@ class GoogleProvider(AIProvider):
                     end_idx = i
                     break
 
-        json_str = text[start_idx:end_idx + 1]
+        json_str = text[start_idx : end_idx + 1]
         return json.loads(json_str)

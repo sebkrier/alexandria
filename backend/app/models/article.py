@@ -1,10 +1,12 @@
 import uuid
 from datetime import datetime
 from enum import Enum
-from sqlalchemy import String, Text, DateTime, ForeignKey, Index, Integer, Boolean
-from sqlalchemy.orm import Mapped, mapped_column, relationship
-from sqlalchemy.dialects.postgresql import UUID, JSONB, TSVECTOR
+
 from pgvector.sqlalchemy import Vector
+from sqlalchemy import Boolean, DateTime, ForeignKey, Index, Integer, String, Text
+from sqlalchemy.dialects.postgresql import JSONB, TSVECTOR, UUID
+from sqlalchemy.orm import Mapped, mapped_column, relationship
+
 from app.database import Base
 
 
@@ -25,9 +27,7 @@ class ProcessingStatus(str, Enum):
 class Article(Base):
     __tablename__ = "articles"
 
-    id: Mapped[uuid.UUID] = mapped_column(
-        UUID(as_uuid=True), primary_key=True, default=uuid.uuid4
-    )
+    id: Mapped[uuid.UUID] = mapped_column(UUID(as_uuid=True), primary_key=True, default=uuid.uuid4)
     user_id: Mapped[uuid.UUID] = mapped_column(
         UUID(as_uuid=True), ForeignKey("users.id"), index=True
     )
@@ -40,9 +40,7 @@ class Article(Base):
     word_count: Mapped[int | None] = mapped_column(Integer)
     summary: Mapped[str | None] = mapped_column(Text)
     summary_model: Mapped[str | None] = mapped_column(String(100))
-    color_id: Mapped[uuid.UUID | None] = mapped_column(
-        UUID(as_uuid=True), ForeignKey("colors.id")
-    )
+    color_id: Mapped[uuid.UUID | None] = mapped_column(UUID(as_uuid=True), ForeignKey("colors.id"))
     file_path: Mapped[str | None] = mapped_column(String(500))
     article_metadata: Mapped[dict | None] = mapped_column(JSONB, default=dict)
     processing_status: Mapped[ProcessingStatus] = mapped_column(
@@ -77,6 +75,4 @@ class Article(Base):
         back_populates="article", cascade="all, delete-orphan"
     )
 
-    __table_args__ = (
-        Index("ix_articles_search_vector", "search_vector", postgresql_using="gin"),
-    )
+    __table_args__ = (Index("ix_articles_search_vector", "search_vector", postgresql_using="gin"),)

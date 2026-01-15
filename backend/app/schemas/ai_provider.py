@@ -1,5 +1,6 @@
 from datetime import datetime
 from uuid import UUID
+
 from pydantic import BaseModel
 
 from app.models.ai_provider import ProviderName
@@ -7,6 +8,7 @@ from app.models.ai_provider import ProviderName
 
 class AIProviderCreate(BaseModel):
     """Schema for creating an AI provider configuration"""
+
     provider_name: ProviderName
     display_name: str
     model_id: str
@@ -15,6 +17,7 @@ class AIProviderCreate(BaseModel):
 
 class AIProviderUpdate(BaseModel):
     """Schema for updating an AI provider configuration"""
+
     display_name: str | None = None
     model_id: str | None = None
     api_key: str | None = None  # Only update if provided
@@ -24,6 +27,7 @@ class AIProviderUpdate(BaseModel):
 
 class AIProviderResponse(BaseModel):
     """Schema for AI provider responses"""
+
     id: UUID
     provider_name: ProviderName
     display_name: str
@@ -40,10 +44,12 @@ class AIProviderResponse(BaseModel):
 
 class AIProviderTestResult(BaseModel):
     """Result of testing an AI provider configuration"""
+
     success: bool
     message: str
 
 
 class AvailableProvidersResponse(BaseModel):
     """Information about available AI providers"""
+
     providers: dict  # provider_name -> {display_name, models, default_model}

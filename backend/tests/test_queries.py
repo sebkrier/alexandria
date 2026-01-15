@@ -3,16 +3,17 @@ Tests for parameterized database queries.
 These tests verify SQL injection protection and query correctness.
 """
 
-import pytest
 from uuid import uuid4
 
+import pytest
+
 from app.db.queries import (
-    get_article_count,
-    get_category_counts,
-    search_articles_semantic,
     bulk_delete_articles,
     bulk_move_articles,
+    get_article_count,
     get_articles_for_search,
+    get_category_counts,
+    search_articles_semantic,
 )
 
 
@@ -29,10 +30,13 @@ async def test_article_count_with_articles(db):
     """Test article count after inserting articles."""
     # Insert a test article
     async with db.cursor() as cur:
-        await cur.execute("""
+        await cur.execute(
+            """
             INSERT INTO articles (id, user_id, title, source_type, processing_status)
             VALUES (%s, %s, %s, %s, %s)
-        """, (uuid4(), db.test_user_id, "Test Article", "url", "completed"))
+        """,
+            (uuid4(), db.test_user_id, "Test Article", "url", "completed"),
+        )
         await db.commit()
 
     count = await get_article_count(db, db.test_user_id)
@@ -76,10 +80,13 @@ async def test_bulk_delete_actual_articles(db):
         article_id = uuid4()
         article_ids.append(article_id)
         async with db.cursor() as cur:
-            await cur.execute("""
+            await cur.execute(
+                """
                 INSERT INTO articles (id, user_id, title, source_type, processing_status)
                 VALUES (%s, %s, %s, %s, %s)
-            """, (article_id, db.test_user_id, f"Delete Test {i}", "url", "completed"))
+            """,
+                (article_id, db.test_user_id, f"Delete Test {i}", "url", "completed"),
+            )
     await db.commit()
 
     # Verify they exist
@@ -101,10 +108,13 @@ async def test_bulk_delete_wrong_user(db):
     # Insert article for test user
     article_id = uuid4()
     async with db.cursor() as cur:
-        await cur.execute("""
+        await cur.execute(
+            """
             INSERT INTO articles (id, user_id, title, source_type, processing_status)
             VALUES (%s, %s, %s, %s, %s)
-        """, (article_id, db.test_user_id, "User's Article", "url", "completed"))
+        """,
+            (article_id, db.test_user_id, "User's Article", "url", "completed"),
+        )
         await db.commit()
 
     # Try to delete with wrong user ID
@@ -123,9 +133,7 @@ async def test_semantic_search_empty_results(db):
     # 768-dimensional zero vector (won't match anything)
     fake_embedding = [0.0] * 768
 
-    results = await search_articles_semantic(
-        db, db.test_user_id, fake_embedding, limit=10
-    )
+    results = await search_articles_semantic(db, db.test_user_id, fake_embedding, limit=10)
     assert isinstance(results, list)
     assert len(results) == 0  # No articles with embeddings
 
@@ -154,10 +162,13 @@ async def test_bulk_move_empty_list(db):
     # Create a category first
     category_id = uuid4()
     async with db.cursor() as cur:
-        await cur.execute("""
+        await cur.execute(
+            """
             INSERT INTO categories (id, user_id, name)
             VALUES (%s, %s, %s)
-        """, (category_id, db.test_user_id, "Test Category"))
+        """,
+            (category_id, db.test_user_id, "Test Category"),
+        )
         await db.commit()
 
     moved = await bulk_move_articles(db, db.test_user_id, [], category_id)
@@ -171,6 +182,4 @@ async def test_bulk_move_invalid_category(db):
     article_id = uuid4()
 
     with pytest.raises(ValueError, match="not found"):
-        await bulk_move_articles(
-            db, db.test_user_id, [article_id], fake_category_id
-        )
+        await bulk_move_articles(db, db.test_user_id, [article_id], fake_category_id)

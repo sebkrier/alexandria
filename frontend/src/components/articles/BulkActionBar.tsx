@@ -71,7 +71,7 @@ export function BulkActionBar({ articleIds }: BulkActionBarProps) {
       deselectAllArticles();
       setShowDeleteConfirm(false);
       queryClient.invalidateQueries({ queryKey: ["articles"] });
-    } catch (error) {
+    } catch {
       toast.error("Failed to delete articles");
     } finally {
       setIsDeleting(false);
@@ -93,7 +93,7 @@ export function BulkActionBar({ articleIds }: BulkActionBarProps) {
       deselectAllArticles();
       setShowColorPicker(false);
       queryClient.invalidateQueries({ queryKey: ["articles"] });
-    } catch (error) {
+    } catch {
       toast.error("Failed to update color");
     } finally {
       setIsUpdatingColor(false);
@@ -121,7 +121,7 @@ export function BulkActionBar({ articleIds }: BulkActionBarProps) {
 
       deselectAllArticles();
       queryClient.invalidateQueries({ queryKey: ["articles"] });
-    } catch (error) {
+    } catch {
       toast.dismiss("reanalyze");
       toast.error("Failed to re-analyze articles");
     } finally {

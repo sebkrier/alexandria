@@ -4,9 +4,10 @@ LessWrong is a React SPA, so we can't just scrape HTML - we need to use their AP
 """
 
 import re
-import httpx
 from datetime import datetime
 from urllib.parse import urlparse
+
+import httpx
 
 from app.extractors.base import BaseExtractor, ExtractedContent
 
@@ -75,14 +76,11 @@ class LessWrongExtractor(BaseExtractor):
         async with httpx.AsyncClient(timeout=30.0) as client:
             response = await client.post(
                 self.GRAPHQL_ENDPOINT,
-                json={
-                    "query": query,
-                    "variables": {"postId": post_id}
-                },
+                json={"query": query, "variables": {"postId": post_id}},
                 headers={
                     "Content-Type": "application/json",
                     "User-Agent": "Alexandria/1.0 (Article Reader)",
-                }
+                },
             )
             response.raise_for_status()
             data = response.json()
@@ -102,6 +100,7 @@ class LessWrongExtractor(BaseExtractor):
         # If no text from contents, try to extract from HTML body
         if not text and post.get("htmlBody"):
             from bs4 import BeautifulSoup
+
             soup = BeautifulSoup(post["htmlBody"], "lxml")
             text = soup.get_text(separator="\n", strip=True)
 
@@ -133,5 +132,5 @@ class LessWrongExtractor(BaseExtractor):
                 "domain": urlparse(url).netloc,
                 "post_id": post_id,
                 "platform": "lesswrong",
-            }
+            },
         )

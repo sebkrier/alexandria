@@ -1,10 +1,12 @@
 from datetime import datetime
 from uuid import UUID
+
 from pydantic import BaseModel
 
 
 class CategoryCreate(BaseModel):
     """Schema for creating a category"""
+
     name: str
     parent_id: UUID | None = None
     description: str | None = None
@@ -12,6 +14,7 @@ class CategoryCreate(BaseModel):
 
 class CategoryUpdate(BaseModel):
     """Schema for updating a category"""
+
     name: str | None = None
     parent_id: UUID | None = None
     description: str | None = None
@@ -20,6 +23,7 @@ class CategoryUpdate(BaseModel):
 
 class CategoryResponse(BaseModel):
     """Schema for category responses"""
+
     id: UUID
     name: str
     parent_id: UUID | None
@@ -35,6 +39,7 @@ class CategoryResponse(BaseModel):
 
 class CategoryTree(BaseModel):
     """Schema for hierarchical category tree"""
+
     id: UUID
     name: str
     description: str | None

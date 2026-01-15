@@ -1,9 +1,8 @@
 """YouTube and video extractor using yt-dlp"""
 
 import asyncio
-import re
-from urllib.parse import urlparse
 from datetime import datetime
+from urllib.parse import urlparse
 
 import yt_dlp
 

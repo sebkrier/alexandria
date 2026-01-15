@@ -1,6 +1,7 @@
-import httpx
-from urllib.parse import urlparse
 from datetime import datetime
+from urllib.parse import urlparse
+
+import httpx
 from bs4 import BeautifulSoup
 
 from app.extractors.base import BaseExtractor, ExtractedContent
@@ -56,15 +57,13 @@ class URLExtractor(BaseExtractor):
             metadata={
                 "domain": urlparse(url).netloc,
                 "top_image": content.get("top_image"),
-            }
+            },
         )
 
     async def _fetch_html(self, url: str) -> str:
         """Fetch HTML content from URL"""
         async with httpx.AsyncClient(
-            follow_redirects=True,
-            timeout=self.TIMEOUT,
-            headers=self.HEADERS
+            follow_redirects=True, timeout=self.TIMEOUT, headers=self.HEADERS
         ) as client:
             response = await client.get(url)
             response.raise_for_status()
@@ -74,6 +73,7 @@ class URLExtractor(BaseExtractor):
         """Extract using readability-lxml algorithm"""
         try:
             from readability import Document
+
             doc = Document(html)
 
             # Get title
@@ -114,7 +114,14 @@ class URLExtractor(BaseExtractor):
 
         # Try to find main content
         main_content = None
-        for selector in ["article", "main", '[role="main"]', ".post-content", ".article-content", ".entry-content"]:
+        for selector in [
+            "article",
+            "main",
+            '[role="main"]',
+            ".post-content",
+            ".article-content",
+            ".entry-content",
+        ]:
             main_content = soup.select_one(selector)
             if main_content:
                 break

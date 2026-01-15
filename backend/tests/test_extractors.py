@@ -13,8 +13,7 @@ from pathlib import Path
 # Add parent directory to path for imports
 sys.path.insert(0, str(Path(__file__).parent.parent))
 
-from app.extractors import extract_content, URLExtractor, ArxivExtractor
-from app.extractors.base import ExtractedContent
+from app.extractors import ArxivExtractor, URLExtractor, extract_content
 
 
 async def test_url_extraction():
@@ -63,7 +62,11 @@ async def test_arxiv_extraction():
 
         print(f"\nSource Type: {content.source_type}")
         print(f"Title: {content.title}")
-        print(f"Authors: {content.authors[:3]}..." if len(content.authors) > 3 else f"Authors: {content.authors}")
+        print(
+            f"Authors: {content.authors[:3]}..."
+            if len(content.authors) > 3
+            else f"Authors: {content.authors}"
+        )
         print(f"Publication Date: {content.publication_date}")
         print(f"ArXiv ID: {content.metadata.get('arxiv_id')}")
         print(f"Categories: {content.metadata.get('categories')}")
@@ -83,6 +86,7 @@ async def test_arxiv_extraction():
     except Exception as e:
         print(f"\n[FAIL] ArXiv extraction failed: {e}")
         import traceback
+
         traceback.print_exc()
         return False
 
@@ -97,6 +101,7 @@ async def test_pdf_extraction():
     # In real usage, you'd point to an actual PDF file
 
     import tempfile
+
     import fitz  # PyMuPDF
 
     # Create a test PDF
@@ -156,6 +161,7 @@ async def test_pdf_extraction():
     except Exception as e:
         print(f"\n[FAIL] PDF extraction failed: {e}")
         import traceback
+
         traceback.print_exc()
         return False
 
@@ -191,7 +197,9 @@ async def test_extractor_detection():
             all_passed = False
 
         print(f"{status} {description}: {url}")
-        print(f"       Expected: {expected_extractor.__name__}, Got: {detected.__name__ if detected else 'None'}")
+        print(
+            f"       Expected: {expected_extractor.__name__}, Got: {detected.__name__ if detected else 'None'}"
+        )
 
     return all_passed
 

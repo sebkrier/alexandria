@@ -131,8 +131,8 @@ def format_categories_for_prompt(categories: list[dict], indent: int = 0) -> str
     for cat in categories:
         prefix = "  " * indent
         lines.append(f"{prefix}- {cat['name']}")
-        if cat.get('children'):
-            lines.append(format_categories_for_prompt(cat['children'], indent + 1))
+        if cat.get("children"):
+            lines.append(format_categories_for_prompt(cat["children"], indent + 1))
     return "\n".join(lines)
 
 
@@ -142,8 +142,8 @@ def truncate_text(text: str, max_chars: int = 15000) -> str:
         return text
 
     # Take beginning and end to capture intro and conclusion
-    beginning = text[:int(max_chars * 0.7)]
-    end = text[-int(max_chars * 0.3):]
+    beginning = text[: int(max_chars * 0.7)]
+    end = text[-int(max_chars * 0.3) :]
 
     return f"{beginning}\n\n[... content truncated for length ...]\n\n{end}"
 

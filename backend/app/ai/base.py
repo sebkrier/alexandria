@@ -1,9 +1,11 @@
 from abc import ABC, abstractmethod
+
 from pydantic import BaseModel, Field
 
 
 class Summary(BaseModel):
     """Summary output from AI - now stores raw markdown"""
+
     markdown: str = Field(description="The full markdown summary")
     abstract: str = Field(default="", description="One-line summary extracted for tags/categories")
 
@@ -17,7 +19,7 @@ class Summary(BaseModel):
             # Look for "One-Line Summary" section
             if "one-line summary" in line.lower() or "one line summary" in line.lower():
                 # Get the next non-empty line
-                for next_line in lines[i+1:]:
+                for next_line in lines[i + 1 :]:
                     next_line = next_line.strip()
                     if next_line and not next_line.startswith("#"):
                         abstract = next_line
@@ -41,6 +43,7 @@ class Summary(BaseModel):
 
 class TagSuggestion(BaseModel):
     """Suggested tag from AI"""
+
     name: str = Field(description="The tag name (lowercase, hyphenated)")
     confidence: float = Field(ge=0, le=1, description="Confidence score 0-1")
     reasoning: str = Field(description="Brief explanation of why this tag fits")
@@ -48,12 +51,14 @@ class TagSuggestion(BaseModel):
 
 class CategoryInfo(BaseModel):
     """Category or subcategory info from AI"""
+
     name: str = Field(description="Name of the category/subcategory")
     is_new: bool = Field(default=False, description="Whether this is a new category to create")
 
 
 class CategorySuggestion(BaseModel):
     """Suggested two-level category placement from AI"""
+
     category: CategoryInfo = Field(description="Top-level category")
     subcategory: CategoryInfo = Field(description="Subcategory within the category")
     confidence: float = Field(ge=0, le=1, description="Confidence score 0-1")

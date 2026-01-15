@@ -1,13 +1,14 @@
 import logging
+
 import httpx
 
-from app.extractors.base import BaseExtractor, ExtractedContent
-from app.extractors.url import URLExtractor
-from app.extractors.pdf import PDFExtractor
 from app.extractors.arxiv import ArxivExtractor
-from app.extractors.substack import SubstackExtractor
-from app.extractors.youtube import YouTubeExtractor
+from app.extractors.base import BaseExtractor, ExtractedContent
 from app.extractors.lesswrong import LessWrongExtractor
+from app.extractors.pdf import PDFExtractor
+from app.extractors.substack import SubstackExtractor
+from app.extractors.url import URLExtractor
+from app.extractors.youtube import YouTubeExtractor
 
 logger = logging.getLogger(__name__)
 
@@ -31,9 +32,7 @@ async def _detect_content_type(url: str) -> str | None:
         async with httpx.AsyncClient(
             follow_redirects=True,
             timeout=10.0,
-            headers={
-                "User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36"
-            }
+            headers={"User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36"},
         ) as client:
             response = await client.head(url)
             return response.headers.get("content-type", "").lower()
@@ -69,12 +68,12 @@ async def extract_content(url: str = None, file_path: str = None) -> ExtractedCo
 
             # Handle PDF by Content-Type (even if URL doesn't end in .pdf)
             if "application/pdf" in content_type:
-                logger.info(f"Using PDFExtractor based on Content-Type")
+                logger.info("Using PDFExtractor based on Content-Type")
                 return await PDFExtractor().extract(url=url)
 
             # Handle HTML/text with URLExtractor
             if "text/html" in content_type or "text/plain" in content_type:
-                logger.info(f"Using URLExtractor based on Content-Type")
+                logger.info("Using URLExtractor based on Content-Type")
                 return await URLExtractor().extract(url=url)
 
         # Final fallback: try URLExtractor for any URL

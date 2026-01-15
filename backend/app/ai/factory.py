@@ -10,7 +10,7 @@ from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.ai.base import AIProvider
-from app.ai.llm import LiteLLMProvider, PROVIDER_MODELS
+from app.ai.llm import PROVIDER_MODELS, LiteLLMProvider
 from app.models.ai_provider import AIProvider as AIProviderModel
 from app.utils.encryption import decrypt_api_key
 
@@ -37,9 +37,7 @@ async def get_ai_provider(
     Raises:
         ValueError: If provider not found or not supported
     """
-    result = await db.execute(
-        select(AIProviderModel).where(AIProviderModel.id == provider_id)
-    )
+    result = await db.execute(select(AIProviderModel).where(AIProviderModel.id == provider_id))
     provider_config = result.scalar_one_or_none()
 
     if not provider_config:
@@ -77,10 +75,12 @@ async def get_default_provider(
     if not provider_config:
         # Fall back to any active provider
         result = await db.execute(
-            select(AIProviderModel).where(
+            select(AIProviderModel)
+            .where(
                 AIProviderModel.user_id == user_id,
                 AIProviderModel.is_active == True,
-            ).limit(1)
+            )
+            .limit(1)
         )
         provider_config = result.scalar_one_or_none()
 
@@ -121,7 +121,11 @@ async def get_all_providers(
 def _instantiate_provider(config: AIProviderModel) -> AIProvider:
     """Create an AI provider instance from database configuration using LiteLLM."""
     # Handle both enum and string values from database
-    provider_key = config.provider_name.value if hasattr(config.provider_name, 'value') else str(config.provider_name)
+    provider_key = (
+        config.provider_name.value
+        if hasattr(config.provider_name, "value")
+        else str(config.provider_name)
+    )
 
     if provider_key not in SUPPORTED_PROVIDERS:
         raise ValueError(f"Unsupported provider: {provider_key}")

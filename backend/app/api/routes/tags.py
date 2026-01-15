@@ -1,13 +1,13 @@
 from uuid import UUID
 
 from fastapi import APIRouter, Depends, HTTPException, status
-from sqlalchemy import select, func
+from sqlalchemy import func, select
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.database import get_db
-from app.models.user import User
-from app.models.tag import Tag
 from app.models.article_tag import ArticleTag
+from app.models.tag import Tag
+from app.models.user import User
 from app.schemas.tag import TagCreate, TagResponse
 from app.utils.auth import get_current_user
 
@@ -20,29 +20,26 @@ async def list_tags(
     current_user: User = Depends(get_current_user),
 ):
     """List all tags"""
-    result = await db.execute(
-        select(Tag)
-        .where(Tag.user_id == current_user.id)
-        .order_by(Tag.name)
-    )
+    result = await db.execute(select(Tag).where(Tag.user_id == current_user.id).order_by(Tag.name))
     tags = result.scalars().all()
 
     response = []
     for tag in tags:
         # Get article count
         count_result = await db.execute(
-            select(func.count(ArticleTag.article_id))
-            .where(ArticleTag.tag_id == tag.id)
+            select(func.count(ArticleTag.article_id)).where(ArticleTag.tag_id == tag.id)
         )
         article_count = count_result.scalar()
 
-        response.append(TagResponse(
-            id=tag.id,
-            name=tag.name,
-            color=tag.color,
-            article_count=article_count,
-            created_at=tag.created_at,
-        ))
+        response.append(
+            TagResponse(
+                id=tag.id,
+                name=tag.name,
+                color=tag.color,
+                article_count=article_count,
+                created_at=tag.created_at,
+            )
+        )
 
     return response
 
@@ -56,8 +53,7 @@ async def create_tag(
     """Create a new tag"""
     # Check if tag with same name exists
     result = await db.execute(
-        select(Tag)
-        .where(Tag.user_id == current_user.id, Tag.name == data.name)
+        select(Tag).where(Tag.user_id == current_user.id, Tag.name == data.name)
     )
     existing = result.scalar_one_or_none()
 
@@ -93,10 +89,7 @@ async def delete_tag(
     current_user: User = Depends(get_current_user),
 ):
     """Delete a tag"""
-    result = await db.execute(
-        select(Tag)
-        .where(Tag.id == tag_id, Tag.user_id == current_user.id)
-    )
+    result = await db.execute(select(Tag).where(Tag.id == tag_id, Tag.user_id == current_user.id))
     tag = result.scalar_one_or_none()
 
     if not tag:

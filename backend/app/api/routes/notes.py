@@ -6,9 +6,9 @@ from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.database import get_db
-from app.models.user import User
 from app.models.article import Article
 from app.models.note import Note
+from app.models.user import User
 from app.utils.auth import get_current_user
 
 router = APIRouter()
@@ -57,9 +57,7 @@ async def get_article_notes(
 
     # Get notes
     result = await db.execute(
-        select(Note)
-        .where(Note.article_id == article_id)
-        .order_by(Note.created_at.desc())
+        select(Note).where(Note.article_id == article_id).order_by(Note.created_at.desc())
     )
     notes = result.scalars().all()
 
@@ -75,7 +73,9 @@ async def get_article_notes(
     ]
 
 
-@router.post("/articles/{article_id}/notes", response_model=NoteResponse, status_code=status.HTTP_201_CREATED)
+@router.post(
+    "/articles/{article_id}/notes", response_model=NoteResponse, status_code=status.HTTP_201_CREATED
+)
 async def create_note(
     article_id: UUID,
     data: NoteCreate,

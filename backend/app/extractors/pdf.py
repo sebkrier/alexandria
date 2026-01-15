@@ -1,8 +1,8 @@
+import logging
 import re
 import tempfile
-import logging
 from pathlib import Path
-from urllib.parse import urlparse, unquote
+from urllib.parse import unquote, urlparse
 
 import httpx
 
@@ -66,9 +66,9 @@ class PDFExtractor(BaseExtractor):
 
         # If title wasn't found or looks like a domain, try URL filename
         is_poor_title = (
-            title in ("Untitled PDF", None) or
-            len(title) < 5 or
-            (title.count(".") >= 1 and len(title) < 30)  # Looks like domain
+            title in ("Untitled PDF", None)
+            or len(title) < 5
+            or (title.count(".") >= 1 and len(title) < 30)  # Looks like domain
         )
         if is_poor_title and url:
             url_title = self._title_from_url(url)
@@ -93,15 +93,13 @@ class PDFExtractor(BaseExtractor):
             metadata={
                 "page_count": len(text_parts),
                 "pdf_metadata": metadata,
-            }
+            },
         )
 
     async def _download_pdf(self, url: str) -> tuple[str, str]:
         """Download PDF from URL to a temp file. Returns (temp_file_path, file_path)."""
         async with httpx.AsyncClient(
-            follow_redirects=True,
-            timeout=self.TIMEOUT,
-            headers=self.HEADERS
+            follow_redirects=True, timeout=self.TIMEOUT, headers=self.HEADERS
         ) as client:
             response = await client.get(url)
             response.raise_for_status()

@@ -4,9 +4,9 @@ from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.database import get_db
-from app.models.user import User
 from app.models.category import Category
 from app.models.color import Color
+from app.models.user import User
 
 # Default categories to bootstrap
 DEFAULT_CATEGORIES = [

@@ -6,17 +6,17 @@ Coordinates summarization, tagging, and categorization.
 import logging
 from uuid import UUID
 
-from sqlalchemy import select, delete
+from sqlalchemy import delete, select
 from sqlalchemy.ext.asyncio import AsyncSession
 
-from app.ai.base import AIProvider, Summary, TagSuggestion, CategorySuggestion
-from app.ai.factory import get_default_provider, get_ai_provider
+from app.ai.base import CategorySuggestion, Summary, TagSuggestion
 from app.ai.embeddings import generate_embedding
+from app.ai.factory import get_ai_provider, get_default_provider
 from app.models.article import Article, ProcessingStatus
-from app.models.category import Category
-from app.models.tag import Tag
 from app.models.article_category import ArticleCategory
 from app.models.article_tag import ArticleTag
+from app.models.category import Category
+from app.models.tag import Tag
 
 logger = logging.getLogger(__name__)
 
@@ -45,9 +45,7 @@ class AIService:
             Updated article
         """
         # Get the article
-        result = await self.db.execute(
-            select(Article).where(Article.id == article_id)
-        )
+        result = await self.db.execute(select(Article).where(Article.id == article_id))
         article = result.scalar_one_or_none()
 
         if not article:
@@ -69,7 +67,11 @@ class AIService:
 
             # 1. Generate summary
             logger.info(f"Generating summary for article {article_id}")
-            source_type = article.source_type.value if hasattr(article.source_type, 'value') else str(article.source_type)
+            source_type = (
+                article.source_type.value
+                if hasattr(article.source_type, "value")
+                else str(article.source_type)
+            )
             summary = await provider.summarize(
                 text=article.extracted_text,
                 title=article.title,
@@ -78,7 +80,9 @@ class AIService:
 
             # Store summary as markdown
             article.summary = summary.to_markdown()
-            article.summary_model = f"{provider.provider_name}:{getattr(provider, 'model_id', 'unknown')}"
+            article.summary_model = (
+                f"{provider.provider_name}:{getattr(provider, 'model_id', 'unknown')}"
+            )
 
             # 2. Suggest tags
             logger.info(f"Suggesting tags for article {article_id}")
@@ -109,7 +113,7 @@ class AIService:
                 article.word_count = len(article.extracted_text.split())
 
             # 5. Generate embedding for semantic search (using local EmbeddingGemma)
-            if hasattr(article, 'embedding'):
+            if hasattr(article, "embedding"):
                 logger.info(f"Generating embedding for article {article_id}")
                 embedding = self._generate_article_embedding(article)
                 if embedding:
@@ -139,9 +143,7 @@ class AIService:
         provider_id: UUID | None = None,
     ) -> Summary:
         """Regenerate just the summary for an article"""
-        result = await self.db.execute(
-            select(Article).where(Article.id == article_id)
-        )
+        result = await self.db.execute(select(Article).where(Article.id == article_id))
         article = result.scalar_one_or_none()
 
         if not article:
@@ -156,7 +158,11 @@ class AIService:
         if not provider:
             raise ValueError("No AI provider configured")
 
-        source_type = article.source_type.value if hasattr(article.source_type, 'value') else str(article.source_type)
+        source_type = (
+            article.source_type.value
+            if hasattr(article.source_type, "value")
+            else str(article.source_type)
+        )
         summary = await provider.summarize(
             text=article.extracted_text,
             title=article.title,
@@ -164,20 +170,21 @@ class AIService:
         )
 
         article.summary = summary.to_markdown()
-        article.summary_model = f"{provider.provider_name}:{getattr(provider, 'model_id', 'unknown')}"
+        article.summary_model = (
+            f"{provider.provider_name}:{getattr(provider, 'model_id', 'unknown')}"
+        )
 
         await self.db.commit()
         return summary
 
     async def _get_existing_tags(self, user_id: UUID) -> list[str]:
         """Get all existing tag names for a user"""
-        result = await self.db.execute(
-            select(Tag.name).where(Tag.user_id == user_id)
-        )
+        result = await self.db.execute(select(Tag.name).where(Tag.user_id == user_id))
         return [row[0] for row in result.all()]
 
     async def _get_category_tree(self, user_id: UUID) -> list[dict]:
         """Get category tree for AI prompt"""
+
         async def get_children(parent_id: UUID | None) -> list[dict]:
             result = await self.db.execute(
                 select(Category)
@@ -192,11 +199,13 @@ class AIService:
             tree = []
             for cat in categories:
                 children = await get_children(cat.id)
-                tree.append({
-                    "id": str(cat.id),
-                    "name": cat.name,
-                    "children": children,
-                })
+                tree.append(
+                    {
+                        "id": str(cat.id),
+                        "name": cat.name,
+                        "children": children,
+                    }
+                )
             return tree
 
         return await get_children(None)
@@ -261,7 +270,9 @@ class AIService:
         is just for organizational hierarchy.
         """
         if suggestion.confidence < 0.5:
-            logger.info(f"Category suggestion confidence too low ({suggestion.confidence}), skipping")
+            logger.info(
+                f"Category suggestion confidence too low ({suggestion.confidence}), skipping"
+            )
             return
 
         # Step 1: Find or create the parent category
@@ -316,10 +327,14 @@ class AIService:
                 )
                 self.db.add(subcategory)
                 await self.db.flush()
-                logger.info(f"Created new subcategory: {suggestion.category.name} → {suggestion.subcategory.name}")
+                logger.info(
+                    f"Created new subcategory: {suggestion.category.name} → {suggestion.subcategory.name}"
+                )
             else:
                 # Subcategory should exist but doesn't - create it anyway
-                logger.warning(f"Subcategory '{suggestion.subcategory.name}' not found under '{suggestion.category.name}', creating it")
+                logger.warning(
+                    f"Subcategory '{suggestion.subcategory.name}' not found under '{suggestion.category.name}', creating it"
+                )
                 subcategory = Category(
                     user_id=user_id,
                     name=suggestion.subcategory.name,
@@ -342,7 +357,9 @@ class AIService:
             suggested_by_ai=True,
         )
         self.db.add(article_category)
-        logger.info(f"Assigned article to: {suggestion.category.name} → {suggestion.subcategory.name}")
+        logger.info(
+            f"Assigned article to: {suggestion.category.name} → {suggestion.subcategory.name}"
+        )
 
     def _generate_article_embedding(
         self,

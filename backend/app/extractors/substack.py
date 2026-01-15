@@ -2,8 +2,9 @@
 
 import asyncio
 import subprocess
-from urllib.parse import urlparse
 from datetime import datetime
+from urllib.parse import urlparse
+
 from bs4 import BeautifulSoup
 
 from app.extractors.base import BaseExtractor, ExtractedContent
@@ -53,7 +54,7 @@ class SubstackExtractor(BaseExtractor):
             metadata={
                 "domain": urlparse(url).netloc,
                 "subtitle": content.get("subtitle"),
-            }
+            },
         )
 
     async def _fetch_html(self, url: str) -> str:
@@ -63,11 +64,17 @@ class SubstackExtractor(BaseExtractor):
         so we use subprocess to call curl for reliable fetching.
         """
         proc = await asyncio.create_subprocess_exec(
-            "curl", "-s", "-L",
-            "--max-time", str(self.TIMEOUT),
-            "-H", "User-Agent: Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/122.0.0.0 Safari/537.36",
-            "-H", "Accept: text/html,application/xhtml+xml,application/xml;q=0.9,*/*;q=0.8",
-            "-H", "Accept-Language: en-US,en;q=0.5",
+            "curl",
+            "-s",
+            "-L",
+            "--max-time",
+            str(self.TIMEOUT),
+            "-H",
+            "User-Agent: Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/122.0.0.0 Safari/537.36",
+            "-H",
+            "Accept: text/html,application/xhtml+xml,application/xml;q=0.9,*/*;q=0.8",
+            "-H",
+            "Accept-Language: en-US,en;q=0.5",
             url,
             stdout=subprocess.PIPE,
             stderr=subprocess.PIPE,
@@ -121,7 +128,9 @@ class SubstackExtractor(BaseExtractor):
 
         # Author
         authors = []
-        author_elem = soup.find("a", class_="frontend-pencraft-Text-module__decoration-hover-underline--BEYAn")
+        author_elem = soup.find(
+            "a", class_="frontend-pencraft-Text-module__decoration-hover-underline--BEYAn"
+        )
         if author_elem:
             authors = [author_elem.get_text(strip=True)]
         if not authors:
@@ -153,7 +162,9 @@ class SubstackExtractor(BaseExtractor):
             for elem in main_content.find_all(["script", "style", "nav", "footer", "button"]):
                 elem.decompose()
             # Remove subscription prompts
-            for elem in main_content.find_all(class_=lambda x: x and ("subscribe" in x.lower() or "paywall" in x.lower())):
+            for elem in main_content.find_all(
+                class_=lambda x: x and ("subscribe" in x.lower() or "paywall" in x.lower())
+            ):
                 elem.decompose()
 
         text = main_content.get_text(separator="\n", strip=True) if main_content else ""

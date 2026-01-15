@@ -1,23 +1,21 @@
 from uuid import UUID
 
 from fastapi import APIRouter, Depends, HTTPException, status
-from sqlalchemy import select, func
+from sqlalchemy import func, select
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.database import get_db
-from app.models.user import User
-from app.models.category import Category
 from app.models.article_category import ArticleCategory
-from app.schemas.category import CategoryCreate, CategoryResponse, CategoryUpdate, CategoryTree
+from app.models.category import Category
+from app.models.user import User
+from app.schemas.category import CategoryCreate, CategoryResponse, CategoryTree, CategoryUpdate
 from app.utils.auth import get_current_user
 
 router = APIRouter()
 
 
 async def build_category_tree(
-    db: AsyncSession,
-    user_id: UUID,
-    parent_id: UUID | None = None
+    db: AsyncSession, user_id: UUID, parent_id: UUID | None = None
 ) -> list[CategoryTree]:
     """Recursively build category tree with cumulative article counts"""
     result = await db.execute(
@@ -31,8 +29,9 @@ async def build_category_tree(
     for cat in categories:
         # Get direct article count for this category
         count_result = await db.execute(
-            select(func.count(ArticleCategory.article_id))
-            .where(ArticleCategory.category_id == cat.id)
+            select(func.count(ArticleCategory.article_id)).where(
+                ArticleCategory.category_id == cat.id
+            )
         )
         direct_count = count_result.scalar() or 0
 
@@ -43,14 +42,16 @@ async def build_category_tree(
         # This makes sense since articles are assigned to subcategories, not parents
         cumulative_count = direct_count + sum(child.article_count for child in children)
 
-        tree.append(CategoryTree(
-            id=cat.id,
-            name=cat.name,
-            description=cat.description,
-            position=cat.position,
-            article_count=cumulative_count,
-            children=children,
-        ))
+        tree.append(
+            CategoryTree(
+                id=cat.id,
+                name=cat.name,
+                description=cat.description,
+                position=cat.position,
+                article_count=cumulative_count,
+                children=children,
+            )
+        )
 
     return tree
 
@@ -73,10 +74,8 @@ async def create_category(
     """Create a new category"""
     # Get max position for ordering
     result = await db.execute(
-        select(func.max(Category.position))
-        .where(
-            Category.user_id == current_user.id,
-            Category.parent_id == data.parent_id
+        select(func.max(Category.position)).where(
+            Category.user_id == current_user.id, Category.parent_id == data.parent_id
         )
     )
     max_position = result.scalar() or 0
@@ -114,8 +113,7 @@ async def update_category(
 ):
     """Update a category"""
     result = await db.execute(
-        select(Category)
-        .where(Category.id == category_id, Category.user_id == current_user.id)
+        select(Category).where(Category.id == category_id, Category.user_id == current_user.id)
     )
     category = result.scalar_one_or_none()
 
@@ -139,8 +137,9 @@ async def update_category(
 
     # Get article count
     count_result = await db.execute(
-        select(func.count(ArticleCategory.article_id))
-        .where(ArticleCategory.category_id == category.id)
+        select(func.count(ArticleCategory.article_id)).where(
+            ArticleCategory.category_id == category.id
+        )
     )
     article_count = count_result.scalar()
 
@@ -164,8 +163,7 @@ async def delete_category(
 ):
     """Delete a category"""
     result = await db.execute(
-        select(Category)
-        .where(Category.id == category_id, Category.user_id == current_user.id)
+        select(Category).where(Category.id == category_id, Category.user_id == current_user.id)
     )
     category = result.scalar_one_or_none()
 
@@ -176,10 +174,7 @@ async def delete_category(
         )
 
     # Move children to parent (or make them root)
-    await db.execute(
-        select(Category)
-        .where(Category.parent_id == category_id)
-    )
+    await db.execute(select(Category).where(Category.parent_id == category_id))
     for child in category.children:
         child.parent_id = category.parent_id
 

@@ -1,7 +1,7 @@
 "use client";
 
 import { useState, useRef } from "react";
-import { Upload, Link as LinkIcon, Loader2 } from "lucide-react";
+import { Upload, Link as LinkIcon } from "lucide-react";
 import { Modal } from "@/components/ui/Modal";
 import { Button } from "@/components/ui/Button";
 import { Input } from "@/components/ui/Input";
@@ -43,8 +43,8 @@ export function AddArticleModal() {
       setUrl("");
       setFile(null);
       setAddArticleModalOpen(false);
-    } catch (error) {
-      // Error handled by mutation
+    } catch {
+      // Error handled by mutation's onError callback
     }
   };
 

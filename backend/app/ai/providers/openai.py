@@ -1,19 +1,18 @@
 import json
 import logging
-import re
 
 from openai import AsyncOpenAI
 
-from app.ai.base import AIProvider, Summary, TagSuggestion, CategorySuggestion
+from app.ai.base import AIProvider, CategorySuggestion, Summary, TagSuggestion
 from app.ai.prompts import (
-    SUMMARY_SYSTEM_PROMPT,
-    EXTRACT_SUMMARY_PROMPT,
-    TAGS_SYSTEM_PROMPT,
-    TAGS_USER_PROMPT,
     CATEGORY_SYSTEM_PROMPT,
     CATEGORY_USER_PROMPT,
+    EXTRACT_SUMMARY_PROMPT,
     QUESTION_SYSTEM_PROMPT,
     QUESTION_USER_PROMPT,
+    SUMMARY_SYSTEM_PROMPT,
+    TAGS_SYSTEM_PROMPT,
+    TAGS_USER_PROMPT,
     format_categories_for_prompt,
     truncate_text,
 )
@@ -95,7 +94,11 @@ class OpenAIProvider(AIProvider):
                 max_tokens=1000,
                 response_format={"type": "json_object"},
                 messages=[
-                    {"role": "system", "content": TAGS_SYSTEM_PROMPT + "\n\nYou must respond with valid JSON. Wrap the array in an object like {\"tags\": [...]}"},
+                    {
+                        "role": "system",
+                        "content": TAGS_SYSTEM_PROMPT
+                        + '\n\nYou must respond with valid JSON. Wrap the array in an object like {"tags": [...]}',
+                    },
                     {"role": "user", "content": user_prompt},
                 ],
             )
@@ -138,7 +141,10 @@ class OpenAIProvider(AIProvider):
                 max_tokens=500,
                 response_format={"type": "json_object"},
                 messages=[
-                    {"role": "system", "content": CATEGORY_SYSTEM_PROMPT + "\n\nYou must respond with valid JSON."},
+                    {
+                        "role": "system",
+                        "content": CATEGORY_SYSTEM_PROMPT + "\n\nYou must respond with valid JSON.",
+                    },
                     {"role": "user", "content": user_prompt},
                 ],
             )
@@ -182,7 +188,7 @@ class OpenAIProvider(AIProvider):
     async def health_check(self) -> bool:
         """Check if the API key is valid"""
         try:
-            response = await self.client.chat.completions.create(
+            _ = await self.client.chat.completions.create(
                 model=self.model_id,
                 max_tokens=10,
                 messages=[{"role": "user", "content": "Hi"}],

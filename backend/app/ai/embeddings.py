@@ -9,7 +9,6 @@ that produces 768-dimensional vectors optimized for semantic search.
 """
 
 import logging
-from typing import Optional
 
 logger = logging.getLogger(__name__)
 
@@ -39,6 +38,7 @@ def get_embedding_model():
         logger.info(f"Loading embedding model: {MODEL_NAME}")
         try:
             from sentence_transformers import SentenceTransformer
+
             _embedding_model = SentenceTransformer(MODEL_NAME)
             logger.info(f"Embedding model loaded successfully (dim={EMBEDDING_DIM})")
         except Exception as e:
@@ -48,7 +48,7 @@ def get_embedding_model():
     return _embedding_model
 
 
-def generate_embedding(text: str) -> Optional[list[float]]:
+def generate_embedding(text: str) -> list[float] | None:
     """
     Generate embedding for document/article text.
 
@@ -80,7 +80,7 @@ def generate_embedding(text: str) -> Optional[list[float]]:
         return None
 
 
-def generate_query_embedding(query: str) -> Optional[list[float]]:
+def generate_query_embedding(query: str) -> list[float] | None:
     """
     Generate embedding for a search query.
 
@@ -105,7 +105,7 @@ def generate_query_embedding(query: str) -> Optional[list[float]]:
 
         # Use encode_query for search queries
         # Falls back to regular encode if model doesn't have encode_query
-        if hasattr(model, 'encode_query'):
+        if hasattr(model, "encode_query"):
             embedding = model.encode_query(truncated)
         else:
             embedding = model.encode(truncated, normalize_embeddings=True)

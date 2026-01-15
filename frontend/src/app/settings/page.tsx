@@ -5,8 +5,6 @@ import {
   Plus,
   Trash2,
   Star,
-  CheckCircle,
-  XCircle,
   Loader2,
   Key,
   Bot,

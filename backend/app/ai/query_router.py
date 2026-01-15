@@ -3,21 +3,21 @@ Query routing for the Ask feature.
 Classifies queries as content (RAG) or metadata (database) and routes accordingly.
 """
 
-import re
 import logging
-from enum import Enum
+import re
 from datetime import datetime, timedelta
-from uuid import UUID
+from enum import Enum
 from typing import Any
+from uuid import UUID
 
-from sqlalchemy import select, func, extract
+from sqlalchemy import func, select
 from sqlalchemy.ext.asyncio import AsyncSession
 
-from app.models.article import Article, ProcessingStatus
-from app.models.category import Category
-from app.models.tag import Tag
+from app.models.article import Article
 from app.models.article_category import ArticleCategory
 from app.models.article_tag import ArticleTag
+from app.models.category import Category
+from app.models.tag import Tag
 
 logger = logging.getLogger(__name__)
 
@@ -29,6 +29,7 @@ class QueryType(str, Enum):
 
 class MetadataOperation(str, Enum):
     """Supported metadata operations"""
+
     TOTAL_COUNT = "total_count"
     COUNT_BY_CATEGORY = "count_by_category"
     COUNT_BY_TAG = "count_by_tag"
@@ -49,23 +50,19 @@ METADATA_PATTERNS = [
     r"\bcount\b",
     r"\bnumber of\b",
     r"\btotal\b",
-
     # List patterns
     r"\blist all\b",
     r"\bshow all\b",
     r"\bwhat are my\b",
     r"\bwhat (categories|tags|colors)\b",
-
     # Aggregate patterns
     r"\bmost common\b",
     r"\bmost frequent\b",
     r"\bmost used\b",
     r"\btop \d+\b",
-
     # Date patterns without content
     r"\bfrom (last|this) (week|month|year)\b",
     r"\barticles? (added|saved|from)\b.*\b(today|yesterday|last|this)\b",
-
     # Library overview
     r"\blibrary (summary|overview|stats|statistics)\b",
     r"\bsummarize my library\b",
@@ -139,7 +136,9 @@ def detect_metadata_operation(question: str) -> tuple[MetadataOperation, dict[st
         return MetadataOperation.LIST_TAGS, {}
 
     # Count by media type
-    if re.search(r"\bhow many\b.*(papers?|videos?|pdfs?|articles?|newsletters?|blogs?)", question_lower):
+    if re.search(
+        r"\bhow many\b.*(papers?|videos?|pdfs?|articles?|newsletters?|blogs?)", question_lower
+    ):
         return MetadataOperation.COUNT_BY_MEDIA_TYPE, {}
     if re.search(r"\b(breakdown|distribution)\b.*\b(type|media|source)", question_lower):
         return MetadataOperation.COUNT_BY_MEDIA_TYPE, {}
@@ -156,7 +155,9 @@ def detect_metadata_operation(question: str) -> tuple[MetadataOperation, dict[st
         return MetadataOperation.RECENT_ARTICLES, {"limit": 10}
 
     # Top sources/domains
-    if re.search(r"\b(top|most (common|used|frequent))\b.*\b(sources?|domains?|sites?)\b", question_lower):
+    if re.search(
+        r"\b(top|most (common|used|frequent))\b.*\b(sources?|domains?|sites?)\b", question_lower
+    ):
         return MetadataOperation.TOP_SOURCES, {"limit": 10}
 
     # Count by category (fallback)
@@ -182,10 +183,7 @@ async def execute_metadata_query(
     """
 
     if operation == MetadataOperation.TOTAL_COUNT:
-        result = await db.execute(
-            select(func.count(Article.id))
-            .where(Article.user_id == user_id)
-        )
+        result = await db.execute(select(func.count(Article.id)).where(Article.user_id == user_id))
         count = result.scalar()
         return {"total_articles": count}
 
@@ -220,7 +218,10 @@ async def execute_metadata_query(
             .group_by(Article.source_type)
             .order_by(func.count(Article.id).desc())
         )
-        counts = [{"type": row[0].value if hasattr(row[0], 'value') else str(row[0]), "count": row[1]} for row in result.all()]
+        counts = [
+            {"type": row[0].value if hasattr(row[0], "value") else str(row[0]), "count": row[1]}
+            for row in result.all()
+        ]
         return {"media_types": counts}
 
     elif operation == MetadataOperation.LIST_CATEGORIES:
@@ -233,11 +234,13 @@ async def execute_metadata_query(
         )
         categories = []
         for row in result.all():
-            categories.append({
-                "name": row[0],
-                "is_subcategory": row[1] is not None,
-                "article_count": row[2] or 0,
-            })
+            categories.append(
+                {
+                    "name": row[0],
+                    "is_subcategory": row[1] is not None,
+                    "article_count": row[2] or 0,
+                }
+            )
         return {"categories": categories, "total_categories": len(categories)}
 
     elif operation == MetadataOperation.LIST_TAGS:
@@ -269,7 +272,9 @@ async def execute_metadata_query(
             .order_by(Article.created_at.desc())
             .limit(10)
         )
-        recent = [{"title": row[0], "date": row[1].strftime("%Y-%m-%d")} for row in recent_result.all()]
+        recent = [
+            {"title": row[0], "date": row[1].strftime("%Y-%m-%d")} for row in recent_result.all()
+        ]
 
         return {
             "count": count,
@@ -289,7 +294,7 @@ async def execute_metadata_query(
             {
                 "title": row[0],
                 "date": row[1].strftime("%Y-%m-%d"),
-                "type": row[2].value if hasattr(row[2], 'value') else str(row[2]),
+                "type": row[2].value if hasattr(row[2], "value") else str(row[2]),
             }
             for row in result.all()
         ]
@@ -306,6 +311,7 @@ async def execute_metadata_query(
 
         # Count domains
         from urllib.parse import urlparse
+
         domain_counts: dict[str, int] = {}
         for row in result.all():
             url = row[0]
@@ -316,7 +322,8 @@ async def execute_metadata_query(
                     if domain.startswith("www."):
                         domain = domain[4:]
                     domain_counts[domain] = domain_counts.get(domain, 0) + 1
-                except:
+                except (ValueError, AttributeError):
+                    # Skip malformed URLs
                     pass
 
         # Sort by count
@@ -327,8 +334,7 @@ async def execute_metadata_query(
     elif operation == MetadataOperation.LIBRARY_SUMMARY:
         # Comprehensive library summary
         total_result = await db.execute(
-            select(func.count(Article.id))
-            .where(Article.user_id == user_id)
+            select(func.count(Article.id)).where(Article.user_id == user_id)
         )
         total_articles = total_result.scalar()
 
@@ -350,15 +356,11 @@ async def execute_metadata_query(
 
         # Total categories and tags
         cat_result = await db.execute(
-            select(func.count(Category.id))
-            .where(Category.user_id == user_id)
+            select(func.count(Category.id)).where(Category.user_id == user_id)
         )
         total_categories = cat_result.scalar()
 
-        tag_result = await db.execute(
-            select(func.count(Tag.id))
-            .where(Tag.user_id == user_id)
-        )
+        tag_result = await db.execute(select(func.count(Tag.id)).where(Tag.user_id == user_id))
         total_tags = tag_result.scalar()
 
         # Recent activity (last 7 days)
