@@ -8,6 +8,7 @@ A personal research library for storing, organizing, and retrieving articles wit
 - **AI summarization**: Generate structured summaries with key contributions, findings, and relevance notes
 - **Auto-tagging**: AI suggests relevant tags based on content
 - **Hierarchical categories**: Two-level category system (parent → subcategory) with automatic AI categorization
+- **Unread Reader**: Dedicated reading queue with keyboard navigation (J/K), progress tracking, and quick mark-as-read workflow
 - **Semantic search**: Find conceptually related articles using local embeddings (all-mpnet-base-v2)
 - **Ask your library**: Hybrid RAG with intelligent query routing — content questions use semantic + keyword search, metadata questions query the database directly
 - **Remote add via WhatsApp**: Add articles from anywhere by sending links to a WhatsApp bot

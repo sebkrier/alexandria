@@ -33,6 +33,8 @@ from app.schemas.article import (
     BulkColorResponse,
     BulkReanalyzeRequest,
     BulkReanalyzeResponse,
+    UnreadNavigationResponse,
+    UnreadListResponse,
 )
 from app.utils.auth import get_current_user
 from app.extractors import extract_content
@@ -160,6 +162,7 @@ def article_to_response(article: Article) -> ArticleResponse:
         processing_error=article.processing_error,
         word_count=article.word_count,
         reading_time_minutes=calculate_reading_time(article.word_count),
+        is_read=article.is_read,
         created_at=article.created_at,
         updated_at=article.updated_at,
         categories=categories,
@@ -313,6 +316,7 @@ async def list_articles(
     tag_id: UUID | None = None,
     color_id: UUID | None = None,
     status: ProcessingStatus | None = None,
+    is_read: bool | None = None,
     db: AsyncSession = Depends(get_db),
     current_user: User = Depends(get_current_user),
 ):
@@ -365,6 +369,9 @@ async def list_articles(
 
     if status:
         query = query.where(Article.processing_status == status)
+
+    if is_read is not None:
+        query = query.where(Article.is_read == is_read)
 
     # Get total count
     count_query = select(func.count()).select_from(query.subquery())
@@ -436,6 +443,70 @@ async def get_article_text(
     return {"text": article.extracted_text}
 
 
+# =============================================================================
+# Unread Reader Endpoints
+# =============================================================================
+
+@router.get("/unread/list", response_model=UnreadListResponse)
+async def get_unread_list(
+    db: AsyncSession = Depends(get_db),
+    current_user: User = Depends(get_current_user),
+):
+    """Get list of unread article IDs in order (oldest first)"""
+    result = await db.execute(
+        select(Article.id)
+        .where(Article.user_id == current_user.id)
+        .where(Article.is_read == False)
+        .order_by(Article.created_at.asc())
+    )
+    article_ids = [row[0] for row in result.all()]
+
+    return UnreadListResponse(
+        items=article_ids,
+        total=len(article_ids),
+    )
+
+
+@router.get("/unread/navigation/{article_id}", response_model=UnreadNavigationResponse)
+async def get_unread_navigation(
+    article_id: UUID,
+    db: AsyncSession = Depends(get_db),
+    current_user: User = Depends(get_current_user),
+):
+    """Get navigation info for unread reader (prev/next article)"""
+    # Get all unread article IDs in order
+    result = await db.execute(
+        select(Article.id)
+        .where(Article.user_id == current_user.id)
+        .where(Article.is_read == False)
+        .order_by(Article.created_at.asc())
+    )
+    unread_ids = [row[0] for row in result.all()]
+
+    # Find current position
+    current_index = -1
+    for i, uid in enumerate(unread_ids):
+        if uid == article_id:
+            current_index = i
+            break
+
+    # If article not in unread list, return position 0
+    if current_index == -1:
+        return UnreadNavigationResponse(
+            current_position=0,
+            total_unread=len(unread_ids),
+            prev_id=None,
+            next_id=unread_ids[0] if unread_ids else None,
+        )
+
+    return UnreadNavigationResponse(
+        current_position=current_index + 1,
+        total_unread=len(unread_ids),
+        prev_id=unread_ids[current_index - 1] if current_index > 0 else None,
+        next_id=unread_ids[current_index + 1] if current_index < len(unread_ids) - 1 else None,
+    )
+
+
 @router.patch("/{article_id}", response_model=ArticleResponse)
 async def update_article(
     article_id: UUID,
@@ -461,6 +532,8 @@ async def update_article(
         article.title = data.title
     if data.color_id is not None:
         article.color_id = data.color_id
+    if data.is_read is not None:
+        article.is_read = data.is_read
 
     # Update categories if provided
     if data.category_ids is not None:

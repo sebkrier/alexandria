@@ -80,7 +80,12 @@ export function ArticleCard({ article, viewMode }: ArticleCardProps) {
           <div className="flex items-start gap-3">
             <SourceIcon className="w-4 h-4 text-dark-muted mt-1 flex-shrink-0" />
             <div className="flex-1 min-w-0">
-              <h3 className="font-medium text-white truncate">{article.title}</h3>
+              <div className="flex items-center gap-2">
+                {!article.is_read && (
+                  <span className="w-2 h-2 rounded-full bg-article-blue flex-shrink-0" title="Unread" />
+                )}
+                <h3 className="font-medium text-white truncate">{article.title}</h3>
+              </div>
               {summaryPreview && (
                 <p className="text-sm text-dark-muted mt-1 line-clamp-2">{summaryPreview}</p>
               )}
@@ -189,7 +194,12 @@ export function ArticleCard({ article, viewMode }: ArticleCardProps) {
       </div>
 
       {/* Title */}
-      <h3 className="font-medium text-white line-clamp-2 mb-2">{article.title}</h3>
+      <div className="flex items-start gap-2 mb-2">
+        {!article.is_read && (
+          <span className="w-2 h-2 rounded-full bg-article-blue flex-shrink-0 mt-1.5" title="Unread" />
+        )}
+        <h3 className="font-medium text-white line-clamp-2">{article.title}</h3>
+      </div>
 
       {/* Summary preview */}
       {summaryPreview && (

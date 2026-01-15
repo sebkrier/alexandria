@@ -22,6 +22,7 @@ export interface Article {
   processing_error: string | null;
   word_count: number | null;
   reading_time_minutes: number | null;
+  is_read: boolean;
   created_at: string;
   updated_at: string;
   categories: CategoryBrief[];
@@ -128,4 +129,17 @@ export interface ArticleReference {
 export interface AskResponse {
   answer: string;
   articles: ArticleReference[];
+}
+
+// Unread Reader Types
+export interface UnreadNavigationResponse {
+  current_position: number;
+  total_unread: number;
+  prev_id: string | null;
+  next_id: string | null;
+}
+
+export interface UnreadListResponse {
+  items: string[];
+  total: number;
 }

@@ -1,7 +1,7 @@
 import uuid
 from datetime import datetime
 from enum import Enum
-from sqlalchemy import String, Text, DateTime, ForeignKey, Index, Integer
+from sqlalchemy import String, Text, DateTime, ForeignKey, Index, Integer, Boolean
 from sqlalchemy.orm import Mapped, mapped_column, relationship
 from sqlalchemy.dialects.postgresql import UUID, JSONB, TSVECTOR
 from pgvector.sqlalchemy import Vector
@@ -49,6 +49,9 @@ class Article(Base):
         String(20), default=ProcessingStatus.PENDING
     )
     processing_error: Mapped[str | None] = mapped_column(Text)
+
+    # Read status
+    is_read: Mapped[bool] = mapped_column(Boolean, default=False)
 
     # Full-text search vector
     search_vector: Mapped[str | None] = mapped_column(TSVECTOR)

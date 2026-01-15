@@ -14,10 +14,12 @@ import {
   Circle,
   Palette,
   Smartphone,
+  BookOpen,
 } from "lucide-react";
 import { useStore } from "@/lib/store";
 import { useCategories } from "@/hooks/useCategories";
 import { useColors } from "@/hooks/useProviders";
+import { useUnreadList } from "@/hooks/useReader";
 import { useState, useEffect } from "react";
 import type { Category } from "@/types";
 
@@ -88,7 +90,11 @@ export function Sidebar() {
   const { sidebarOpen, setAddArticleModalOpen, resetFilters, selectedColorId, setSelectedColorId } = useStore();
   const { data: categories } = useCategories();
   const { data: colors } = useColors();
+  const { data: unreadList } = useUnreadList();
   const [isClicking, setIsClicking] = useState(false);
+
+  const unreadCount = unreadList?.total ?? 0;
+  const firstUnreadId = unreadList?.items[0];
 
   // Change logo to red eyes during any click
   useEffect(() => {
@@ -135,6 +141,30 @@ export function Sidebar() {
 
       {/* Navigation */}
       <nav className="px-3 py-2">
+        {/* Unread Reader Link */}
+        {firstUnreadId && (
+          <Link
+            href={`/reader/${firstUnreadId}`}
+            className={clsx(
+              "flex items-center gap-3 px-3 py-2 rounded-lg transition-colors mb-1",
+              pathname.startsWith("/reader")
+                ? "bg-article-blue/20 text-article-blue"
+                : "text-white bg-dark-hover hover:bg-dark-hover/80"
+            )}
+          >
+            <BookOpen className="w-5 h-5" />
+            <span className="flex-1">Read Unread</span>
+            <span className={clsx(
+              "text-xs px-2 py-0.5 rounded-full font-medium",
+              pathname.startsWith("/reader")
+                ? "bg-article-blue text-white"
+                : "bg-article-blue/20 text-article-blue"
+            )}>
+              {unreadCount}
+            </span>
+          </Link>
+        )}
+
         {navItems.map((item) => {
           const isActive = pathname === item.href;
           return (
