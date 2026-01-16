@@ -64,12 +64,14 @@
             opacity: 0;
         }
 
-        /* HTMX loading indicator */
-        .htmx-request .htmx-indicator {
-            display: inline-block;
-        }
+        /* HTMX loading indicator - use !important to override Tailwind's display classes */
         .htmx-indicator {
-            display: none;
+            display: none !important;
+            pointer-events: none;
+        }
+        .htmx-request .htmx-indicator {
+            display: flex !important;
+            pointer-events: auto;
         }
 
         /* Scrollbar styling for dark mode */
