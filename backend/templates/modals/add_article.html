@@ -1,0 +1,169 @@
+{#
+  Add Article Modal
+
+  Allows users to add articles via URL or PDF upload.
+#}
+
+{% from 'components/modal.html' import modal %}
+{% from 'components/icons.html' import link, upload, loader_2 %}
+
+{% call modal(title="Add Article", id="add-article-modal", size="md") %}
+<div x-data="{ mode: 'url', loading: false, error: '' }">
+    {# Mode tabs #}
+    <div class="flex gap-2 mb-6">
+        <button
+            type="button"
+            @click="mode = 'url'"
+            :class="mode === 'url'
+                ? 'bg-article-blue/10 border-article-blue text-article-blue'
+                : 'border-dark-border text-dark-muted hover:text-dark-text hover:border-dark-hover'"
+            class="flex-1 flex items-center justify-center gap-2 py-2 rounded-lg border transition-colors"
+        >
+            {{ link('w-4 h-4') }}
+            <span>URL</span>
+        </button>
+        <button
+            type="button"
+            @click="mode = 'upload'"
+            :class="mode === 'upload'
+                ? 'bg-article-blue/10 border-article-blue text-article-blue'
+                : 'border-dark-border text-dark-muted hover:text-dark-text hover:border-dark-hover'"
+            class="flex-1 flex items-center justify-center gap-2 py-2 rounded-lg border transition-colors"
+        >
+            {{ upload('w-4 h-4') }}
+            <span>PDF Upload</span>
+        </button>
+    </div>
+
+    {# Error message #}
+    <template x-if="error">
+        <div class="mb-4 p-3 bg-article-red/10 border border-article-red/30 rounded-lg text-sm text-article-red">
+            <span x-text="error"></span>
+        </div>
+    </template>
+
+    {# URL mode #}
+    <div x-show="mode === 'url'">
+        <form
+            hx-post="/app/articles/add"
+            hx-target="#toast-container"
+            hx-swap="beforeend"
+            hx-indicator="#add-loading"
+            @htmx:before-request="loading = true; error = ''"
+            @htmx:after-request="loading = false"
+            @htmx:response-error="error = 'Failed to add article. Please check the URL and try again.'"
+        >
+            <div class="mb-4">
+                <label for="url" class="block text-sm font-medium text-dark-text mb-1.5">
+                    Article URL
+                </label>
+                <input
+                    type="url"
+                    name="url"
+                    id="url"
+                    placeholder="https://example.com/article or https://arxiv.org/abs/..."
+                    required
+                    class="w-full px-3 py-2 bg-dark-bg border border-dark-border rounded-lg text-white placeholder-dark-muted focus:outline-none focus:ring-2 focus:ring-article-blue focus:border-transparent"
+                >
+                <p class="mt-2 text-xs text-dark-muted">
+                    Supports web articles, blog posts, arXiv papers, and YouTube videos
+                </p>
+            </div>
+
+            {# Actions #}
+            <div class="flex justify-end gap-3 mt-6">
+                <button
+                    type="button"
+                    @click="$dispatch('close-modal')"
+                    hx-on:click="document.getElementById('add-article-modal').remove()"
+                    class="px-4 py-2 text-sm font-medium text-dark-muted hover:text-white bg-dark-bg border border-dark-border rounded-lg hover:bg-dark-hover transition-colors"
+                >
+                    Cancel
+                </button>
+                <button
+                    type="submit"
+                    :disabled="loading"
+                    class="px-4 py-2 text-sm font-medium text-white bg-article-blue rounded-lg hover:bg-article-blue/90 transition-colors disabled:opacity-50 disabled:cursor-not-allowed flex items-center gap-2"
+                >
+                    <span x-show="loading" class="flex items-center gap-2">
+                        {{ loader_2('w-4 h-4 animate-spin') }}
+                        Adding...
+                    </span>
+                    <span x-show="!loading">Add Article</span>
+                </button>
+            </div>
+        </form>
+    </div>
+
+    {# Upload mode #}
+    <div x-show="mode === 'upload'" x-data="{ file: null, dragover: false }">
+        <form
+            hx-post="/app/articles/upload"
+            hx-encoding="multipart/form-data"
+            hx-target="#toast-container"
+            hx-swap="beforeend"
+            @htmx:before-request="loading = true; error = ''"
+            @htmx:after-request="loading = false"
+            @htmx:response-error="error = 'Failed to upload PDF. Please try again.'"
+        >
+            <div class="mb-4">
+                <label class="block text-sm font-medium text-dark-text mb-1.5">
+                    PDF File
+                </label>
+                <div
+                    @click="$refs.fileInput.click()"
+                    @dragover.prevent="dragover = true"
+                    @dragleave.prevent="dragover = false"
+                    @drop.prevent="dragover = false; file = $event.dataTransfer.files[0]; $refs.fileInput.files = $event.dataTransfer.files"
+                    :class="file ? 'border-article-blue bg-article-blue/5' : (dragover ? 'border-article-blue' : 'border-dark-border hover:border-dark-hover')"
+                    class="border-2 border-dashed rounded-lg p-8 text-center cursor-pointer transition-colors"
+                >
+                    <input
+                        x-ref="fileInput"
+                        type="file"
+                        name="file"
+                        accept=".pdf"
+                        @change="file = $event.target.files[0]"
+                        class="hidden"
+                        required
+                    >
+                    <template x-if="file">
+                        <div>
+                            <p class="text-white font-medium" x-text="file.name"></p>
+                            <p class="text-sm text-dark-muted mt-1" x-text="(file.size / 1024 / 1024).toFixed(2) + ' MB'"></p>
+                        </div>
+                    </template>
+                    <template x-if="!file">
+                        <div>
+                            {{ upload('w-8 h-8 text-dark-muted mx-auto mb-2') }}
+                            <p class="text-dark-muted">Click or drag to select a PDF file</p>
+                        </div>
+                    </template>
+                </div>
+            </div>
+
+            {# Actions #}
+            <div class="flex justify-end gap-3 mt-6">
+                <button
+                    type="button"
+                    hx-on:click="document.getElementById('add-article-modal').remove()"
+                    class="px-4 py-2 text-sm font-medium text-dark-muted hover:text-white bg-dark-bg border border-dark-border rounded-lg hover:bg-dark-hover transition-colors"
+                >
+                    Cancel
+                </button>
+                <button
+                    type="submit"
+                    :disabled="loading || !file"
+                    class="px-4 py-2 text-sm font-medium text-white bg-article-blue rounded-lg hover:bg-article-blue/90 transition-colors disabled:opacity-50 disabled:cursor-not-allowed flex items-center gap-2"
+                >
+                    <span x-show="loading" class="flex items-center gap-2">
+                        {{ loader_2('w-4 h-4 animate-spin') }}
+                        Uploading...
+                    </span>
+                    <span x-show="!loading">Upload PDF</span>
+                </button>
+            </div>
+        </form>
+    </div>
+</div>
+{% endcall %}

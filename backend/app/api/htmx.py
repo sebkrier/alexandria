@@ -533,6 +533,557 @@ def article_to_detail_dict(article: Article) -> dict:
 
 
 # =============================================================================
+# Settings Routes
+# =============================================================================
+
+
+@router.get("/settings", response_class=HTMLResponse)
+async def settings_page(
+    request: Request,
+    db: AsyncSession = Depends(get_db),
+    current_user: User = Depends(get_current_user),
+):
+    """Settings page with AI providers and colors."""
+    from app.ai.factory import get_available_providers
+    from app.ai.prompts import EXTRACT_SUMMARY_PROMPT, SUMMARY_SYSTEM_PROMPT
+    from app.models.ai_provider import AIProvider as AIProviderModel
+    from app.utils.encryption import decrypt_api_key, mask_api_key
+
+    # Fetch providers
+    result = await db.execute(
+        select(AIProviderModel)
+        .where(AIProviderModel.user_id == current_user.id)
+        .order_by(AIProviderModel.created_at)
+    )
+    provider_models = result.scalars().all()
+
+    providers = []
+    for p in provider_models:
+        api_key = decrypt_api_key(p.api_key_encrypted)
+        providers.append({
+            "id": str(p.id),
+            "provider_name": p.provider_name.value if hasattr(p.provider_name, 'value') else str(p.provider_name),
+            "display_name": p.display_name,
+            "model_id": p.model_id,
+            "api_key_masked": mask_api_key(api_key),
+            "is_default": p.is_default,
+            "is_active": p.is_active,
+        })
+
+    # Fetch colors
+    colors = await fetch_colors(db, current_user.id)
+
+    # Fetch sidebar data
+    sidebar_data = await fetch_sidebar_data(db, current_user.id)
+
+    # Get available providers info
+    available_providers = get_available_providers()
+
+    # Get prompts
+    prompts = {
+        "system_prompt": SUMMARY_SYSTEM_PROMPT,
+        "user_prompt": EXTRACT_SUMMARY_PROMPT,
+    }
+
+    return templates.TemplateResponse(
+        request=request,
+        name="pages/settings.html",
+        context={
+            "providers": providers,
+            "available_providers": available_providers,
+            "colors": colors,
+            "prompts": prompts,
+            "current_path": "/app/settings",
+            **sidebar_data,
+        },
+    )
+
+
+@router.get("/modals/add-provider", response_class=HTMLResponse)
+async def add_provider_modal(
+    request: Request,
+    current_user: User = Depends(get_current_user),
+):
+    """Return the add provider modal HTML."""
+    from app.ai.factory import get_available_providers
+
+    available_providers = get_available_providers()
+
+    return templates.TemplateResponse(
+        request=request,
+        name="modals/add_provider.html",
+        context={
+            "available_providers": available_providers,
+        },
+    )
+
+
+@router.post("/settings/providers", response_class=HTMLResponse)
+async def create_provider(
+    request: Request,
+    db: AsyncSession = Depends(get_db),
+    current_user: User = Depends(get_current_user),
+):
+    """Create a new AI provider."""
+    from app.models.ai_provider import AIProvider as AIProviderModel
+    from app.models.ai_provider import ProviderName
+    from app.utils.encryption import decrypt_api_key, encrypt_api_key, mask_api_key
+
+    form = await request.form()
+    provider_name = form.get("provider_name")
+    display_name = form.get("display_name")
+    model_id = form.get("model_id")
+    api_key = form.get("api_key")
+
+    # Check if this is the first provider
+    result = await db.execute(
+        select(AIProviderModel).where(AIProviderModel.user_id == current_user.id).limit(1)
+    )
+    is_first = result.scalar_one_or_none() is None
+
+    # Encrypt API key
+    encrypted_key = encrypt_api_key(api_key)
+
+    provider = AIProviderModel(
+        user_id=current_user.id,
+        provider_name=ProviderName(provider_name),
+        display_name=display_name,
+        model_id=model_id,
+        api_key_encrypted=encrypted_key,
+        is_default=is_first,
+        is_active=True,
+    )
+
+    db.add(provider)
+    await db.commit()
+
+    # Return updated providers list
+    return await _render_providers_list(request, db, current_user.id)
+
+
+@router.post("/settings/providers/{provider_id}/test", response_class=HTMLResponse)
+async def test_provider(
+    request: Request,
+    provider_id: UUID,
+    db: AsyncSession = Depends(get_db),
+    current_user: User = Depends(get_current_user),
+):
+    """Test an AI provider connection."""
+    from app.ai.factory import get_ai_provider
+    from app.models.ai_provider import AIProvider as AIProviderModel
+
+    result = await db.execute(
+        select(AIProviderModel).where(
+            AIProviderModel.id == provider_id,
+            AIProviderModel.user_id == current_user.id,
+        )
+    )
+    provider_config = result.scalar_one_or_none()
+
+    if not provider_config:
+        return templates.TemplateResponse(
+            request=request,
+            name="components/toast.html",
+            context={
+                "toast_type": "error",
+                "toast_message": "Provider not found",
+            },
+        )
+
+    try:
+        provider = await get_ai_provider(db, provider_id)
+        success = await provider.health_check()
+
+        if success:
+            return templates.TemplateResponse(
+                request=request,
+                name="components/toast.html",
+                context={
+                    "toast_type": "success",
+                    "toast_message": f"Successfully connected to {provider_config.display_name}",
+                },
+            )
+        else:
+            return templates.TemplateResponse(
+                request=request,
+                name="components/toast.html",
+                context={
+                    "toast_type": "error",
+                    "toast_message": "Connection failed - please check your API key",
+                },
+            )
+    except Exception as e:
+        return templates.TemplateResponse(
+            request=request,
+            name="components/toast.html",
+            context={
+                "toast_type": "error",
+                "toast_message": f"Error: {str(e)}",
+            },
+        )
+
+
+@router.post("/settings/providers/{provider_id}/default", response_class=HTMLResponse)
+async def set_default_provider(
+    request: Request,
+    provider_id: UUID,
+    db: AsyncSession = Depends(get_db),
+    current_user: User = Depends(get_current_user),
+):
+    """Set a provider as default."""
+    from app.models.ai_provider import AIProvider as AIProviderModel
+
+    # Unset all defaults
+    result = await db.execute(
+        select(AIProviderModel).where(
+            AIProviderModel.user_id == current_user.id,
+            AIProviderModel.is_default == True,  # noqa: E712
+        )
+    )
+    for p in result.scalars().all():
+        p.is_default = False
+
+    # Set new default
+    result = await db.execute(
+        select(AIProviderModel).where(
+            AIProviderModel.id == provider_id,
+            AIProviderModel.user_id == current_user.id,
+        )
+    )
+    provider = result.scalar_one_or_none()
+    if provider:
+        provider.is_default = True
+
+    await db.commit()
+
+    # Return updated providers list
+    return await _render_providers_list(request, db, current_user.id)
+
+
+@router.delete("/settings/providers/{provider_id}", response_class=HTMLResponse)
+async def delete_provider(
+    request: Request,
+    provider_id: UUID,
+    db: AsyncSession = Depends(get_db),
+    current_user: User = Depends(get_current_user),
+):
+    """Delete an AI provider."""
+    from app.models.ai_provider import AIProvider as AIProviderModel
+
+    result = await db.execute(
+        select(AIProviderModel).where(
+            AIProviderModel.id == provider_id,
+            AIProviderModel.user_id == current_user.id,
+        )
+    )
+    provider = result.scalar_one_or_none()
+
+    if provider:
+        was_default = provider.is_default
+        await db.delete(provider)
+        await db.commit()
+
+        # If deleted provider was default, make another one default
+        if was_default:
+            result = await db.execute(
+                select(AIProviderModel).where(AIProviderModel.user_id == current_user.id).limit(1)
+            )
+            new_default = result.scalar_one_or_none()
+            if new_default:
+                new_default.is_default = True
+                await db.commit()
+
+    # Return empty string to remove the element
+    return ""
+
+
+async def _render_providers_list(request: Request, db: AsyncSession, user_id: UUID) -> HTMLResponse:
+    """Helper to render the providers list partial."""
+    from app.models.ai_provider import AIProvider as AIProviderModel
+    from app.utils.encryption import decrypt_api_key, mask_api_key
+
+    result = await db.execute(
+        select(AIProviderModel)
+        .where(AIProviderModel.user_id == user_id)
+        .order_by(AIProviderModel.created_at)
+    )
+    provider_models = result.scalars().all()
+
+    providers = []
+    for p in provider_models:
+        api_key = decrypt_api_key(p.api_key_encrypted)
+        providers.append({
+            "id": str(p.id),
+            "provider_name": p.provider_name.value if hasattr(p.provider_name, 'value') else str(p.provider_name),
+            "display_name": p.display_name,
+            "model_id": p.model_id,
+            "api_key_masked": mask_api_key(api_key),
+            "is_default": p.is_default,
+            "is_active": p.is_active,
+        })
+
+    return templates.TemplateResponse(
+        request=request,
+        name="partials/settings_providers_list.html",
+        context={"providers": providers},
+    )
+
+
+@router.patch("/settings/colors/{color_id}", response_class=HTMLResponse)
+async def update_color(
+    request: Request,
+    color_id: UUID,
+    db: AsyncSession = Depends(get_db),
+    current_user: User = Depends(get_current_user),
+):
+    """Update a color label name."""
+    form = await request.form()
+    name = form.get("name")
+
+    result = await db.execute(
+        select(Color).where(
+            Color.id == color_id,
+            Color.user_id == current_user.id,
+        )
+    )
+    color = result.scalar_one_or_none()
+
+    if color and name:
+        color.name = name
+        await db.commit()
+        await db.refresh(color)
+
+    # Return updated color element
+    return templates.TemplateResponse(
+        request=request,
+        name="partials/settings_color_item.html",
+        context={
+            "color": {
+                "id": str(color.id),
+                "name": color.name,
+                "hex_value": color.hex_value,
+            }
+        },
+    )
+
+
+# =============================================================================
+# Modal Routes
+# =============================================================================
+
+
+@router.get("/modals/add-article", response_class=HTMLResponse)
+async def add_article_modal(
+    request: Request,
+    current_user: User = Depends(get_current_user),
+):
+    """Return the add article modal HTML."""
+    return templates.TemplateResponse(
+        request=request,
+        name="modals/add_article.html",
+        context={},
+    )
+
+
+# =============================================================================
+# Article HTMX Routes
+# =============================================================================
+
+
+@router.post("/articles/add", response_class=HTMLResponse)
+async def add_article_url(
+    request: Request,
+    db: AsyncSession = Depends(get_db),
+    current_user: User = Depends(get_current_user),
+):
+    """Add an article from URL via HTMX."""
+    from app.database import async_session_maker
+    from app.extractors import extract_content
+    from app.models.article import Article, ProcessingStatus, SourceType
+
+    form = await request.form()
+    url = form.get("url")
+
+    if not url:
+        return templates.TemplateResponse(
+            request=request,
+            name="components/toast.html",
+            context={
+                "toast_type": "error",
+                "toast_message": "Please enter a URL",
+            },
+        )
+
+    try:
+        # Extract content from URL
+        content = await extract_content(url=url)
+
+        # Determine source type
+        source_type = SourceType(content.source_type)
+
+        # Create article
+        article = Article(
+            user_id=current_user.id,
+            source_type=source_type,
+            original_url=content.original_url or url,
+            title=content.title,
+            authors=content.authors,
+            publication_date=content.publication_date,
+            extracted_text=content.text,
+            word_count=len(content.text.split()) if content.text else None,
+            article_metadata=content.metadata,
+            processing_status=ProcessingStatus.PENDING,
+        )
+
+        db.add(article)
+        await db.commit()
+        await db.refresh(article)
+
+        # Schedule background processing
+        import asyncio
+
+        async def process_in_background(article_id: UUID, user_id: UUID):
+            async with async_session_maker() as bg_db:
+                try:
+                    from app.ai.service import AIService
+                    ai_service = AIService(bg_db)
+                    await ai_service.process_article(article_id=article_id, user_id=user_id)
+                except Exception as e:
+                    import logging
+                    logging.error(f"Background processing failed: {e}")
+
+        asyncio.create_task(process_in_background(article.id, current_user.id))
+
+        # Return success toast + trigger to close modal and refresh list
+        response = templates.TemplateResponse(
+            request=request,
+            name="components/toast.html",
+            context={
+                "toast_type": "success",
+                "toast_message": f"Added: {article.title[:50]}{'...' if len(article.title or '') > 50 else ''}",
+            },
+        )
+        # Add HX-Trigger to close modal and refresh articles
+        response.headers["HX-Trigger"] = "articleAdded"
+        return response
+
+    except Exception as e:
+        return templates.TemplateResponse(
+            request=request,
+            name="components/toast.html",
+            context={
+                "toast_type": "error",
+                "toast_message": f"Failed to add article: {str(e)[:100]}",
+            },
+        )
+
+
+@router.post("/articles/upload", response_class=HTMLResponse)
+async def upload_article_pdf(
+    request: Request,
+    db: AsyncSession = Depends(get_db),
+    current_user: User = Depends(get_current_user),
+):
+    """Upload a PDF article via HTMX."""
+    import tempfile
+    from pathlib import Path
+
+    from app.database import async_session_maker
+    from app.extractors import extract_content
+    from app.models.article import Article, ProcessingStatus, SourceType
+
+    form = await request.form()
+    file = form.get("file")
+
+    if not file or not hasattr(file, "filename"):
+        return templates.TemplateResponse(
+            request=request,
+            name="components/toast.html",
+            context={
+                "toast_type": "error",
+                "toast_message": "Please select a PDF file",
+            },
+        )
+
+    if not file.filename.lower().endswith(".pdf"):
+        return templates.TemplateResponse(
+            request=request,
+            name="components/toast.html",
+            context={
+                "toast_type": "error",
+                "toast_message": "Only PDF files are supported",
+            },
+        )
+
+    try:
+        # Save uploaded file to temporary location
+        with tempfile.NamedTemporaryFile(delete=False, suffix=".pdf") as temp_file:
+            content = await file.read()
+            temp_file.write(content)
+            temp_path = temp_file.name
+
+        # Extract content from PDF
+        extracted = await extract_content(file_path=temp_path)
+
+        # Create article
+        article = Article(
+            user_id=current_user.id,
+            source_type=SourceType.PDF,
+            title=extracted.title or file.filename,
+            authors=extracted.authors,
+            extracted_text=extracted.text,
+            word_count=len(extracted.text.split()) if extracted.text else None,
+            file_path=f"uploads/{current_user.id}/{file.filename}",
+            article_metadata=extracted.metadata,
+            processing_status=ProcessingStatus.PENDING,
+        )
+
+        db.add(article)
+        await db.commit()
+        await db.refresh(article)
+
+        # Clean up temp file
+        Path(temp_path).unlink(missing_ok=True)
+
+        # Schedule background processing
+        import asyncio
+
+        async def process_in_background(article_id: UUID, user_id: UUID):
+            async with async_session_maker() as bg_db:
+                try:
+                    from app.ai.service import AIService
+                    ai_service = AIService(bg_db)
+                    await ai_service.process_article(article_id=article_id, user_id=user_id)
+                except Exception as e:
+                    import logging
+                    logging.error(f"Background processing failed: {e}")
+
+        asyncio.create_task(process_in_background(article.id, current_user.id))
+
+        # Return success toast
+        response = templates.TemplateResponse(
+            request=request,
+            name="components/toast.html",
+            context={
+                "toast_type": "success",
+                "toast_message": f"Uploaded: {article.title[:50]}{'...' if len(article.title or '') > 50 else ''}",
+            },
+        )
+        response.headers["HX-Trigger"] = "articleAdded"
+        return response
+
+    except Exception as e:
+        return templates.TemplateResponse(
+            request=request,
+            name="components/toast.html",
+            context={
+                "toast_type": "error",
+                "toast_message": f"Failed to upload PDF: {str(e)[:100]}",
+            },
+        )
+
+
+# =============================================================================
 # Test Routes (for development)
 # =============================================================================
 

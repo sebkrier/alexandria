@@ -65,7 +65,9 @@
     {# Add Article/Video Button #}
     <div class="px-3 py-3">
         <button
-            onclick="alert('Add article modal coming soon')"
+            hx-get="/app/modals/add-article"
+            hx-target="#modal-container"
+            hx-swap="innerHTML"
             class="w-full flex items-center justify-center gap-2 px-4 py-2.5 bg-article-blue text-white rounded-lg hover:bg-article-blue/90 transition-colors"
         >
             {{ plus('w-4 h-4') }}
