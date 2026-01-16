@@ -1,0 +1,115 @@
+{% extends "base.html" %}
+
+{% block title %}{{ title }} - Alexandria{% endblock %}
+
+{% block body %}
+<div class="min-h-screen bg-dark-bg flex items-center justify-center p-8">
+    <div class="max-w-2xl w-full">
+        <!-- Header -->
+        <div class="text-center mb-8">
+            <h1 class="text-3xl font-bold text-white mb-2">{{ title }}</h1>
+            <p class="text-dark-muted">Phase 1: Template Infrastructure Test</p>
+        </div>
+
+        <!-- Success Card -->
+        <div class="bg-dark-surface border border-dark-border rounded-xl p-6 mb-6 animate-slideUp">
+            <div class="flex items-center gap-3 mb-4">
+                <div class="w-10 h-10 bg-article-green/20 rounded-lg flex items-center justify-center">
+                    <svg class="w-6 h-6 text-article-green" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 13l4 4L19 7"></path>
+                    </svg>
+                </div>
+                <div>
+                    <h2 class="text-lg font-semibold text-white">Setup Complete</h2>
+                    <p class="text-dark-muted text-sm">{{ message }}</p>
+                </div>
+            </div>
+
+            <!-- Features List -->
+            <div class="space-y-2">
+                {% for feature in features %}
+                <div class="flex items-center gap-2 text-dark-text">
+                    <svg class="w-4 h-4 text-article-blue" fill="currentColor" viewBox="0 0 20 20">
+                        <path fill-rule="evenodd" d="M16.707 5.293a1 1 0 010 1.414l-8 8a1 1 0 01-1.414 0l-4-4a1 1 0 011.414-1.414L8 12.586l7.293-7.293a1 1 0 011.414 0z" clip-rule="evenodd"></path>
+                    </svg>
+                    <span>{{ feature }}</span>
+                </div>
+                {% endfor %}
+            </div>
+        </div>
+
+        <!-- HTMX Test -->
+        <div class="bg-dark-surface border border-dark-border rounded-xl p-6 mb-6">
+            <h3 class="text-lg font-semibold text-white mb-4">HTMX Test</h3>
+            <p class="text-dark-muted text-sm mb-4">Click the button to test HTMX dynamic updates:</p>
+
+            <button
+                hx-get="/app/test/click"
+                hx-target="#htmx-result"
+                hx-swap="innerHTML"
+                class="px-4 py-2 bg-article-blue text-white rounded-lg hover:bg-article-blue/90 transition-colors"
+            >
+                Click Me
+            </button>
+
+            <div id="htmx-result" class="mt-4 p-3 bg-dark-bg rounded-lg min-h-[40px]">
+                <span class="text-dark-muted">Result will appear here...</span>
+            </div>
+        </div>
+
+        <!-- Alpine.js Test -->
+        <div class="bg-dark-surface border border-dark-border rounded-xl p-6 mb-6" x-data="{ count: 0 }">
+            <h3 class="text-lg font-semibold text-white mb-4">Alpine.js Test</h3>
+            <p class="text-dark-muted text-sm mb-4">Click to test Alpine.js client-side state:</p>
+
+            <div class="flex items-center gap-4">
+                <button
+                    @click="count++"
+                    class="px-4 py-2 bg-article-purple text-white rounded-lg hover:bg-article-purple/90 transition-colors"
+                >
+                    Increment
+                </button>
+                <span class="text-white">Count: <span x-text="count" class="font-bold text-article-purple"></span></span>
+            </div>
+        </div>
+
+        <!-- Color Palette Preview -->
+        <div class="bg-dark-surface border border-dark-border rounded-xl p-6">
+            <h3 class="text-lg font-semibold text-white mb-4">Color Palette</h3>
+            <div class="grid grid-cols-3 gap-3">
+                <div class="p-3 bg-dark-bg rounded-lg text-center">
+                    <div class="w-8 h-8 bg-article-blue rounded-full mx-auto mb-2"></div>
+                    <span class="text-xs text-dark-muted">Blue</span>
+                </div>
+                <div class="p-3 bg-dark-bg rounded-lg text-center">
+                    <div class="w-8 h-8 bg-article-green rounded-full mx-auto mb-2"></div>
+                    <span class="text-xs text-dark-muted">Green</span>
+                </div>
+                <div class="p-3 bg-dark-bg rounded-lg text-center">
+                    <div class="w-8 h-8 bg-article-orange rounded-full mx-auto mb-2"></div>
+                    <span class="text-xs text-dark-muted">Orange</span>
+                </div>
+                <div class="p-3 bg-dark-bg rounded-lg text-center">
+                    <div class="w-8 h-8 bg-article-purple rounded-full mx-auto mb-2"></div>
+                    <span class="text-xs text-dark-muted">Purple</span>
+                </div>
+                <div class="p-3 bg-dark-bg rounded-lg text-center">
+                    <div class="w-8 h-8 bg-article-red rounded-full mx-auto mb-2"></div>
+                    <span class="text-xs text-dark-muted">Red</span>
+                </div>
+                <div class="p-3 bg-dark-bg rounded-lg text-center">
+                    <div class="w-8 h-8 bg-article-gray rounded-full mx-auto mb-2"></div>
+                    <span class="text-xs text-dark-muted">Gray</span>
+                </div>
+            </div>
+        </div>
+
+        <!-- Back Link -->
+        <div class="mt-6 text-center">
+            <a href="/docs" class="text-article-blue hover:underline text-sm">
+                View API Documentation
+            </a>
+        </div>
+    </div>
+</div>
+{% endblock %}
