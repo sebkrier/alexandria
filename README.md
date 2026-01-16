@@ -1,5 +1,7 @@
 # Alexandria
 
+![Alexandria UI](UI.png)
+
 A personal research library for storing, organizing, and retrieving articles with AI-powered summarization and categorization.
 
 ## Features
