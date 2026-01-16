@@ -58,6 +58,9 @@ dependencies = [
 
     # Linting
     "ruff>=0.5.0",
+
+    # HTMX Frontend
+    "jinja2>=3.1.0",
 ]
 
 [build-system]

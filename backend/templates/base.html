@@ -1,0 +1,191 @@
+<!DOCTYPE html>
+<html lang="en" class="dark">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>{% block title %}Alexandria{% endblock %}</title>
+
+    <!-- Tailwind CSS via CDN -->
+    <script src="https://cdn.tailwindcss.com"></script>
+    <script>
+        tailwind.config = {
+            darkMode: 'class',
+            theme: {
+                extend: {
+                    colors: {
+                        dark: {
+                            bg: '#0f0f0f',
+                            surface: '#1a1a1a',
+                            border: '#2a2a2a',
+                            hover: '#333333',
+                            text: '#e5e5e5',
+                            muted: '#888888',
+                        },
+                        article: {
+                            blue: '#6B7FD7',
+                            green: '#5BA37C',
+                            orange: '#D4915D',
+                            purple: '#9B7FC7',
+                            red: '#D46A6A',
+                            gray: '#6B7280',
+                        }
+                    },
+                    fontFamily: {
+                        sans: ['Inter', 'system-ui', 'sans-serif'],
+                        mono: ['JetBrains Mono', 'monospace'],
+                    },
+                }
+            }
+        }
+    </script>
+
+    <!-- HTMX -->
+    <script src="https://unpkg.com/htmx.org@2.0.4"></script>
+
+    <!-- Alpine.js for client-side state -->
+    <script defer src="https://unpkg.com/alpinejs@3.x.x/dist/cdn.min.js"></script>
+
+    <!-- Inter font -->
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
+
+    <!-- Custom styles -->
+    <style>
+        /* Smooth transitions for HTMX swaps */
+        .htmx-settling {
+            opacity: 0;
+        }
+        .htmx-swapping {
+            opacity: 0;
+            transition: opacity 0.1s ease-out;
+        }
+        .htmx-added {
+            opacity: 0;
+        }
+
+        /* HTMX loading indicator */
+        .htmx-request .htmx-indicator {
+            display: inline-block;
+        }
+        .htmx-indicator {
+            display: none;
+        }
+
+        /* Scrollbar styling for dark mode */
+        ::-webkit-scrollbar {
+            width: 8px;
+            height: 8px;
+        }
+        ::-webkit-scrollbar-track {
+            background: #1a1a1a;
+        }
+        ::-webkit-scrollbar-thumb {
+            background: #333333;
+            border-radius: 4px;
+        }
+        ::-webkit-scrollbar-thumb:hover {
+            background: #444444;
+        }
+
+        /* Animations */
+        @keyframes fadeIn {
+            from { opacity: 0; }
+            to { opacity: 1; }
+        }
+        @keyframes slideUp {
+            from {
+                opacity: 0;
+                transform: translateY(10px);
+            }
+            to {
+                opacity: 1;
+                transform: translateY(0);
+            }
+        }
+        .animate-fadeIn {
+            animation: fadeIn 0.2s ease-out;
+        }
+        .animate-slideUp {
+            animation: slideUp 0.2s ease-out;
+        }
+
+        /* Line clamp utilities */
+        .line-clamp-2 {
+            display: -webkit-box;
+            -webkit-line-clamp: 2;
+            -webkit-box-orient: vertical;
+            overflow: hidden;
+        }
+        .line-clamp-3 {
+            display: -webkit-box;
+            -webkit-line-clamp: 3;
+            -webkit-box-orient: vertical;
+            overflow: hidden;
+        }
+
+        /* Prose styling for markdown */
+        .prose-dark {
+            color: #e5e5e5;
+        }
+        .prose-dark h1, .prose-dark h2, .prose-dark h3 {
+            color: white;
+            margin-top: 1.5em;
+            margin-bottom: 0.5em;
+        }
+        .prose-dark p {
+            margin-bottom: 1em;
+        }
+        .prose-dark ul, .prose-dark ol {
+            margin-left: 1.5em;
+            margin-bottom: 1em;
+        }
+        .prose-dark li {
+            margin-bottom: 0.25em;
+        }
+        .prose-dark code {
+            background: #2a2a2a;
+            padding: 0.2em 0.4em;
+            border-radius: 0.25em;
+            font-size: 0.9em;
+        }
+        .prose-dark pre {
+            background: #1a1a1a;
+            padding: 1em;
+            border-radius: 0.5em;
+            overflow-x: auto;
+        }
+        .prose-dark a {
+            color: #6B7FD7;
+        }
+        .prose-dark a:hover {
+            text-decoration: underline;
+        }
+    </style>
+
+    {% block head %}{% endblock %}
+</head>
+<body class="bg-dark-bg text-dark-text font-sans antialiased">
+    {% block body %}
+    <div class="min-h-screen flex">
+        {% block sidebar %}{% endblock %}
+
+        <div class="flex-1 flex flex-col min-w-0">
+            {% block header %}{% endblock %}
+
+            <main class="flex-1 overflow-y-auto">
+                {% block content %}{% endblock %}
+            </main>
+        </div>
+    </div>
+    {% endblock %}
+
+    <!-- Modal container -->
+    <div id="modal-container"></div>
+
+    <!-- Toast notifications container -->
+    <div id="toast-container" class="fixed bottom-4 right-4 z-50 flex flex-col gap-2"></div>
+
+    {% block scripts %}{% endblock %}
+</body>
+</html>
