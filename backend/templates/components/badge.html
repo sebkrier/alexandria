@@ -9,8 +9,8 @@
     size: "sm" or "md"
 #}
 {% set size_classes = {
-    'sm': 'px-2 py-0.5 text-xs',
-    'md': 'px-2.5 py-1 text-sm'
+    'sm': 'px-1.5 py-0 text-xs',
+    'md': 'px-2 py-0.5 text-sm'
 } %}
 {% set variant_classes = {
     'solid': 'bg-dark-hover text-dark-text',
@@ -44,7 +44,7 @@
 } %}
 {% set type_config = config.get(media_type, config['article']) %}
 
-<span class="inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-xs font-medium {{ type_config.bg }} {{ type_config.text }} {{ class }}">
+<span class="inline-flex items-center gap-0.5 px-1.5 py-0 rounded-full text-xs font-medium {{ type_config.bg }} {{ type_config.text }} {{ class }}">
     {% if type_config.icon == 'file_text' %}{{ file_text('w-3 h-3') }}
     {% elif type_config.icon == 'graduation_cap' %}{{ graduation_cap('w-3 h-3') }}
     {% elif type_config.icon == 'play_circle' %}{{ play_circle('w-3 h-3') }}
