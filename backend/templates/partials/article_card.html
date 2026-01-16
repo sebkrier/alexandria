@@ -1,0 +1,193 @@
+{#
+  Article Card Partial
+
+  Expected context:
+    - article: dict with keys matching Article schema:
+        - id, title, source_type, media_type, summary, is_read, reading_time_minutes
+        - processing_status, original_url, color (optional dict with hex_value)
+        - categories (list of dicts with id, name)
+        - tags (list of dicts with id, name, color)
+    - view_mode: "grid" or "list" (default: "grid")
+    - is_selected: boolean (default: false)
+#}
+
+{% from 'components/icons.html' import source_icon, status_icon, clock, check %}
+{% from 'components/badge.html' import badge, media_type_badge %}
+
+{% set view_mode = view_mode|default('grid') %}
+{% set is_selected = is_selected|default(false) %}
+
+{# Get summary preview - first non-empty, non-header line, truncated to 200 chars #}
+{% set ns = namespace(summary_preview='') %}
+{% for line in (article.summary or '').split('\n') %}
+    {% if line.strip() and not line.strip().startswith('#') and not ns.summary_preview %}
+        {% set ns.summary_preview = line.strip()[:200] %}
+    {% endif %}
+{% endfor %}
+{% set summary_preview = ns.summary_preview %}
+
+{# External link - original URL or Google search #}
+{% set external_link = article.original_url if article.original_url else 'https://www.google.com/search?q=' + (article.title or '')|urlencode %}
+
+{% if view_mode == 'list' %}
+{# ============ LIST VIEW ============ #}
+<a
+    href="/app/article/{{ article.id }}"
+    hx-get="/app/article/{{ article.id }}"
+    hx-target="body"
+    hx-push-url="true"
+    class="flex items-start gap-4 p-4 bg-dark-surface border rounded-lg transition-colors {% if is_selected %}border-article-blue bg-article-blue/5{% else %}border-dark-border hover:border-dark-hover hover:bg-dark-hover/50{% endif %}"
+>
+    {# Color indicator #}
+    {% if article.color %}
+    <div
+        class="w-1 self-stretch rounded-full flex-shrink-0"
+        style="background-color: {{ article.color.hex_value }}"
+    ></div>
+    {% endif %}
+
+    {# Content #}
+    <div class="flex-1 min-w-0">
+        <div class="flex items-start gap-3">
+            {{ source_icon(article.source_type, 'w-4 h-4 text-dark-muted mt-1 flex-shrink-0') }}
+            <div class="flex-1 min-w-0">
+                <div class="flex items-center gap-2">
+                    {% if not article.is_read %}
+                    <span class="w-2 h-2 rounded-full bg-article-blue flex-shrink-0" title="Unread"></span>
+                    {% endif %}
+                    <h3 class="font-medium text-white truncate">{{ article.title }}</h3>
+                </div>
+                {% if summary_preview %}
+                <p class="text-sm text-dark-muted mt-1 line-clamp-2">{{ summary_preview }}</p>
+                {% endif %}
+                <div class="flex items-center gap-2 mt-2">
+                    {% for cat in (article.categories or [])[:1] %}
+                    {{ badge(cat.name, color='#6B7280', variant='outline', size='sm') }}
+                    {% endfor %}
+                    {% for tag in (article.tags or [])[:3] %}
+                    {{ badge(tag.name, color=tag.color or '#8B5CF6', size='sm') }}
+                    {% endfor %}
+                </div>
+            </div>
+        </div>
+    </div>
+
+    {# Meta #}
+    <div class="flex items-center gap-3 flex-shrink-0 text-sm text-dark-muted">
+        {% if article.reading_time_minutes %}
+        <span class="flex items-center gap-1">
+            {{ clock('w-3.5 h-3.5') }}
+            {{ article.reading_time_minutes }} min
+        </span>
+        {% endif %}
+
+        {% if article.processing_status != 'completed' %}
+        {{ status_icon(article.processing_status, 'w-4 h-4') }}
+        {% endif %}
+
+        {{ media_type_badge(article.media_type) }}
+
+        <a
+            href="{{ external_link }}"
+            target="_blank"
+            rel="noopener noreferrer"
+            onclick="event.stopPropagation()"
+            class="hover:text-article-blue transition-colors"
+            title="{{ 'Open source' if article.original_url else 'Search on Google' }}"
+        >📎</a>
+
+        {# Checkbox for bulk selection #}
+        <button
+            type="button"
+            onclick="event.preventDefault(); event.stopPropagation(); toggleArticleSelection('{{ article.id }}')"
+            class="w-5 h-5 rounded border-2 flex-shrink-0 flex items-center justify-center transition-colors {% if is_selected %}bg-article-blue border-article-blue{% else %}border-dark-border hover:border-dark-muted{% endif %}"
+        >
+            {% if is_selected %}{{ check('w-3 h-3 text-white') }}{% endif %}
+        </button>
+    </div>
+</a>
+
+{% else %}
+{# ============ GRID VIEW ============ #}
+<a
+    href="/app/article/{{ article.id }}"
+    hx-get="/app/article/{{ article.id }}"
+    hx-target="body"
+    hx-push-url="true"
+    class="flex flex-col p-4 bg-dark-surface border rounded-lg transition-colors h-full {% if is_selected %}border-article-blue bg-article-blue/5{% else %}border-dark-border hover:border-dark-hover hover:bg-dark-hover/50{% endif %}"
+>
+    {# Header #}
+    <div class="flex items-start justify-between gap-2 mb-3">
+        <div class="flex items-center gap-2">
+            {{ source_icon(article.source_type, 'w-4 h-4 text-dark-muted') }}
+            {% if article.color %}
+            <div
+                class="w-2 h-2 rounded-full"
+                style="background-color: {{ article.color.hex_value }}"
+            ></div>
+            {% endif %}
+        </div>
+        <div class="flex items-center gap-2">
+            {% if article.processing_status != 'completed' %}
+            {{ status_icon(article.processing_status, 'w-4 h-4') }}
+            {% endif %}
+
+            {# Checkbox for bulk selection #}
+            <button
+                type="button"
+                onclick="event.preventDefault(); event.stopPropagation(); toggleArticleSelection('{{ article.id }}')"
+                class="w-5 h-5 rounded border-2 flex-shrink-0 flex items-center justify-center transition-colors {% if is_selected %}bg-article-blue border-article-blue{% else %}border-dark-border hover:border-dark-muted{% endif %}"
+            >
+                {% if is_selected %}{{ check('w-3 h-3 text-white') }}{% endif %}
+            </button>
+        </div>
+    </div>
+
+    {# Title #}
+    <div class="flex items-start gap-2 mb-2">
+        {% if not article.is_read %}
+        <span class="w-2 h-2 rounded-full bg-article-blue flex-shrink-0 mt-1.5" title="Unread"></span>
+        {% endif %}
+        <h3 class="font-medium text-white line-clamp-2">{{ article.title }}</h3>
+    </div>
+
+    {# Summary preview #}
+    {% if summary_preview %}
+    <p class="text-sm text-dark-muted line-clamp-3 mb-3 flex-1">{{ summary_preview }}</p>
+    {% endif %}
+
+    {# Categories & Tags #}
+    <div class="flex flex-wrap gap-1.5 mt-auto">
+        {% for cat in (article.categories or [])[:1] %}
+        {{ badge(cat.name, color='#6B7280', variant='outline', size='sm') }}
+        {% endfor %}
+        {% for tag in (article.tags or [])[:2] %}
+        {{ badge(tag.name, color=tag.color or '#8B5CF6', size='sm') }}
+        {% endfor %}
+    </div>
+
+    {# Footer #}
+    <div class="mt-3 pt-3 border-t border-dark-border flex justify-between items-center">
+        {% if article.reading_time_minutes %}
+        <span class="flex items-center gap-1 text-xs text-dark-muted">
+            {{ clock('w-3 h-3') }}
+            {{ article.reading_time_minutes }} min read
+        </span>
+        {% else %}
+        <span></span>
+        {% endif %}
+
+        <div class="flex items-center gap-2">
+            {{ media_type_badge(article.media_type) }}
+            <a
+                href="{{ external_link }}"
+                target="_blank"
+                rel="noopener noreferrer"
+                onclick="event.stopPropagation()"
+                class="text-dark-muted hover:text-article-blue transition-colors"
+                title="{{ 'Open source' if article.original_url else 'Search on Google' }}"
+            >📎</a>
+        </div>
+    </div>
+</a>
+{% endif %}

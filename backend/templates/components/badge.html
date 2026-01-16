@@ -1,0 +1,57 @@
+{# Badge component - matching React Badge.tsx #}
+
+{% macro badge(text, color=none, variant="solid", size="sm") %}
+{#
+  Args:
+    text: The badge text
+    color: Optional hex color (e.g., "#8B5CF6")
+    variant: "solid" or "outline"
+    size: "sm" or "md"
+#}
+{% set size_classes = {
+    'sm': 'px-2 py-0.5 text-xs',
+    'md': 'px-2.5 py-1 text-sm'
+} %}
+{% set variant_classes = {
+    'solid': 'bg-dark-hover text-dark-text',
+    'outline': 'border border-dark-border text-dark-muted'
+} %}
+{% if color %}
+<span
+    class="inline-flex items-center font-medium rounded-full {{ size_classes[size] }}"
+    style="background-color: {{ color }}20; color: {{ color }}; {% if variant == 'outline' %}border: 1px solid {{ color }};{% endif %}"
+>{{ text }}</span>
+{% else %}
+<span class="inline-flex items-center font-medium rounded-full {{ size_classes[size] }} {{ variant_classes[variant] }}">{{ text }}</span>
+{% endif %}
+{% endmacro %}
+
+
+{# Media Type Badge - matching React MediaTypeBadge.tsx #}
+{% macro media_type_badge(media_type, class="") %}
+{#
+  Media types: article, paper, video, blog, pdf, newsletter
+#}
+{% from 'components/icons.html' import file_text, graduation_cap, play_circle, pen_line, file_down, mail %}
+
+{% set config = {
+    'article': {'label': 'Article', 'bg': 'bg-gray-500/20', 'text': 'text-gray-400', 'icon': 'file_text'},
+    'paper': {'label': 'Paper', 'bg': 'bg-blue-500/20', 'text': 'text-blue-400', 'icon': 'graduation_cap'},
+    'video': {'label': 'Video', 'bg': 'bg-red-500/20', 'text': 'text-red-400', 'icon': 'play_circle'},
+    'blog': {'label': 'Blog', 'bg': 'bg-green-500/20', 'text': 'text-green-400', 'icon': 'pen_line'},
+    'pdf': {'label': 'PDF', 'bg': 'bg-orange-500/20', 'text': 'text-orange-400', 'icon': 'file_down'},
+    'newsletter': {'label': 'Newsletter', 'bg': 'bg-purple-500/20', 'text': 'text-purple-400', 'icon': 'mail'}
+} %}
+{% set type_config = config.get(media_type, config['article']) %}
+
+<span class="inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-xs font-medium {{ type_config.bg }} {{ type_config.text }} {{ class }}">
+    {% if type_config.icon == 'file_text' %}{{ file_text('w-3 h-3') }}
+    {% elif type_config.icon == 'graduation_cap' %}{{ graduation_cap('w-3 h-3') }}
+    {% elif type_config.icon == 'play_circle' %}{{ play_circle('w-3 h-3') }}
+    {% elif type_config.icon == 'pen_line' %}{{ pen_line('w-3 h-3') }}
+    {% elif type_config.icon == 'file_down' %}{{ file_down('w-3 h-3') }}
+    {% elif type_config.icon == 'mail' %}{{ mail('w-3 h-3') }}
+    {% endif %}
+    <span>{{ type_config.label }}</span>
+</span>
+{% endmacro %}
