@@ -310,6 +310,130 @@ async def fetch_articles(
 # =============================================================================
 
 
+@router.get("/article/{article_id}", response_class=HTMLResponse)
+async def article_detail_page(
+    request: Request,
+    article_id: UUID,
+    db: AsyncSession = Depends(get_db),
+    current_user: User = Depends(get_current_user),
+):
+    """Article detail page."""
+    from app.models.note import Note
+
+    # Fetch article with all relationships
+    query = (
+        select(Article)
+        .where(Article.id == article_id, Article.user_id == current_user.id)
+        .options(
+            selectinload(Article.categories).selectinload(ArticleCategory.category),
+            selectinload(Article.tags).selectinload(ArticleTag.tag),
+            selectinload(Article.color),
+        )
+    )
+    result = await db.execute(query)
+    article = result.scalar_one_or_none()
+
+    if not article:
+        return templates.TemplateResponse(
+            request=request,
+            name="pages/not_found.html",
+            context={"message": "Article not found"},
+            status_code=404,
+        )
+
+    # Fetch notes for this article
+    notes_query = (
+        select(Note)
+        .where(Note.article_id == article_id)
+        .order_by(Note.created_at.desc())
+    )
+    notes_result = await db.execute(notes_query)
+    notes = notes_result.scalars().all()
+
+    # Convert article to template-friendly dict
+    article_dict = article_to_detail_dict(article)
+    article_dict["notes"] = [
+        {
+            "id": str(note.id),
+            "content": note.content,
+            "created_at": note.created_at,
+        }
+        for note in notes
+    ]
+
+    return templates.TemplateResponse(
+        request=request,
+        name="pages/article.html",
+        context={"article": article_dict},
+    )
+
+
+def article_to_detail_dict(article: Article) -> dict:
+    """Convert Article model to a detailed dict for article detail template."""
+    categories = []
+    for ac in article.categories:
+        categories.append({
+            "id": str(ac.category.id),
+            "name": ac.category.name,
+            "is_primary": ac.is_primary,
+        })
+
+    tags = []
+    for at in article.tags:
+        tags.append({
+            "id": str(at.tag.id),
+            "name": at.tag.name,
+            "color": at.tag.color,
+        })
+
+    color = None
+    if article.color:
+        color = {
+            "id": str(article.color.id),
+            "hex_value": article.color.hex_value,
+            "name": article.color.name,
+        }
+
+    # Handle source_type - might be enum or string
+    source_type_val = article.source_type
+    if hasattr(source_type_val, 'value'):
+        source_type_str = source_type_val.value
+    else:
+        source_type_str = str(source_type_val) if source_type_val else "url"
+
+    # Handle processing_status - might be enum or string
+    proc_status = article.processing_status
+    if hasattr(proc_status, 'value'):
+        proc_status_str = proc_status.value
+    else:
+        proc_status_str = str(proc_status) if proc_status else "pending"
+
+    return {
+        "id": str(article.id),
+        "source_type": source_type_str,
+        "media_type": determine_media_type(article.source_type, article.original_url),
+        "original_url": article.original_url,
+        "title": article.title or "Untitled",
+        "authors": article.authors or [],
+        "summary": article.summary,
+        "summary_model": article.summary_model,
+        "is_read": article.is_read,
+        "reading_time_minutes": calculate_reading_time(article.word_count),
+        "processing_status": proc_status_str,
+        "processing_error": article.processing_error,
+        "publication_date": article.publication_date,
+        "color": color,
+        "categories": categories,
+        "tags": tags,
+        "created_at": article.created_at,
+    }
+
+
+# =============================================================================
+# Test Routes (for development)
+# =============================================================================
+
+
 @router.get("/test", response_class=HTMLResponse)
 async def test_page(request: Request):
     """Test page to verify HTMX + Jinja2 setup is working."""

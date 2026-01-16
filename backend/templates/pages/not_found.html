@@ -1,0 +1,14 @@
+{% extends "base.html" %}
+
+{% block title %}Not Found - Alexandria{% endblock %}
+
+{% block body %}
+<div class="min-h-screen bg-dark-bg flex items-center justify-center">
+    <div class="text-center">
+        <h1 class="text-xl font-medium text-white mb-2">{{ message|default("Page not found") }}</h1>
+        <a href="/app/" class="text-article-blue hover:underline">
+            Return to library
+        </a>
+    </div>
+</div>
+{% endblock %}

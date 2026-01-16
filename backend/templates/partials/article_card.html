@@ -36,11 +36,12 @@
    LIST VIEW - ArticleCard.tsx lines 59-146
    ============================================================================ #}
 
-{# Lines 61-68: Root container - using div instead of <a> to avoid nested links #}
+{# Lines 61-68: Root container - using div with hx-get #}
 <div
     hx-get="/app/article/{{ article.id }}"
     hx-target="body"
     hx-push-url="true"
+    hx-trigger="click"
     class="flex items-start gap-4 p-4 bg-dark-surface border rounded-lg transition-colors cursor-pointer {% if is_selected %}border-article-blue bg-article-blue/5{% else %}border-dark-border hover:border-dark-hover hover:bg-dark-hover/50{% endif %}"
 >
     {# Lines 71-76: Color indicator - vertical bar on left #}
@@ -134,11 +135,12 @@
    GRID VIEW - ArticleCard.tsx lines 150-248
    ============================================================================ #}
 
-{# Lines 151-158: Root container - using div instead of <a> to avoid nested links #}
+{# Lines 151-158: Root container - using div with hx-get #}
 <div
     hx-get="/app/article/{{ article.id }}"
     hx-target="body"
     hx-push-url="true"
+    hx-trigger="click"
     class="flex flex-col p-4 bg-dark-surface border rounded-lg transition-colors h-full cursor-pointer {% if is_selected %}border-article-blue bg-article-blue/5{% else %}border-dark-border hover:border-dark-hover hover:bg-dark-hover/50{% endif %}"
 >
     {# Line 161: Header #}
