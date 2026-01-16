@@ -1,0 +1,157 @@
+{% extends "base.html" %}
+
+{% block title %}Articles - Alexandria{% endblock %}
+
+{% block head %}
+<style>
+    /* Search input focus ring */
+    .search-input:focus {
+        outline: none;
+        border-color: #6B7FD7;
+        box-shadow: 0 0 0 2px rgba(107, 127, 215, 0.2);
+    }
+</style>
+{% endblock %}
+
+{% block body %}
+<div class="min-h-screen bg-dark-bg flex flex-col">
+    {# Header #}
+    <header class="sticky top-0 z-20 bg-dark-bg/95 backdrop-blur border-b border-dark-border">
+        <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
+            <div class="flex items-center justify-between h-16">
+                {# Logo/Title #}
+                <div class="flex items-center gap-3">
+                    <a href="/app/" class="text-xl font-bold text-white">Alexandria</a>
+                </div>
+
+                {# Search bar #}
+                <div class="flex-1 max-w-xl mx-8">
+                    <form hx-get="/app/articles" hx-target="#articles-container" hx-push-url="true" hx-trigger="submit">
+                        <div class="relative">
+                            <svg class="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-dark-muted" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z"></path>
+                            </svg>
+                            <input
+                                type="text"
+                                name="search"
+                                value="{{ search|default('') }}"
+                                placeholder="Search articles..."
+                                class="search-input w-full pl-10 pr-4 py-2 bg-dark-surface border border-dark-border rounded-lg text-white placeholder-dark-muted transition-colors"
+                                hx-get="/app/articles"
+                                hx-target="#articles-container"
+                                hx-trigger="keyup changed delay:300ms"
+                                hx-include="[name='view']"
+                            >
+                        </div>
+                    </form>
+                </div>
+
+                {# View mode toggle #}
+                <div class="flex items-center gap-2">
+                    <input type="hidden" name="view" value="{{ view_mode }}">
+                    <button
+                        hx-get="/app/articles?view=grid{% if search %}&search={{ search|urlencode }}{% endif %}"
+                        hx-target="#articles-container"
+                        hx-push-url="true"
+                        class="p-2 rounded-lg transition-colors {% if view_mode == 'grid' %}bg-dark-surface text-white{% else %}text-dark-muted hover:text-white{% endif %}"
+                        title="Grid view"
+                    >
+                        <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 6a2 2 0 012-2h2a2 2 0 012 2v2a2 2 0 01-2 2H6a2 2 0 01-2-2V6zM14 6a2 2 0 012-2h2a2 2 0 012 2v2a2 2 0 01-2 2h-2a2 2 0 01-2-2V6zM4 16a2 2 0 012-2h2a2 2 0 012 2v2a2 2 0 01-2 2H6a2 2 0 01-2-2v-2zM14 16a2 2 0 012-2h2a2 2 0 012 2v2a2 2 0 01-2 2h-2a2 2 0 01-2-2v-2z"></path>
+                        </svg>
+                    </button>
+                    <button
+                        hx-get="/app/articles?view=list{% if search %}&search={{ search|urlencode }}{% endif %}"
+                        hx-target="#articles-container"
+                        hx-push-url="true"
+                        class="p-2 rounded-lg transition-colors {% if view_mode == 'list' %}bg-dark-surface text-white{% else %}text-dark-muted hover:text-white{% endif %}"
+                        title="List view"
+                    >
+                        <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 6h16M4 12h16M4 18h16"></path>
+                        </svg>
+                    </button>
+                </div>
+            </div>
+        </div>
+    </header>
+
+    {# Main content #}
+    <main class="flex-1">
+        <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-6">
+            {# Stats bar #}
+            <div class="flex items-center justify-between mb-6">
+                <div class="text-sm text-dark-muted">
+                    {% if search %}
+                    <span>{{ total }} result{% if total != 1 %}s{% endif %} for "{{ search }}"</span>
+                    {% else %}
+                    <span>{{ total }} article{% if total != 1 %}s{% endif %}</span>
+                    {% endif %}
+                </div>
+
+                {# Bulk selection bar (shown when articles selected) #}
+                <div
+                    x-data="{ selectedCount: 0 }"
+                    x-show="selectedCount > 0"
+                    x-cloak
+                    class="flex items-center gap-4 px-4 py-2 bg-dark-surface border border-article-blue rounded-lg"
+                >
+                    <span class="text-sm text-white" x-text="selectedCount + ' selected'"></span>
+                    <button class="text-sm text-article-blue hover:underline">Mark as read</button>
+                    <button class="text-sm text-article-red hover:underline">Delete</button>
+                </div>
+            </div>
+
+            {# Articles container - this is the HTMX swap target #}
+            <div id="articles-container" class="relative">
+                {# Loading indicator overlay #}
+                <div class="htmx-indicator absolute inset-0 bg-dark-bg/50 flex items-center justify-center z-10" id="articles-loading">
+                    <svg class="animate-spin h-8 w-8 text-article-blue" fill="none" viewBox="0 0 24 24">
+                        <circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"></circle>
+                        <path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
+                    </svg>
+                </div>
+
+                {# Include the article list partial #}
+                {% include 'partials/article_list.html' %}
+            </div>
+        </div>
+    </main>
+</div>
+
+<script>
+    // Article selection management
+    const selectedArticleIds = new Set();
+
+    function toggleArticleSelection(articleId) {
+        if (selectedArticleIds.has(articleId)) {
+            selectedArticleIds.delete(articleId);
+        } else {
+            selectedArticleIds.add(articleId);
+        }
+        // Update UI
+        updateSelectionUI();
+    }
+
+    function updateSelectionUI() {
+        // Update checkbox visuals
+        document.querySelectorAll('[data-article-id]').forEach(el => {
+            const id = el.dataset.articleId;
+            const checkbox = el.querySelector('.article-checkbox');
+            if (checkbox) {
+                if (selectedArticleIds.has(id)) {
+                    checkbox.classList.add('bg-article-blue', 'border-article-blue');
+                    checkbox.classList.remove('border-dark-border');
+                } else {
+                    checkbox.classList.remove('bg-article-blue', 'border-article-blue');
+                    checkbox.classList.add('border-dark-border');
+                }
+            }
+        });
+
+        // Update count in Alpine component (if used)
+        const event = new CustomEvent('selection-changed', { detail: { count: selectedArticleIds.size } });
+        document.dispatchEvent(event);
+    }
+</script>
+{% endblock %}

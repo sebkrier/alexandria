@@ -1,0 +1,75 @@
+{#
+  Article List Partial
+
+  Expected context:
+    - articles: list of article dicts
+    - view_mode: "grid" or "list" (default: "grid")
+    - total: total number of articles
+    - page: current page number
+    - page_size: number of items per page
+    - total_pages: total number of pages
+    - search: current search query (optional)
+    - selected_article_ids: set of selected article IDs (optional)
+#}
+
+{% set view_mode = view_mode|default('grid') %}
+{% set selected_article_ids = selected_article_ids|default([]) %}
+
+{# Empty state #}
+{% if not articles %}
+<div class="flex flex-col items-center justify-center py-16 text-center">
+    <svg class="w-16 h-16 text-dark-muted mb-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.5" d="M19 11H5m14 0a2 2 0 012 2v6a2 2 0 01-2 2H5a2 2 0 01-2-2v-6a2 2 0 012-2m14 0V9a2 2 0 00-2-2M5 11V9a2 2 0 012-2m0 0V5a2 2 0 012-2h6a2 2 0 012 2v2M7 7h10"></path>
+    </svg>
+    <h3 class="text-lg font-medium text-white mb-2">No articles found</h3>
+    {% if search %}
+    <p class="text-dark-muted mb-4">No articles match "{{ search }}"</p>
+    <a href="/app/" class="text-article-blue hover:underline">Clear search</a>
+    {% else %}
+    <p class="text-dark-muted">Add your first article to get started</p>
+    {% endif %}
+</div>
+
+{% else %}
+
+{# Article grid/list #}
+{% if view_mode == 'list' %}
+<div class="space-y-3" id="article-list">
+    {% for article in articles %}
+    {% include 'partials/article_card.html' with context %}
+    {% endfor %}
+</div>
+{% else %}
+<div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4" id="article-list">
+    {% for article in articles %}
+    {% include 'partials/article_card.html' with context %}
+    {% endfor %}
+</div>
+{% endif %}
+
+{# Pagination info and load more #}
+{% if total_pages > 1 %}
+<div class="mt-6 flex items-center justify-between text-sm text-dark-muted">
+    <span>Showing {{ articles|length }} of {{ total }} articles</span>
+
+    {% if page < total_pages %}
+    <button
+        hx-get="/app/articles?page={{ page + 1 }}&page_size={{ page_size }}{% if search %}&search={{ search|urlencode }}{% endif %}&view={{ view_mode }}"
+        hx-target="#article-list"
+        hx-swap="beforeend"
+        hx-indicator="#load-more-indicator"
+        class="px-4 py-2 bg-dark-surface border border-dark-border rounded-lg hover:border-dark-hover transition-colors"
+    >
+        <span class="htmx-indicator" id="load-more-indicator">
+            <svg class="animate-spin h-4 w-4 mr-2 inline" fill="none" viewBox="0 0 24 24">
+                <circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"></circle>
+                <path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
+            </svg>
+        </span>
+        Load more
+    </button>
+    {% endif %}
+</div>
+{% endif %}
+
+{% endif %}
