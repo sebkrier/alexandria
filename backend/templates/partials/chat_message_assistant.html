@@ -1,0 +1,65 @@
+{#
+  Assistant Chat Message
+
+  Expected context:
+    - message_id: unique ID for this message (for streaming updates)
+    - content: string (the assistant's response, may be empty initially for streaming)
+    - sources: list of article dicts with id, title (optional, shown after response)
+    - is_streaming: bool (true if this is a streaming placeholder)
+    - error: string (optional error message)
+#}
+
+{% from 'components/icons.html' import sparkles, external_link %}
+
+<div class="flex justify-start mb-4" id="message-{{ message_id }}">
+    <div class="max-w-[80%]">
+        {# Avatar #}
+        <div class="flex items-start gap-3">
+            <div class="w-8 h-8 rounded-full bg-article-blue/10 flex items-center justify-center flex-shrink-0">
+                {{ sparkles('w-4 h-4 text-article-blue') }}
+            </div>
+
+            <div class="flex-1 min-w-0">
+                {# Response content #}
+                <div class="bg-dark-surface border border-dark-border rounded-2xl rounded-tl-md px-4 py-3">
+                    {% if error %}
+                    <div class="text-article-red text-sm">
+                        {{ error }}
+                    </div>
+                    {% elif is_streaming %}
+                    {# Streaming placeholder with typing indicator #}
+                    <div id="content-{{ message_id }}" class="chat-prose text-dark-text text-sm">
+                        <div class="flex items-center gap-1">
+                            <div class="w-2 h-2 bg-article-blue rounded-full typing-dot"></div>
+                            <div class="w-2 h-2 bg-article-blue rounded-full typing-dot"></div>
+                            <div class="w-2 h-2 bg-article-blue rounded-full typing-dot"></div>
+                        </div>
+                    </div>
+                    {% else %}
+                    <div id="content-{{ message_id }}" class="chat-prose text-dark-text text-sm">
+                        {{ content|safe }}
+                    </div>
+                    {% endif %}
+                </div>
+
+                {# Sources (shown after response) #}
+                {% if sources and sources|length > 0 %}
+                <div class="mt-2" id="sources-{{ message_id }}">
+                    <p class="text-xs text-dark-muted mb-1.5">Sources:</p>
+                    <div class="flex flex-wrap gap-2">
+                        {% for source in sources %}
+                        <a
+                            href="/app/article/{{ source.id }}"
+                            class="inline-flex items-center gap-1.5 px-2.5 py-1 bg-dark-bg border border-dark-border rounded-lg text-xs text-dark-text hover:text-article-blue hover:border-article-blue/50 transition-colors"
+                        >
+                            {{ external_link('w-3 h-3') }}
+                            <span class="truncate max-w-[200px]">{{ source.title }}</span>
+                        </a>
+                        {% endfor %}
+                    </div>
+                </div>
+                {% endif %}
+            </div>
+        </div>
+    </div>
+</div>

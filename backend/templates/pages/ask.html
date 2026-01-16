@@ -1,0 +1,179 @@
+{% extends "base.html" %}
+
+{% block title %}Ask Your Library - Alexandria{% endblock %}
+
+{% block head %}
+<style>
+    /* Chat container height calculation */
+    .chat-container {
+        height: calc(100vh - 64px - 80px); /* viewport - header - input area */
+    }
+
+    /* Smooth scrolling for chat messages */
+    .chat-messages {
+        scroll-behavior: smooth;
+    }
+
+    /* Typing indicator animation */
+    .typing-dot {
+        animation: typingBounce 1.4s infinite ease-in-out both;
+    }
+    .typing-dot:nth-child(1) { animation-delay: -0.32s; }
+    .typing-dot:nth-child(2) { animation-delay: -0.16s; }
+
+    @keyframes typingBounce {
+        0%, 80%, 100% { transform: scale(0); }
+        40% { transform: scale(1); }
+    }
+
+    /* Markdown prose styling for AI responses */
+    .chat-prose h1, .chat-prose h2, .chat-prose h3 {
+        font-weight: 600;
+        margin-top: 1em;
+        margin-bottom: 0.5em;
+    }
+    .chat-prose h1 { font-size: 1.25rem; }
+    .chat-prose h2 { font-size: 1.125rem; }
+    .chat-prose h3 { font-size: 1rem; }
+    .chat-prose p { margin-bottom: 0.75em; }
+    .chat-prose ul, .chat-prose ol { margin-left: 1.5em; margin-bottom: 0.75em; }
+    .chat-prose li { margin-bottom: 0.25em; }
+    .chat-prose code {
+        background: rgba(107, 127, 215, 0.1);
+        padding: 0.125em 0.375em;
+        border-radius: 0.25em;
+        font-size: 0.875em;
+    }
+    .chat-prose pre {
+        background: #1a1a1a;
+        padding: 1em;
+        border-radius: 0.5em;
+        overflow-x: auto;
+        margin-bottom: 0.75em;
+    }
+    .chat-prose blockquote {
+        border-left: 3px solid #6B7FD7;
+        padding-left: 1em;
+        margin-left: 0;
+        color: #888888;
+    }
+</style>
+{% endblock %}
+
+{% block body %}
+<div class="min-h-screen bg-dark-bg flex">
+    {# Sidebar #}
+    {% include 'partials/sidebar.html' %}
+
+    {# Main content area #}
+    <div class="flex-1 flex flex-col min-w-0">
+        {# Header #}
+        <header class="sticky top-0 z-20 bg-dark-bg/95 backdrop-blur border-b border-dark-border">
+            <div class="max-w-4xl mx-auto px-4 sm:px-6 lg:px-8">
+                <div class="flex items-center h-16">
+                    {% from 'components/icons.html' import sparkles %}
+                    {{ sparkles('w-5 h-5 text-article-blue mr-2') }}
+                    <h1 class="text-xl font-bold text-white">Ask Your Library</h1>
+                </div>
+            </div>
+        </header>
+
+        {# Chat container #}
+        <div class="flex-1 flex flex-col max-w-4xl mx-auto w-full">
+            {# Messages area #}
+            <div id="chat-messages" class="chat-container flex-1 overflow-y-auto px-4 sm:px-6 lg:px-8 py-6 chat-messages">
+                {# Empty state #}
+                <div id="empty-state" class="flex flex-col items-center justify-center h-full text-center">
+                    {% from 'components/icons.html' import message_circle %}
+                    <div class="w-16 h-16 rounded-full bg-article-blue/10 flex items-center justify-center mb-4">
+                        {{ message_circle('w-8 h-8 text-article-blue') }}
+                    </div>
+                    <h2 class="text-xl font-semibold text-white mb-2">Ask about your articles</h2>
+                    <p class="text-dark-muted mb-6 max-w-md">
+                        I can answer questions based on the articles in your library using semantic search.
+                    </p>
+
+                    {# Example questions #}
+                    <div class="space-y-2 w-full max-w-md">
+                        <p class="text-xs text-dark-muted uppercase tracking-wider mb-3">Try asking:</p>
+                        {% for question in example_questions %}
+                        <button
+                            type="button"
+                            onclick="document.getElementById('question-input').value = '{{ question }}'; document.getElementById('ask-form').requestSubmit();"
+                            class="w-full text-left px-4 py-3 bg-dark-surface border border-dark-border rounded-lg text-dark-text hover:bg-dark-hover hover:border-dark-hover transition-colors text-sm"
+                        >
+                            {{ question }}
+                        </button>
+                        {% endfor %}
+                    </div>
+                </div>
+
+                {# Messages will be appended here #}
+            </div>
+
+            {# Input area #}
+            <div class="border-t border-dark-border bg-dark-bg px-4 sm:px-6 lg:px-8 py-4">
+                <form
+                    id="ask-form"
+                    hx-post="/app/ask/query"
+                    hx-target="#chat-messages"
+                    hx-swap="beforeend"
+                    hx-on::before-request="
+                        document.getElementById('empty-state')?.remove();
+                        document.getElementById('submit-btn').disabled = true;
+                        document.getElementById('submit-icon').classList.add('hidden');
+                        document.getElementById('submit-spinner').classList.remove('hidden');
+                    "
+                    hx-on::after-request="
+                        document.getElementById('question-input').value = '';
+                        document.getElementById('submit-btn').disabled = false;
+                        document.getElementById('submit-icon').classList.remove('hidden');
+                        document.getElementById('submit-spinner').classList.add('hidden');
+                        document.getElementById('chat-messages').scrollTop = document.getElementById('chat-messages').scrollHeight;
+                    "
+                    class="flex gap-3"
+                >
+                    <input
+                        type="text"
+                        id="question-input"
+                        name="question"
+                        placeholder="Ask a question about your articles..."
+                        required
+                        autocomplete="off"
+                        class="flex-1 px-4 py-3 bg-dark-surface border border-dark-border rounded-lg text-white placeholder-dark-muted focus:outline-none focus:ring-2 focus:ring-article-blue focus:border-transparent"
+                    >
+                    <button
+                        type="submit"
+                        id="submit-btn"
+                        class="px-4 py-3 bg-article-blue text-white rounded-lg hover:bg-article-blue/90 transition-colors disabled:opacity-50 disabled:cursor-not-allowed flex items-center justify-center min-w-[52px]"
+                    >
+                        {% from 'components/icons.html' import send, loader_2 %}
+                        <span id="submit-icon">{{ send('w-5 h-5') }}</span>
+                        <span id="submit-spinner" class="hidden">{{ loader_2('w-5 h-5 animate-spin') }}</span>
+                    </button>
+                </form>
+                <p class="text-xs text-dark-muted mt-2 text-center">
+                    Responses are generated based on articles in your library
+                </p>
+            </div>
+        </div>
+    </div>
+</div>
+
+<script>
+    // Auto-scroll to bottom when new messages are added
+    const chatMessages = document.getElementById('chat-messages');
+    const observer = new MutationObserver(() => {
+        chatMessages.scrollTop = chatMessages.scrollHeight;
+    });
+    observer.observe(chatMessages, { childList: true, subtree: true });
+
+    // Submit on Enter (but not Shift+Enter)
+    document.getElementById('question-input').addEventListener('keydown', (e) => {
+        if (e.key === 'Enter' && !e.shiftKey) {
+            e.preventDefault();
+            document.getElementById('ask-form').requestSubmit();
+        }
+    });
+</script>
+{% endblock %}
