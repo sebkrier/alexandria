@@ -10,7 +10,7 @@
     - selected_color_id: currently selected color (optional)
 #}
 
-{% from 'components/icons.html' import library, settings, plus, chevron_right, chevron_down, circle_small, smartphone, book_open, menu %}
+{% from 'components/icons.html' import library, settings, plus, chevron_right, chevron_down, circle_small, smartphone, book_open, menu, message_circle %}
 
 {% set current_path = current_path|default('/app/') %}
 
@@ -101,6 +101,14 @@
         >
             {{ library('w-5 h-5') }}
             <span>Library</span>
+        </a>
+
+        <a
+            href="/app/ask"
+            class="flex items-center gap-3 px-3 py-2 rounded-lg transition-colors {% if '/ask' in current_path %}bg-dark-hover text-white{% else %}text-dark-muted hover:text-dark-text hover:bg-dark-hover{% endif %}"
+        >
+            {{ message_circle('w-5 h-5') }}
+            <span>Ask</span>
         </a>
 
         <a
