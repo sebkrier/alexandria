@@ -19,6 +19,8 @@ from app.database import get_db
 from app.models.article import Article, ProcessingStatus, SourceType
 from app.models.article_category import ArticleCategory
 from app.models.article_tag import ArticleTag
+from app.models.category import Category
+from app.models.color import Color
 from app.models.user import User
 from app.schemas.article import MediaType
 from app.utils.auth import get_current_user
@@ -135,6 +137,87 @@ def article_to_dict(article: Article) -> dict:
 
 
 # =============================================================================
+# Sidebar data helpers
+# =============================================================================
+
+
+async def fetch_sidebar_data(db: AsyncSession, user_id: UUID) -> dict:
+    """Fetch all data needed for the sidebar."""
+    categories = await fetch_categories_with_counts(db, user_id)
+    colors = await fetch_colors(db, user_id)
+    unread_count = await fetch_unread_count(db, user_id)
+
+    return {
+        "categories": categories,
+        "colors": colors,
+        "unread_count": unread_count,
+    }
+
+
+async def fetch_categories_with_counts(db: AsyncSession, user_id: UUID) -> list[dict]:
+    """Fetch categories with article counts, organized in a tree structure."""
+    # Get all categories for user
+    result = await db.execute(
+        select(Category)
+        .where(Category.user_id == user_id)
+        .order_by(Category.position, Category.name)
+    )
+    categories = result.scalars().all()
+
+    # Get article counts per category
+    count_result = await db.execute(
+        select(ArticleCategory.category_id, func.count(ArticleCategory.article_id))
+        .join(Article, Article.id == ArticleCategory.article_id)
+        .where(Article.user_id == user_id)
+        .group_by(ArticleCategory.category_id)
+    )
+    counts = {row[0]: row[1] for row in count_result.all()}
+
+    # Build tree structure
+    def build_tree(parent_id: UUID | None) -> list[dict]:
+        children = []
+        for cat in categories:
+            if cat.parent_id == parent_id:
+                children.append({
+                    "id": str(cat.id),
+                    "name": cat.name,
+                    "article_count": counts.get(cat.id, 0),
+                    "children": build_tree(cat.id),
+                })
+        return children
+
+    return build_tree(None)
+
+
+async def fetch_colors(db: AsyncSession, user_id: UUID) -> list[dict]:
+    """Fetch all colors for user."""
+    result = await db.execute(
+        select(Color)
+        .where(Color.user_id == user_id)
+        .order_by(Color.position, Color.name)
+    )
+    colors = result.scalars().all()
+
+    return [
+        {
+            "id": str(color.id),
+            "name": color.name,
+            "hex_value": color.hex_value,
+        }
+        for color in colors
+    ]
+
+
+async def fetch_unread_count(db: AsyncSession, user_id: UUID) -> int:
+    """Count unread articles."""
+    result = await db.execute(
+        select(func.count(Article.id))
+        .where(Article.user_id == user_id, Article.is_read == False)  # noqa: E712
+    )
+    return result.scalar() or 0
+
+
+# =============================================================================
 # Main Application Routes
 # =============================================================================
 
@@ -146,6 +229,8 @@ async def index_page(
     view: str = "grid",
     page: int = Query(1, ge=1),
     page_size: int = Query(20, ge=1, le=100),
+    category_id: UUID | None = None,
+    color_id: UUID | None = None,
     db: AsyncSession = Depends(get_db),
     current_user: User = Depends(get_current_user),
 ):
@@ -157,9 +242,14 @@ async def index_page(
         search=search,
         page=page,
         page_size=page_size,
+        category_id=category_id,
+        color_id=color_id,
     )
 
     total_pages = (total + page_size - 1) // page_size
+
+    # Fetch sidebar data
+    sidebar_data = await fetch_sidebar_data(db, current_user.id)
 
     return templates.TemplateResponse(
         request=request,
@@ -172,6 +262,10 @@ async def index_page(
             "page_size": page_size,
             "total_pages": total_pages,
             "search": search,
+            "current_path": str(request.url.path),
+            "selected_category_id": str(category_id) if category_id else None,
+            "selected_color_id": str(color_id) if color_id else None,
+            **sidebar_data,
         },
     )
 
@@ -185,6 +279,7 @@ async def articles_partial(
     page_size: int = Query(20, ge=1, le=100),
     category_id: UUID | None = None,
     tag_id: UUID | None = None,
+    color_id: UUID | None = None,
     is_read: bool | None = None,
     db: AsyncSession = Depends(get_db),
     current_user: User = Depends(get_current_user),
@@ -199,6 +294,7 @@ async def articles_partial(
         page_size=page_size,
         category_id=category_id,
         tag_id=tag_id,
+        color_id=color_id,
         is_read=is_read,
     )
 
@@ -224,6 +320,7 @@ async def articles_partial(
         )
     else:
         # Return full page (for direct navigation)
+        sidebar_data = await fetch_sidebar_data(db, current_user.id)
         return templates.TemplateResponse(
             request=request,
             name="pages/index.html",
@@ -235,6 +332,10 @@ async def articles_partial(
                 "page_size": page_size,
                 "total_pages": total_pages,
                 "search": search,
+                "current_path": str(request.url.path),
+                "selected_category_id": str(category_id) if category_id else None,
+                "selected_color_id": str(color_id) if color_id else None,
+                **sidebar_data,
             },
         )
 
@@ -247,6 +348,7 @@ async def fetch_articles(
     page_size: int = 20,
     category_id: UUID | None = None,
     tag_id: UUID | None = None,
+    color_id: UUID | None = None,
     is_read: bool | None = None,
 ) -> tuple[list[Article], int]:
     """Fetch articles with filtering and pagination."""
@@ -271,8 +373,6 @@ async def fetch_articles(
         )
 
     if category_id:
-        from app.models.category import Category
-
         async def get_descendant_ids(cat_id: UUID) -> list[UUID]:
             result = await db.execute(select(Category.id).where(Category.parent_id == cat_id))
             child_ids = [row[0] for row in result.all()]
@@ -286,6 +386,9 @@ async def fetch_articles(
 
     if tag_id:
         query = query.join(ArticleTag).where(ArticleTag.tag_id == tag_id)
+
+    if color_id:
+        query = query.where(Article.color_id == color_id)
 
     if is_read is not None:
         query = query.where(Article.is_read == is_read)
