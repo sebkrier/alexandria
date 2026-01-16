@@ -1,0 +1,129 @@
+{#
+  Add AI Provider Modal
+
+  Expected context:
+    - available_providers: dict of provider info with models
+#}
+
+{% from 'components/modal.html' import modal %}
+{% from 'components/icons.html' import loader_2 %}
+
+{% call modal(title="Add AI Provider", id="add-provider-modal", size="md") %}
+<form
+    hx-post="/app/settings/providers"
+    hx-target="#providers-list"
+    hx-swap="innerHTML"
+    x-data="{
+        loading: false,
+        error: '',
+        providerName: 'anthropic',
+        displayName: '',
+        modelId: '{{ available_providers.anthropic.default_model if available_providers else '' }}',
+        providers: {{ available_providers|tojson|safe if available_providers else '{}' }}
+    }"
+    @htmx:before-request="loading = true; error = ''"
+    @htmx:after-request="loading = false; if(event.detail.successful) document.getElementById('add-provider-modal').remove()"
+    @htmx:response-error="error = 'Failed to add provider. Please check your API key.'"
+>
+    {# Error message #}
+    <template x-if="error">
+        <div class="mb-4 p-3 bg-article-red/10 border border-article-red/30 rounded-lg text-sm text-article-red">
+            <span x-text="error"></span>
+        </div>
+    </template>
+
+    <div class="space-y-4">
+        {# Provider select #}
+        <div>
+            <label for="provider_name" class="block text-sm font-medium text-dark-text mb-1.5">
+                Provider
+            </label>
+            <select
+                name="provider_name"
+                id="provider_name"
+                x-model="providerName"
+                @change="modelId = providers[providerName]?.default_model || ''; displayName = providers[providerName]?.display_name + ' API' || ''"
+                class="w-full px-3 py-2 bg-dark-bg border border-dark-border rounded-lg text-white focus:outline-none focus:ring-2 focus:ring-article-blue"
+            >
+                {% for key, provider in available_providers.items() %}
+                <option value="{{ key }}">{{ provider.display_name }}</option>
+                {% endfor %}
+            </select>
+        </div>
+
+        {# Display name #}
+        <div>
+            <label for="display_name" class="block text-sm font-medium text-dark-text mb-1.5">
+                Display Name
+            </label>
+            <input
+                type="text"
+                name="display_name"
+                id="display_name"
+                x-model="displayName"
+                placeholder="My Claude API"
+                required
+                class="w-full px-3 py-2 bg-dark-bg border border-dark-border rounded-lg text-white placeholder-dark-muted focus:outline-none focus:ring-2 focus:ring-article-blue"
+            >
+        </div>
+
+        {# Model select #}
+        <div>
+            <label for="model_id" class="block text-sm font-medium text-dark-text mb-1.5">
+                Model
+            </label>
+            <select
+                name="model_id"
+                id="model_id"
+                x-model="modelId"
+                class="w-full px-3 py-2 bg-dark-bg border border-dark-border rounded-lg text-white focus:outline-none focus:ring-2 focus:ring-article-blue"
+            >
+                {% for provider_key, provider in available_providers.items() %}
+                <template x-if="providerName === '{{ provider_key }}'">
+                    <template x-for="[key, name] in Object.entries(providers['{{ provider_key }}']?.models || {})">
+                        <option :value="key" x-text="name"></option>
+                    </template>
+                </template>
+                {% endfor %}
+            </select>
+        </div>
+
+        {# API Key #}
+        <div>
+            <label for="api_key" class="block text-sm font-medium text-dark-text mb-1.5">
+                API Key
+            </label>
+            <input
+                type="password"
+                name="api_key"
+                id="api_key"
+                placeholder="sk-..."
+                required
+                class="w-full px-3 py-2 bg-dark-bg border border-dark-border rounded-lg text-white placeholder-dark-muted focus:outline-none focus:ring-2 focus:ring-article-blue"
+            >
+        </div>
+    </div>
+
+    {# Actions #}
+    <div class="flex justify-end gap-3 mt-6">
+        <button
+            type="button"
+            hx-on:click="document.getElementById('add-provider-modal').remove()"
+            class="px-4 py-2 text-sm font-medium text-dark-muted hover:text-white bg-dark-bg border border-dark-border rounded-lg hover:bg-dark-hover transition-colors"
+        >
+            Cancel
+        </button>
+        <button
+            type="submit"
+            :disabled="loading"
+            class="px-4 py-2 text-sm font-medium text-white bg-article-blue rounded-lg hover:bg-article-blue/90 transition-colors disabled:opacity-50 disabled:cursor-not-allowed flex items-center gap-2"
+        >
+            <span x-show="loading" class="flex items-center gap-2">
+                {{ loader_2('w-4 h-4 animate-spin') }}
+                Adding...
+            </span>
+            <span x-show="!loading">Add Provider</span>
+        </button>
+    </div>
+</form>
+{% endcall %}

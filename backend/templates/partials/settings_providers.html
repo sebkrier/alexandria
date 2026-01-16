@@ -1,0 +1,112 @@
+{#
+  AI Providers Settings Section
+
+  Expected context:
+    - providers: list of provider dicts with id, display_name, provider_name, model_id, api_key_masked, is_default, is_active
+    - available_providers: dict of available providers with models
+#}
+
+{% from 'components/icons.html' import plus, key, star_filled, trash_2, loader_2, bot %}
+
+<section id="providers-section" class="bg-dark-surface border border-dark-border rounded-lg p-6">
+    <div class="flex items-center justify-between mb-4">
+        <div>
+            <h2 class="text-lg font-semibold text-white">AI Providers</h2>
+            <p class="text-sm text-dark-muted mt-1">
+                Configure AI providers for summarization and categorization
+            </p>
+        </div>
+        <button
+            hx-get="/app/modals/add-provider"
+            hx-target="#modal-container"
+            hx-swap="innerHTML"
+            class="flex items-center gap-2 px-3 py-1.5 text-sm font-medium text-white bg-article-blue rounded-lg hover:bg-article-blue/90 transition-colors"
+        >
+            {{ plus('w-4 h-4') }}
+            Add Provider
+        </button>
+    </div>
+
+    <div id="providers-list">
+        {% if providers and providers|length > 0 %}
+        <div class="space-y-3">
+            {% for provider in providers %}
+            <div
+                id="provider-{{ provider.id }}"
+                class="flex items-center justify-between p-4 rounded-lg border
+                    {% if provider.is_active %}bg-dark-bg border-dark-border{% else %}bg-dark-bg/50 border-dark-border/50 opacity-60{% endif %}"
+            >
+                <div class="flex items-center gap-4">
+                    <div class="w-10 h-10 rounded-lg flex items-center justify-center
+                        {% if provider.provider_name == 'anthropic' %}bg-orange-500/20
+                        {% elif provider.provider_name == 'openai' %}bg-green-500/20
+                        {% elif provider.provider_name == 'google' %}bg-blue-500/20
+                        {% else %}bg-dark-hover{% endif %}">
+                        {{ key('w-5 h-5 text-dark-text') }}
+                    </div>
+                    <div>
+                        <div class="flex items-center gap-2">
+                            <span class="font-medium text-white">{{ provider.display_name }}</span>
+                            {% if provider.is_default %}
+                            <span class="flex items-center gap-1 text-xs text-article-blue">
+                                {{ star_filled('w-3 h-3') }}
+                                Default
+                            </span>
+                            {% endif %}
+                        </div>
+                        <p class="text-sm text-dark-muted">
+                            {{ provider.model_id }} &middot; {{ provider.api_key_masked }}
+                        </p>
+                    </div>
+                </div>
+
+                <div class="flex items-center gap-2">
+                    {# Test button #}
+                    <button
+                        hx-post="/app/settings/providers/{{ provider.id }}/test"
+                        hx-target="#toast-container"
+                        hx-swap="beforeend"
+                        hx-indicator="#test-{{ provider.id }}"
+                        class="px-3 py-1.5 text-sm text-dark-muted hover:text-white rounded-lg hover:bg-dark-hover transition-colors"
+                    >
+                        <span class="htmx-indicator" id="test-{{ provider.id }}">
+                            {{ loader_2('w-4 h-4 animate-spin') }}
+                        </span>
+                        <span class="htmx-hide-indicator">Test</span>
+                    </button>
+
+                    {# Set as default button (if not already default) #}
+                    {% if not provider.is_default %}
+                    <button
+                        hx-post="/app/settings/providers/{{ provider.id }}/default"
+                        hx-target="#providers-list"
+                        hx-swap="innerHTML"
+                        class="px-3 py-1.5 text-sm text-dark-muted hover:text-white rounded-lg hover:bg-dark-hover transition-colors"
+                    >
+                        Set Default
+                    </button>
+                    {% endif %}
+
+                    {# Delete button #}
+                    <button
+                        hx-delete="/app/settings/providers/{{ provider.id }}"
+                        hx-target="#provider-{{ provider.id }}"
+                        hx-swap="outerHTML"
+                        hx-confirm="Are you sure you want to delete this provider?"
+                        class="p-1.5 text-dark-muted hover:text-article-red rounded-lg hover:bg-dark-hover transition-colors"
+                    >
+                        {{ trash_2('w-4 h-4') }}
+                    </button>
+                </div>
+            </div>
+            {% endfor %}
+        </div>
+        {% else %}
+        <div class="py-8 text-center text-dark-muted">
+            {{ bot('w-12 h-12 mx-auto mb-3 opacity-50') }}
+            <p>No AI providers configured</p>
+            <p class="text-sm mt-1">Add a provider to enable AI features</p>
+        </div>
+        {% endif %}
+    </div>
+</section>

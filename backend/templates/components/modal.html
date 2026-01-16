@@ -1,0 +1,70 @@
+{#
+  Reusable Modal Component
+
+  Usage:
+    {% call modal(title="Modal Title", id="my-modal") %}
+        <p>Modal content goes here</p>
+    {% endcall %}
+
+  Parameters:
+    - title: Modal title
+    - id: Modal element ID (for HTMX targeting)
+    - size: 'sm' | 'md' | 'lg' | 'xl' (default: 'md')
+#}
+
+{% from 'components/icons.html' import x_icon %}
+
+{% macro modal(title, id="modal", size="md") %}
+<div
+    id="{{ id }}"
+    x-data="{ open: true }"
+    x-show="open"
+    x-transition:enter="transition ease-out duration-200"
+    x-transition:enter-start="opacity-0"
+    x-transition:enter-end="opacity-100"
+    x-transition:leave="transition ease-in duration-150"
+    x-transition:leave-start="opacity-100"
+    x-transition:leave-end="opacity-0"
+    @keydown.escape.window="open = false; setTimeout(() => $el.remove(), 150)"
+    class="fixed inset-0 z-50 flex items-center justify-center p-4"
+>
+    {# Backdrop #}
+    <div
+        class="absolute inset-0 bg-black/60 backdrop-blur-sm"
+        @click="open = false; setTimeout(() => $el.parentElement.remove(), 150)"
+    ></div>
+
+    {# Modal content #}
+    <div
+        x-show="open"
+        x-transition:enter="transition ease-out duration-200"
+        x-transition:enter-start="opacity-0 transform scale-95"
+        x-transition:enter-end="opacity-100 transform scale-100"
+        x-transition:leave="transition ease-in duration-150"
+        x-transition:leave-start="opacity-100 transform scale-100"
+        x-transition:leave-end="opacity-0 transform scale-95"
+        class="relative bg-dark-surface border border-dark-border rounded-xl shadow-2xl w-full
+            {% if size == 'sm' %}max-w-sm
+            {% elif size == 'lg' %}max-w-2xl
+            {% elif size == 'xl' %}max-w-4xl
+            {% else %}max-w-md{% endif %}"
+        @click.stop
+    >
+        {# Header #}
+        <div class="flex items-center justify-between px-6 py-4 border-b border-dark-border">
+            <h2 class="text-lg font-semibold text-white">{{ title }}</h2>
+            <button
+                @click="open = false; setTimeout(() => $el.closest('#{{ id }}').remove(), 150)"
+                class="p-1.5 rounded-lg text-dark-muted hover:text-white hover:bg-dark-hover transition-colors"
+            >
+                {{ x_icon('w-5 h-5') }}
+            </button>
+        </div>
+
+        {# Body #}
+        <div class="px-6 py-4">
+            {{ caller() }}
+        </div>
+    </div>
+</div>
+{% endmacro %}

@@ -1,0 +1,56 @@
+{#
+  Toast Notification Component
+
+  Usage:
+    {% include 'components/toast.html' with context only %}
+
+  Expected context:
+    - toast_type: 'success' | 'error' | 'info' (default: 'info')
+    - toast_message: string
+    - toast_id: optional unique id for the toast
+#}
+
+{% from 'components/icons.html' import check_circle, alert_circle, info, x_icon %}
+
+{% set toast_id = toast_id|default('toast-' ~ range(10000, 99999)|random) %}
+
+<div
+    id="{{ toast_id }}"
+    x-data="{ show: true }"
+    x-show="show"
+    x-init="setTimeout(() => { show = false; $el.remove() }, 5000)"
+    x-transition:enter="transition ease-out duration-300"
+    x-transition:enter-start="opacity-0 transform translate-y-2"
+    x-transition:enter-end="opacity-100 transform translate-y-0"
+    x-transition:leave="transition ease-in duration-200"
+    x-transition:leave-start="opacity-100"
+    x-transition:leave-end="opacity-0"
+    class="flex items-center gap-3 px-4 py-3 rounded-lg shadow-lg border animate-slideUp
+        {% if toast_type == 'success' %}
+            bg-article-green/10 border-article-green/30 text-article-green
+        {% elif toast_type == 'error' %}
+            bg-article-red/10 border-article-red/30 text-article-red
+        {% else %}
+            bg-article-blue/10 border-article-blue/30 text-article-blue
+        {% endif %}"
+>
+    {# Icon #}
+    {% if toast_type == 'success' %}
+        {{ check_circle('w-5 h-5 flex-shrink-0') }}
+    {% elif toast_type == 'error' %}
+        {{ alert_circle('w-5 h-5 flex-shrink-0') }}
+    {% else %}
+        {{ info('w-5 h-5 flex-shrink-0') }}
+    {% endif %}
+
+    {# Message #}
+    <span class="flex-1 text-sm text-dark-text">{{ toast_message }}</span>
+
+    {# Close button #}
+    <button
+        @click="show = false; $el.parentElement.remove()"
+        class="p-1 rounded hover:bg-dark-hover transition-colors flex-shrink-0"
+    >
+        {{ x_icon('w-4 h-4 text-dark-muted') }}
+    </button>
+</div>

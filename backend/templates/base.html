@@ -52,6 +52,9 @@
 
     <!-- Custom styles -->
     <style>
+        /* Alpine.js x-cloak - hide until Alpine is ready */
+        [x-cloak] { display: none !important; }
+
         /* Smooth transitions for HTMX swaps */
         .htmx-settling {
             opacity: 0;
@@ -70,8 +73,11 @@
             pointer-events: none;
         }
         .htmx-request .htmx-indicator {
-            display: flex !important;
+            display: inline-flex !important;
             pointer-events: auto;
+        }
+        .htmx-request .htmx-hide-indicator {
+            display: none !important;
         }
 
         /* Scrollbar styling for dark mode */

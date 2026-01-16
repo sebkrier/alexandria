@@ -1,0 +1,98 @@
+{#
+  Summarization Prompt Settings Section
+
+  Expected context:
+    - prompts: dict with system_prompt and user_prompt
+#}
+
+{% from 'components/icons.html' import file_text, chevron_down, chevron_up, copy, check %}
+
+<section class="bg-dark-surface border border-dark-border rounded-lg p-6">
+    <div class="mb-4">
+        <div class="flex items-center gap-2">
+            {{ file_text('w-5 h-5 text-article-blue') }}
+            <h2 class="text-lg font-semibold text-white">Summarization Prompt</h2>
+        </div>
+        <p class="text-sm text-dark-muted mt-1">
+            The AI prompt used to generate article summaries
+        </p>
+    </div>
+
+    {% if prompts %}
+    <div class="space-y-4" x-data="{ showSystem: false, showUser: false, copiedSystem: false, copiedUser: false }">
+        {# System Prompt #}
+        <div class="border border-dark-border rounded-lg overflow-hidden">
+            <button
+                @click="showSystem = !showSystem"
+                class="w-full flex items-center justify-between p-4 bg-dark-bg hover:bg-dark-hover transition-colors text-left"
+            >
+                <span class="font-medium text-white">System Prompt</span>
+                <div class="flex items-center gap-2">
+                    <button
+                        @click.stop="navigator.clipboard.writeText($refs.systemPrompt.textContent); copiedSystem = true; setTimeout(() => copiedSystem = false, 2000)"
+                        class="p-1 hover:bg-dark-border rounded"
+                        title="Copy to clipboard"
+                    >
+                        <template x-if="copiedSystem">
+                            {{ check('w-4 h-4 text-article-green') }}
+                        </template>
+                        <template x-if="!copiedSystem">
+                            {{ copy('w-4 h-4 text-dark-muted') }}
+                        </template>
+                    </button>
+                    <template x-if="showSystem">
+                        {{ chevron_up('w-5 h-5 text-dark-muted') }}
+                    </template>
+                    <template x-if="!showSystem">
+                        {{ chevron_down('w-5 h-5 text-dark-muted') }}
+                    </template>
+                </div>
+            </button>
+            <div x-show="showSystem" x-cloak x-transition class="p-4 bg-dark-bg/50 border-t border-dark-border">
+                <pre x-ref="systemPrompt" class="text-sm text-dark-text whitespace-pre-wrap font-mono overflow-x-auto max-h-96 overflow-y-auto">{{ prompts.system_prompt }}</pre>
+            </div>
+        </div>
+
+        {# User Prompt #}
+        <div class="border border-dark-border rounded-lg overflow-hidden">
+            <button
+                @click="showUser = !showUser"
+                class="w-full flex items-center justify-between p-4 bg-dark-bg hover:bg-dark-hover transition-colors text-left"
+            >
+                <span class="font-medium text-white">User Prompt Template</span>
+                <div class="flex items-center gap-2">
+                    <button
+                        @click.stop="navigator.clipboard.writeText($refs.userPrompt.textContent); copiedUser = true; setTimeout(() => copiedUser = false, 2000)"
+                        class="p-1 hover:bg-dark-border rounded"
+                        title="Copy to clipboard"
+                    >
+                        <template x-if="copiedUser">
+                            {{ check('w-4 h-4 text-article-green') }}
+                        </template>
+                        <template x-if="!copiedUser">
+                            {{ copy('w-4 h-4 text-dark-muted') }}
+                        </template>
+                    </button>
+                    <template x-if="showUser">
+                        {{ chevron_up('w-5 h-5 text-dark-muted') }}
+                    </template>
+                    <template x-if="!showUser">
+                        {{ chevron_down('w-5 h-5 text-dark-muted') }}
+                    </template>
+                </div>
+            </button>
+            <div x-show="showUser" x-cloak x-transition class="p-4 bg-dark-bg/50 border-t border-dark-border">
+                <pre x-ref="userPrompt" class="text-sm text-dark-text whitespace-pre-wrap font-mono overflow-x-auto max-h-96 overflow-y-auto">{{ prompts.user_prompt }}</pre>
+            </div>
+        </div>
+
+        <p class="text-xs text-dark-muted">
+            To customize the prompt, edit the file at: <code class="bg-dark-bg px-1 rounded">backend/app/ai/prompts.py</code>
+        </p>
+    </div>
+    {% else %}
+    <div class="py-4 text-center text-dark-muted">
+        <p>Unable to load prompt data</p>
+    </div>
+    {% endif %}
+</section>

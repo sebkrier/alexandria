@@ -126,6 +126,15 @@
 </div>
 
 <script>
+    // Listen for articleAdded event to refresh the list and close modal
+    document.body.addEventListener('articleAdded', function() {
+        // Refresh articles list
+        htmx.ajax('GET', '/app/articles', {target: '#articles-container', swap: 'innerHTML'});
+        // Close modal if open
+        const modal = document.getElementById('add-article-modal');
+        if (modal) modal.remove();
+    });
+
     // Article selection management
     const selectedArticleIds = new Set();
 
