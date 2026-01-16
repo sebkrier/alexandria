@@ -1,0 +1,98 @@
+{% extends "base.html" %}
+
+{% block title %}{{ title }} - Alexandria{% endblock %}
+
+{% block body %}
+<div class="min-h-screen bg-dark-bg p-8">
+    <div class="max-w-6xl mx-auto">
+        {# Header #}
+        <div class="flex items-center justify-between mb-8">
+            <div>
+                <h1 class="text-2xl font-bold text-white mb-2">{{ title }}</h1>
+                <p class="text-dark-muted">Preview article cards in grid and list views</p>
+            </div>
+            <div class="flex items-center gap-2">
+                <a
+                    href="/app/test/card?view=grid"
+                    class="px-4 py-2 rounded-lg transition-colors {% if view_mode == 'grid' %}bg-article-blue text-white{% else %}bg-dark-surface text-dark-muted hover:text-white{% endif %}"
+                >
+                    Grid
+                </a>
+                <a
+                    href="/app/test/card?view=list"
+                    class="px-4 py-2 rounded-lg transition-colors {% if view_mode == 'list' %}bg-article-blue text-white{% else %}bg-dark-surface text-dark-muted hover:text-white{% endif %}"
+                >
+                    List
+                </a>
+            </div>
+        </div>
+
+        {# Selection state (Alpine.js) #}
+        <div x-data="{ selectedArticles: new Set() }">
+            {# Selection bar - shows when articles are selected #}
+            <div
+                x-show="selectedArticles.size > 0"
+                x-cloak
+                class="sticky top-4 z-10 mb-4 p-4 bg-dark-surface border border-article-blue rounded-lg flex items-center justify-between"
+            >
+                <span class="text-white">
+                    <span x-text="selectedArticles.size"></span> article(s) selected
+                </span>
+                <button
+                    @click="selectedArticles.clear()"
+                    class="px-3 py-1 text-sm bg-dark-hover rounded-lg text-dark-muted hover:text-white transition-colors"
+                >
+                    Clear selection
+                </button>
+            </div>
+
+            {# Article grid/list #}
+            {% if view_mode == 'grid' %}
+            <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+                {% for article in articles %}
+                {% include 'partials/article_card.html' %}
+                {% endfor %}
+            </div>
+            {% else %}
+            <div class="space-y-3">
+                {% for article in articles %}
+                {% include 'partials/article_card.html' %}
+                {% endfor %}
+            </div>
+            {% endif %}
+        </div>
+
+        {# Navigation #}
+        <div class="mt-8 flex justify-center gap-4">
+            <a href="/app/test" class="text-article-blue hover:underline">
+                ← Back to test page
+            </a>
+            <a href="/docs" class="text-article-blue hover:underline">
+                API Docs
+            </a>
+        </div>
+    </div>
+</div>
+
+<script>
+// Global function for checkbox toggle (called from card template)
+function toggleArticleSelection(articleId) {
+    // Get Alpine component
+    const container = document.querySelector('[x-data]');
+    if (container && container._x_dataStack) {
+        const data = container._x_dataStack[0];
+        if (data.selectedArticles.has(articleId)) {
+            data.selectedArticles.delete(articleId);
+        } else {
+            data.selectedArticles.add(articleId);
+        }
+        // Trigger Alpine reactivity
+        container.dispatchEvent(new CustomEvent('alpine:updated'));
+    }
+}
+</script>
+
+<style>
+[x-cloak] { display: none !important; }
+</style>
+{% endblock %}
