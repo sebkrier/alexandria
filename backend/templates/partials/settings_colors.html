@@ -109,8 +109,8 @@
     </div>
 </section>
 
-{# Out-of-band swap to update sidebar colors #}
-<div id="sidebar-colors" hx-swap-oob="true" class="mt-6">
+{# Out-of-band swap to update sidebar colors (hidden on page, used by HTMX) #}
+<div id="sidebar-colors" hx-swap-oob="true" class="mt-6" hidden>
     {% if colors and colors|length > 0 %}
     <div class="flex items-center justify-between mb-2 px-3">
         <span class="text-xs font-semibold text-dark-muted uppercase tracking-wider">
