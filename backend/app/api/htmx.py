@@ -233,20 +233,10 @@ async def fetch_tags(db: AsyncSession, user_id: UUID) -> list[dict]:
 
 
 async def fetch_unread_count(db: AsyncSession, user_id: UUID) -> int:
-    """Count articles with 'Unread' color."""
-    # Find the "Unread" color ID
-    color_result = await db.execute(
-        select(Color.id)
-        .where(Color.user_id == user_id, Color.name == "Unread")
-    )
-    unread_color_id = color_result.scalar_one_or_none()
-
-    if not unread_color_id:
-        return 0
-
+    """Count unread articles (is_read == False)."""
     result = await db.execute(
         select(func.count(Article.id))
-        .where(Article.user_id == user_id, Article.color_id == unread_color_id)
+        .where(Article.user_id == user_id, Article.is_read == False)
     )
     return result.scalar() or 0
 
@@ -2329,27 +2319,11 @@ async def test_card(request: Request, view: str = "grid"):
 # =============================================================================
 
 
-async def get_unread_color_id(db: AsyncSession, user_id: UUID) -> UUID | None:
-    """Get the ID of the 'Unread' color for this user."""
-    result = await db.execute(
-        select(Color.id)
-        .where(Color.user_id == user_id, Color.name == "Unread")
-    )
-    return result.scalar_one_or_none()
-
-
 async def get_unread_articles_ordered(db: AsyncSession, user_id: UUID) -> list[Article]:
-    """Get all articles with 'Unread' color, ordered by created_at."""
-    # First, find the "Unread" color ID
-    unread_color_id = await get_unread_color_id(db, user_id)
-
-    if not unread_color_id:
-        # No "Unread" color exists, return empty list
-        return []
-
+    """Get all unread articles (is_read == False), ordered by created_at."""
     result = await db.execute(
         select(Article)
-        .where(Article.user_id == user_id, Article.color_id == unread_color_id)
+        .where(Article.user_id == user_id, Article.is_read == False)
         .options(
             selectinload(Article.categories).selectinload(ArticleCategory.category),
             selectinload(Article.tags).selectinload(ArticleTag.tag),
