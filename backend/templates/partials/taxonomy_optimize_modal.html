@@ -1,0 +1,226 @@
+{#
+  Taxonomy Optimization Modal
+  Shows AI analysis of library and proposed category structure
+#}
+
+{% from 'components/icons.html' import x_icon %}
+
+<div
+    id="taxonomy-modal"
+    x-data="{ open: true }"
+    x-show="open"
+    x-transition:enter="transition ease-out duration-200"
+    x-transition:enter-start="opacity-0"
+    x-transition:enter-end="opacity-100"
+    x-transition:leave="transition ease-in duration-150"
+    x-transition:leave-start="opacity-100"
+    x-transition:leave-end="opacity-0"
+    @keydown.escape.window="open = false; setTimeout(() => $el.remove(), 150)"
+    class="fixed inset-0 z-50 flex items-center justify-center p-4"
+>
+    {# Backdrop #}
+    <div
+        class="absolute inset-0 bg-black/60 backdrop-blur-sm"
+        @click="open = false; setTimeout(() => $el.parentElement.remove(), 150)"
+    ></div>
+
+    {# Modal content #}
+    <div
+        x-show="open"
+        x-transition:enter="transition ease-out duration-200"
+        x-transition:enter-start="opacity-0 transform scale-95"
+        x-transition:enter-end="opacity-100 transform scale-100"
+        x-transition:leave="transition ease-in duration-150"
+        x-transition:leave-start="opacity-100 transform scale-100"
+        x-transition:leave-end="opacity-0 transform scale-95"
+        class="relative bg-dark-surface border border-dark-border rounded-xl shadow-2xl w-full max-w-4xl max-h-[85vh] flex flex-col"
+        @click.stop
+    >
+        {# Header #}
+        <div class="flex items-center justify-between px-6 py-4 border-b border-dark-border flex-shrink-0">
+            <h2 class="text-lg font-semibold text-white flex items-center gap-2">
+                <svg class="w-5 h-5 text-article-purple" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 11H5m14 0a2 2 0 012 2v6a2 2 0 01-2 2H5a2 2 0 01-2-2v-6a2 2 0 012-2m14 0V9a2 2 0 00-2-2M5 11V9a2 2 0 012-2m0 0V5a2 2 0 012-2h6a2 2 0 012 2v2M7 7h10"></path>
+                </svg>
+                Optimize Category Structure
+            </h2>
+            <button
+                @click="open = false; setTimeout(() => $el.closest('#taxonomy-modal').remove(), 150)"
+                class="p-1.5 rounded-lg text-dark-muted hover:text-white hover:bg-dark-hover transition-colors"
+            >
+                {{ x_icon('w-5 h-5') }}
+            </button>
+        </div>
+
+        {# Body #}
+        <div class="px-6 py-4 overflow-y-auto flex-1">
+            {% if error %}
+            {# Error state #}
+            <div class="text-center py-8">
+                <div class="w-16 h-16 mx-auto mb-4 rounded-full bg-article-red/10 flex items-center justify-center">
+                    <svg class="w-8 h-8 text-article-red" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z"></path>
+                    </svg>
+                </div>
+                <h3 class="text-lg font-medium text-white mb-2">Analysis Failed</h3>
+                <p class="text-dark-muted">{{ error }}</p>
+            </div>
+
+            {% elif loading %}
+            {# Loading state - triggers the actual analysis #}
+            <div
+                class="text-center py-12"
+                hx-post="/app/taxonomy/analyze"
+                hx-trigger="load"
+                hx-swap="outerHTML"
+                hx-target="#taxonomy-modal"
+            >
+                <div class="w-16 h-16 mx-auto mb-4 relative">
+                    <svg class="animate-spin w-16 h-16 text-article-purple" fill="none" viewBox="0 0 24 24">
+                        <circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"></circle>
+                        <path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
+                    </svg>
+                </div>
+                <h3 class="text-lg font-medium text-white mb-2">Analyzing Your Library</h3>
+                <p class="text-dark-muted">AI is reviewing {{ article_count }} articles to propose an optimal category structure...</p>
+                <p class="text-sm text-dark-muted mt-2">This may take a minute for large libraries.</p>
+            </div>
+
+            {% elif result %}
+            {# Results state #}
+            <div class="space-y-6">
+                {# Summary of changes #}
+                <div class="bg-dark-bg rounded-lg p-4 border border-dark-border">
+                    <h3 class="text-sm font-medium text-white mb-3">Proposed Changes</h3>
+                    <div class="flex flex-wrap gap-3 text-sm">
+                        {% if result.changes_summary.new_categories %}
+                        <span class="px-2 py-1 bg-article-green/10 text-article-green rounded">
+                            +{{ result.changes_summary.new_categories|length }} new categories
+                        </span>
+                        {% endif %}
+                        {% if result.changes_summary.new_subcategories %}
+                        <span class="px-2 py-1 bg-article-blue/10 text-article-blue rounded">
+                            +{{ result.changes_summary.new_subcategories|length }} new subcategories
+                        </span>
+                        {% endif %}
+                        {% if result.changes_summary.merged %}
+                        <span class="px-2 py-1 bg-article-orange/10 text-article-orange rounded">
+                            {{ result.changes_summary.merged|length }} merged
+                        </span>
+                        {% endif %}
+                        {% if result.changes_summary.reorganized %}
+                        <span class="px-2 py-1 bg-article-purple/10 text-article-purple rounded">
+                            {{ result.changes_summary.reorganized|length }} articles reorganized
+                        </span>
+                        {% endif %}
+                    </div>
+                </div>
+
+                {# AI Reasoning #}
+                {% if result.reasoning %}
+                <div class="bg-dark-bg rounded-lg p-4 border border-dark-border">
+                    <h3 class="text-sm font-medium text-white mb-2">AI Reasoning</h3>
+                    <p class="text-sm text-dark-muted">{{ result.reasoning }}</p>
+                </div>
+                {% endif %}
+
+                {# Proposed taxonomy structure #}
+                <div>
+                    <h3 class="text-sm font-medium text-white mb-3">Proposed Structure</h3>
+                    <div class="space-y-3">
+                        {% for cat in result.taxonomy %}
+                        <div class="bg-dark-bg rounded-lg border border-dark-border overflow-hidden">
+                            {# Category header #}
+                            <div class="px-4 py-3 border-b border-dark-border flex items-center gap-2">
+                                <svg class="w-4 h-4 text-article-blue" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M3 7v10a2 2 0 002 2h14a2 2 0 002-2V9a2 2 0 00-2-2h-6l-2-2H5a2 2 0 00-2 2z"></path>
+                                </svg>
+                                <span class="font-medium text-white">{{ cat.category }}</span>
+                                <span class="text-xs text-dark-muted ml-auto">
+                                    {{ cat.subcategories|sum(attribute='article_ids')|list|length }} articles
+                                </span>
+                            </div>
+
+                            {# Subcategories #}
+                            <div class="divide-y divide-dark-border">
+                                {% for sub in cat.subcategories %}
+                                <div class="px-4 py-2 hover:bg-dark-hover/50">
+                                    <div class="flex items-center gap-2 mb-1">
+                                        <span class="text-sm text-dark-text pl-4">{{ sub.name }}</span>
+                                        <span class="text-xs text-dark-muted">({{ sub.article_ids|length }} articles)</span>
+                                    </div>
+                                    {% if sub.description %}
+                                    <p class="text-xs text-dark-muted pl-4">{{ sub.description }}</p>
+                                    {% endif %}
+                                    {# Show article titles on hover/expand #}
+                                    <div class="pl-4 mt-1">
+                                        {% for article_id in sub.article_ids[:3] %}
+                                        {% if article_lookup and article_id in article_lookup %}
+                                        <div class="text-xs text-dark-muted truncate">
+                                            &bull; {{ article_lookup[article_id].title or 'Untitled' }}
+                                        </div>
+                                        {% endif %}
+                                        {% endfor %}
+                                        {% if sub.article_ids|length > 3 %}
+                                        <div class="text-xs text-dark-muted">
+                                            &bull; +{{ sub.article_ids|length - 3 }} more...
+                                        </div>
+                                        {% endif %}
+                                    </div>
+                                </div>
+                                {% endfor %}
+                            </div>
+                        </div>
+                        {% endfor %}
+                    </div>
+                </div>
+            </div>
+
+            {# Hidden form data for apply #}
+            <input type="hidden" id="taxonomy-data" value='{{ taxonomy_json }}'>
+            {% endif %}
+        </div>
+
+        {# Footer with actions #}
+        {% if result %}
+        <div class="px-6 py-4 border-t border-dark-border flex justify-end gap-3 flex-shrink-0">
+            <button
+                @click="open = false; setTimeout(() => $el.closest('#taxonomy-modal').remove(), 150)"
+                class="px-4 py-2 text-sm text-dark-muted hover:text-white transition-colors"
+            >
+                Cancel
+            </button>
+            <button
+                x-data="{ applying: false }"
+                @click="
+                    if (applying) return;
+                    applying = true;
+                    const taxonomyData = document.getElementById('taxonomy-data').value;
+                    const formData = new FormData();
+                    formData.append('taxonomy', taxonomyData);
+                    fetch('/app/taxonomy/apply', { method: 'POST', body: formData })
+                        .then(response => response.text())
+                        .then(() => {
+                            window.location.reload();
+                        })
+                        .catch(err => {
+                            console.error(err);
+                            applying = false;
+                        });
+                "
+                :disabled="applying"
+                class="px-4 py-2 text-sm bg-article-purple hover:bg-article-purple/80 text-white rounded-lg transition-colors flex items-center gap-2 disabled:opacity-50 disabled:cursor-not-allowed"
+            >
+                <svg x-show="!applying" class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 13l4 4L19 7"></path>
+                </svg>
+                <svg x-show="applying" class="w-4 h-4 animate-spin" fill="none" viewBox="0 0 24 24">
+                    <circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"></circle>
+                    <path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
+                </svg>
+                <span x-text="applying ? 'Applying...' : 'Apply Changes'"></span>
+            </button>
+        </div>
+        {% endif %}
+    </div>
+</div>

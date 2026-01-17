@@ -11,7 +11,17 @@ from typing import TypeVar
 import litellm
 from pydantic import BaseModel
 
-from app.ai.base import AIProvider, CategoryInfo, CategorySuggestion, Summary, TagSuggestion
+from app.ai.base import (
+    AIProvider,
+    CategoryInfo,
+    CategorySuggestion,
+    CategoryStructure,
+    SubcategoryAssignment,
+    Summary,
+    TagSuggestion,
+    TaxonomyChangesSummary,
+    TaxonomyOptimizationResult,
+)
 from app.ai.prompts import (
     CATEGORY_SYSTEM_PROMPT,
     CATEGORY_USER_PROMPT,
@@ -21,6 +31,8 @@ from app.ai.prompts import (
     SUMMARY_SYSTEM_PROMPT,
     TAGS_SYSTEM_PROMPT,
     TAGS_USER_PROMPT,
+    TAXONOMY_OPTIMIZATION_SYSTEM_PROMPT,
+    TAXONOMY_OPTIMIZATION_USER_PROMPT,
     format_categories_for_prompt,
     truncate_text,
 )
@@ -380,3 +392,85 @@ class LiteLLMProvider(AIProvider):
         except Exception as e:
             logger.error(f"LiteLLM health check failed: {e}")
             return False
+
+    async def optimize_taxonomy(
+        self,
+        articles: list[dict],
+        current_taxonomy: list[dict] | None = None,
+    ) -> TaxonomyOptimizationResult:
+        """
+        Analyze the entire library and propose an optimal category structure.
+
+        Args:
+            articles: List of article dicts with 'id', 'title', 'summary', 'current_category'
+            current_taxonomy: Current category structure (if any)
+
+        Returns:
+            TaxonomyOptimizationResult with proposed structure and changes
+        """
+        # Format articles for the prompt
+        articles_lines = []
+        for article in articles:
+            current_cat = article.get("current_category", "Uncategorized")
+            if article.get("current_subcategory"):
+                current_cat = f"{current_cat} → {article['current_subcategory']}"
+            articles_lines.append(
+                f"- [{article['id']}] \"{article['title']}\" (currently: {current_cat})\n"
+                f"  Summary: {truncate_text(article.get('summary', 'No summary'), 300)}"
+            )
+
+        articles_summary = "\n\n".join(articles_lines)
+
+        # Format current taxonomy
+        current_taxonomy_str = "No existing categories"
+        if current_taxonomy:
+            current_taxonomy_str = format_categories_for_prompt(current_taxonomy)
+
+        user_prompt = TAXONOMY_OPTIMIZATION_USER_PROMPT.format(
+            article_count=len(articles),
+            articles_summary=articles_summary,
+            current_taxonomy=current_taxonomy_str,
+        )
+
+        try:
+            # Use higher max_tokens for this complex task
+            content = await self._complete(
+                system=TAXONOMY_OPTIMIZATION_SYSTEM_PROMPT,
+                user=user_prompt,
+                max_tokens=4000,
+                temperature=0.3,
+            )
+            json_data = _extract_json(content)
+
+            # Parse the response into our structured format
+            taxonomy = []
+            for cat_data in json_data.get("taxonomy", []):
+                subcategories = []
+                for sub_data in cat_data.get("subcategories", []):
+                    subcategories.append(SubcategoryAssignment(
+                        name=sub_data.get("name", ""),
+                        article_ids=sub_data.get("article_ids", []),
+                        description=sub_data.get("description", ""),
+                    ))
+                taxonomy.append(CategoryStructure(
+                    category=cat_data.get("category", ""),
+                    subcategories=subcategories,
+                ))
+
+            changes = json_data.get("changes_summary", {})
+            changes_summary = TaxonomyChangesSummary(
+                new_categories=changes.get("new_categories", []),
+                new_subcategories=changes.get("new_subcategories", []),
+                merged=changes.get("merged", []),
+                split=changes.get("split", []),
+                reorganized=changes.get("reorganized", []),
+            )
+
+            return TaxonomyOptimizationResult(
+                taxonomy=taxonomy,
+                changes_summary=changes_summary,
+                reasoning=json_data.get("reasoning", ""),
+            )
+        except Exception as e:
+            logger.error(f"LiteLLM taxonomy optimization failed: {e}")
+            raise

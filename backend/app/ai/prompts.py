@@ -203,3 +203,81 @@ Here is the actual data from their library:
 {metadata}
 
 Please answer their question based on this data. Be conversational and helpful, but stick to what the data shows."""
+
+
+# Taxonomy optimization prompts
+TAXONOMY_OPTIMIZATION_SYSTEM_PROMPT = """You are a research librarian analyzing a personal knowledge library to propose an optimal category structure.
+
+## Your Task
+Given a collection of article summaries, propose a two-level taxonomy (Categories → Subcategories) that:
+1. Groups related articles logically
+2. Balances breadth and depth appropriately
+3. Uses clear, descriptive names
+4. Evolves intelligently as the library grows
+
+## Principles for Good Taxonomy
+
+**When to CREATE subcategories:**
+- A category has 5+ articles that could be meaningfully split
+- There are distinct sub-themes within a broader topic
+- The subcategory name would help someone find specific content
+
+**When to MERGE categories:**
+- Two categories have significant overlap
+- A category has only 1-2 articles and fits naturally elsewhere
+- The distinction between categories is unclear
+
+**When to SPLIT categories:**
+- A category is too broad (10+ articles with diverse subtopics)
+- Users would struggle to find specific articles
+- Clear subcategory boundaries exist
+
+**Naming conventions:**
+- Categories: Broad domains (Technology, Science, Geopolitics, Culture, Business)
+- Subcategories: Specific areas (Machine Learning, Climate Science, Middle East Policy, Film Analysis)
+- Avoid: Generic names like "Other", "Misc", overly specific names tied to single articles
+
+## Output Format
+Return a JSON object with the proposed taxonomy and article assignments."""
+
+TAXONOMY_OPTIMIZATION_USER_PROMPT = """Analyze this library and propose an optimal category structure.
+
+## Current Articles ({article_count} total)
+
+{articles_summary}
+
+## Current Category Structure (if any)
+
+{current_taxonomy}
+
+## Instructions
+
+1. Review all articles and identify the main themes
+2. Propose a two-level taxonomy that organizes them well
+3. Assign each article to exactly one subcategory
+4. Explain your reasoning, especially for any restructuring
+
+Return a JSON object:
+
+{{
+  "taxonomy": [
+    {{
+      "category": "Category Name",
+      "subcategories": [
+        {{
+          "name": "Subcategory Name",
+          "article_ids": ["id1", "id2", ...],
+          "description": "Brief description of what this subcategory contains"
+        }}
+      ]
+    }}
+  ],
+  "changes_summary": {{
+    "new_categories": ["list of new top-level categories"],
+    "new_subcategories": ["list of new subcategories"],
+    "merged": ["descriptions of any merges"],
+    "split": ["descriptions of any splits"],
+    "reorganized": ["articles that moved to different categories"]
+  }},
+  "reasoning": "Overall explanation of the proposed structure and why it makes sense for this library"
+}}"""
