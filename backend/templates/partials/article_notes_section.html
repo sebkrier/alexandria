@@ -5,104 +5,55 @@
     - article: dict with id, notes (list of dicts with id, content, created_at)
 #}
 
-{% from 'components/icons.html' import pencil, trash_2, plus %}
+{% from 'components/icons.html' import trash_2, plus %}
 
 <div
     id="article-notes-section"
     class="bg-dark-surface border border-dark-border rounded-lg p-4"
     x-data="notesEditor('{{ article.id }}')"
-    x-init="loadDraft()"
+    x-init="initEditor()"
 >
     <h3 class="text-sm font-semibold text-white mb-3">Notes</h3>
 
     {# Add new note form #}
     <form
+        x-ref="noteForm"
         hx-post="/app/article/{{ article.id }}/notes"
         hx-target="#article-notes-section"
         hx-swap="outerHTML"
-        @htmx:after-request="clearDraft()"
-        class="mb-4"
+        @submit="beforeSubmit($event)"
+        class="mb-4 notes-editor"
     >
-        {# Formatting toolbar #}
-        <div class="flex items-center gap-1 mb-2 p-1 bg-dark-bg border border-dark-border rounded-t-lg border-b-0">
-            <button
-                type="button"
-                @click="insertFormat('**', '**')"
-                class="p-1.5 text-dark-muted hover:text-white hover:bg-dark-hover rounded transition-colors"
-                title="Bold (Ctrl+B)"
-            >
-                <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 4h8a4 4 0 014 4 4 4 0 01-4 4H6z"></path>
-                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 12h9a4 4 0 014 4 4 4 0 01-4 4H6z"></path>
-                </svg>
-            </button>
-            <button
-                type="button"
-                @click="insertFormat('*', '*')"
-                class="p-1.5 text-dark-muted hover:text-white hover:bg-dark-hover rounded transition-colors"
-                title="Italic (Ctrl+I)"
-            >
-                <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                    <line x1="19" y1="4" x2="10" y2="4"></line>
-                    <line x1="14" y1="20" x2="5" y2="20"></line>
-                    <line x1="15" y1="4" x2="9" y2="20"></line>
-                </svg>
-            </button>
-            <button
-                type="button"
-                @click="insertFormat('- ', '')"
-                class="p-1.5 text-dark-muted hover:text-white hover:bg-dark-hover rounded transition-colors"
-                title="List"
-            >
-                <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M8 6h13M8 12h13M8 18h13M3 6h.01M3 12h.01M3 18h.01"></path>
-                </svg>
-            </button>
-            <button
-                type="button"
-                @click="insertFormat('`', '`')"
-                class="p-1.5 text-dark-muted hover:text-white hover:bg-dark-hover rounded transition-colors"
-                title="Code"
-            >
-                <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M10 20l4-16m4 4l4 4-4 4M6 16l-4-4 4-4"></path>
-                </svg>
-            </button>
-            <span class="flex-1"></span>
+        {# Hidden input - kept in sync with Quill on every change #}
+        <input type="hidden" name="content" x-ref="contentInput">
+
+        {# Quill editor container #}
+        <div x-ref="editorContainer"></div>
+
+        <div class="flex items-center justify-between mt-3">
             <span x-show="hasDraft" class="text-xs text-dark-muted flex items-center gap-1">
                 <svg class="w-3 h-3" fill="currentColor" viewBox="0 0 20 20">
                     <path d="M16.707 5.293a1 1 0 010 1.414l-8 8a1 1 0 01-1.414 0l-4-4a1 1 0 011.414-1.414L8 12.586l7.293-7.293a1 1 0 011.414 0z"></path>
                 </svg>
                 Draft saved
             </span>
+            <span x-show="!hasDraft" class="flex-1"></span>
+            <button
+                type="submit"
+                class="flex items-center gap-1 px-3 py-1.5 bg-article-blue text-white text-sm rounded-lg hover:bg-article-blue/90 transition-colors"
+            >
+                {{ plus("w-4 h-4") }}
+                Add Note
+            </button>
         </div>
-        <textarea
-            x-ref="textarea"
-            name="content"
-            x-model="draft"
-            @input="saveDraft()"
-            @keydown.ctrl.b.prevent="insertFormat('**', '**')"
-            @keydown.ctrl.i.prevent="insertFormat('*', '*')"
-            placeholder="Add a note... (Markdown supported)"
-            rows="3"
-            required
-            class="w-full px-3 py-2 bg-dark-bg border border-dark-border rounded-b-lg text-dark-text placeholder-dark-muted text-sm focus:outline-none focus:ring-1 focus:ring-article-blue resize-none mb-2 font-mono"
-        ></textarea>
-        <button
-            type="submit"
-            class="flex items-center gap-1 px-3 py-1.5 bg-article-blue text-white text-sm rounded-lg hover:bg-article-blue/90 transition-colors"
-        >
-            {{ plus("w-4 h-4") }}
-            Add Note
-        </button>
     </form>
 
-    {# Notes list #}
+    {# Notes list - displaying HTML directly #}
     {% if article.notes %}
     <div class="space-y-3">
         {% for note in article.notes %}
         <div class="bg-dark-bg border border-dark-border rounded-lg p-3">
-            <div class="text-sm text-dark-text prose-dark note-content" data-markdown>{{ note.content }}</div>
+            <div class="text-sm text-dark-text prose-dark note-content">{{ note.content|safe }}</div>
             <div class="flex items-center justify-between mt-2 pt-2 border-t border-dark-border">
                 <span class="text-xs text-dark-muted">
                     {{ note.created_at.strftime('%b %d, %Y') if note.created_at else '' }}
@@ -128,21 +79,67 @@
 <script>
     function notesEditor(articleId) {
         return {
-            draft: '',
+            editor: null,
             hasDraft: false,
             storageKey: `alexandria-note-draft-${articleId}`,
 
-            loadDraft() {
-                const saved = localStorage.getItem(this.storageKey);
-                if (saved) {
-                    this.draft = saved;
-                    this.hasDraft = true;
+            initEditor() {
+                // Wait for Quill to be available
+                if (typeof Quill === 'undefined') {
+                    setTimeout(() => this.initEditor(), 100);
+                    return;
                 }
+
+                const container = this.$refs.editorContainer;
+
+                // Initialize Quill
+                this.editor = new Quill(container, {
+                    theme: 'snow',
+                    placeholder: 'Add a note...',
+                    modules: {
+                        toolbar: [
+                            ['bold', 'italic', 'underline', 'strike'],
+                            ['blockquote', 'code-block'],
+                            [{ 'list': 'ordered'}, { 'list': 'bullet' }],
+                            ['link'],
+                            ['clean']
+                        ]
+                    }
+                });
+
+                // Load draft
+                const savedDraft = localStorage.getItem(this.storageKey);
+                if (savedDraft) {
+                    try {
+                        this.editor.root.innerHTML = savedDraft;
+                        this.hasDraft = true;
+                        // Sync to hidden input immediately
+                        this.syncToHiddenInput();
+                    } catch (e) {
+                        console.error('Error loading draft:', e);
+                    }
+                }
+
+                // On EVERY text change: save draft AND sync to hidden input
+                this.editor.on('text-change', () => {
+                    this.saveDraft();
+                    this.syncToHiddenInput();
+                });
+            },
+
+            syncToHiddenInput() {
+                if (!this.editor || !this.$refs.contentInput) return;
+                const html = DOMPurify.sanitize(this.editor.root.innerHTML);
+                this.$refs.contentInput.value = html;
             },
 
             saveDraft() {
-                if (this.draft.trim()) {
-                    localStorage.setItem(this.storageKey, this.draft);
+                if (!this.editor) return;
+                const content = this.editor.root.innerHTML;
+                const text = this.editor.getText().trim();
+
+                if (text) {
+                    localStorage.setItem(this.storageKey, content);
                     this.hasDraft = true;
                 } else {
                     localStorage.removeItem(this.storageKey);
@@ -152,38 +149,32 @@
 
             clearDraft() {
                 localStorage.removeItem(this.storageKey);
-                this.draft = '';
                 this.hasDraft = false;
+                if (this.editor) {
+                    this.editor.setText('');
+                }
+                if (this.$refs.contentInput) {
+                    this.$refs.contentInput.value = '';
+                }
             },
 
-            insertFormat(before, after) {
-                const textarea = this.$refs.textarea;
-                const start = textarea.selectionStart;
-                const end = textarea.selectionEnd;
-                const text = this.draft;
-                const selected = text.substring(start, end);
+            beforeSubmit(event) {
+                if (!this.editor) return;
 
-                // If inserting at start of line (like list), handle differently
-                if (after === '') {
-                    const lineStart = text.lastIndexOf('\n', start - 1) + 1;
-                    this.draft = text.substring(0, lineStart) + before + text.substring(lineStart);
-                    this.$nextTick(() => {
-                        textarea.selectionStart = textarea.selectionEnd = start + before.length;
-                        textarea.focus();
-                    });
-                } else {
-                    this.draft = text.substring(0, start) + before + selected + after + text.substring(end);
-                    this.$nextTick(() => {
-                        if (selected) {
-                            textarea.selectionStart = start;
-                            textarea.selectionEnd = end + before.length + after.length;
-                        } else {
-                            textarea.selectionStart = textarea.selectionEnd = start + before.length;
-                        }
-                        textarea.focus();
-                    });
+                const text = this.editor.getText().trim();
+                if (!text) {
+                    event.preventDefault();
+                    return false;
                 }
-                this.saveDraft();
+
+                // Final sync before submit (belt and suspenders)
+                this.syncToHiddenInput();
+
+                // Clear draft after successful submit
+                // Use setTimeout to let HTMX process first
+                setTimeout(() => {
+                    localStorage.removeItem(this.storageKey);
+                }, 100);
             }
         };
     }

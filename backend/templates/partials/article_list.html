@@ -40,7 +40,7 @@
     {% endfor %}
 </div>
 {% else %}
-<div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4" id="article-list">
+<div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-4" id="article-list">
     {% for article in articles %}
     {% include 'partials/article_card.html' with context %}
     {% endfor %}

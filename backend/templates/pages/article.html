@@ -141,8 +141,6 @@
                             style="background-color: {{ article.color.hex_value }};"
                         ></div>
                         {% endif %}
-
-                        <span class="text-sm text-dark-muted capitalize">{{ article.source_type }}</span>
                     </div>
 
                     <h1 class="text-2xl font-bold text-white">{{ article.title }}</h1>
@@ -168,17 +166,17 @@
                 </div>
                 {% endif %}
 
-                {# Original link #}
+                {# Original link - as button #}
                 {% if article.original_url %}
                 <div class="mb-6">
                     <a
                         href="{{ article.original_url }}"
                         target="_blank"
                         rel="noopener noreferrer"
-                        class="inline-flex items-center gap-2 text-article-blue hover:underline"
+                        class="inline-flex items-center gap-2 px-4 py-2 bg-article-blue text-white rounded-lg hover:bg-article-blue/90 transition-colors"
                     >
                         {{ external_link("w-4 h-4") }}
-                        <span>View original</span>
+                        <span>Open Original</span>
                     </a>
                 </div>
                 {% endif %}

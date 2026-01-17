@@ -27,9 +27,21 @@
 
 {# ArticleCard.tsx line 33: isProcessing computation #}
 {% set is_processing = article.processing_status == 'processing' %}
+{% set is_pending = article.processing_status == 'pending' %}
+{% set needs_polling = is_processing or is_pending %}
 
 {# ArticleCard.tsx line 34: isFailed computation #}
 {% set is_failed = article.processing_status == 'failed' %}
+
+{# Wrapper div for HTMX polling when processing #}
+{% if needs_polling %}
+<div
+    id="article-card-{{ article.id }}"
+    hx-get="/app/article/{{ article.id }}/card?view_mode={{ view_mode }}"
+    hx-trigger="every 3s"
+    hx-swap="outerHTML"
+>
+{% endif %}
 
 {% if view_mode == 'list' %}
 {# ============================================================================
@@ -225,5 +237,10 @@
             >📎</a>
         </div>
     </div>
+</div>
+{% endif %}
+
+{# Close polling wrapper if it was opened #}
+{% if needs_polling %}
 </div>
 {% endif %}
