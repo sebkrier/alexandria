@@ -26,14 +26,15 @@ class GoogleProvider(AIProvider):
 
     provider_name = "google"
 
-    # Model options (2025)
+    # Model options (January 2026)
     MODELS = {
-        "gemini-2.0-flash": "Gemini 2.0 Flash (Latest, fast)",
-        "gemini-1.5-pro": "Gemini 1.5 Pro (Most capable)",
-        "gemini-1.5-flash": "Gemini 1.5 Flash (Fast)",
+        "gemini-2.5-flash": "Gemini 2.5 Flash (Recommended)",
+        "gemini-2.5-pro": "Gemini 2.5 Pro (Most capable)",
+        "gemini-3-flash-preview": "Gemini 3 Flash (Preview)",
+        "gemini-3-pro-preview": "Gemini 3 Pro (Preview)",
     }
 
-    DEFAULT_MODEL = "gemini-2.0-flash"
+    DEFAULT_MODEL = "gemini-2.5-flash"
 
     def __init__(self, api_key: str, model_id: str | None = None):
         genai.configure(api_key=api_key)

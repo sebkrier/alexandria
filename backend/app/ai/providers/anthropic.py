@@ -25,15 +25,16 @@ class AnthropicProvider(AIProvider):
 
     provider_name = "anthropic"
 
-    # Model options (2025)
+    # Model options (January 2026)
     MODELS = {
+        "claude-sonnet-4-5-20250929": "Claude Sonnet 4.5 (Recommended)",
         "claude-opus-4-5-20251101": "Claude Opus 4.5 (Most capable)",
-        "claude-sonnet-4-20250514": "Claude Sonnet 4 (Recommended)",
-        "claude-3-5-sonnet-20241022": "Claude 3.5 Sonnet (Fast)",
-        "claude-3-5-haiku-20241022": "Claude 3.5 Haiku (Fastest)",
+        "claude-haiku-4-5-20251101": "Claude Haiku 4.5 (Fastest)",
+        "claude-opus-4-1-20250805": "Claude Opus 4.1 (Agentic)",
+        "claude-sonnet-4-20250514": "Claude Sonnet 4",
     }
 
-    DEFAULT_MODEL = "claude-sonnet-4-20250514"
+    DEFAULT_MODEL = "claude-sonnet-4-5-20250929"
 
     def __init__(self, api_key: str, model_id: str | None = None):
         self.client = AsyncAnthropic(api_key=api_key)
