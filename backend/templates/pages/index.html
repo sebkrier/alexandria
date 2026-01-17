@@ -304,7 +304,8 @@
     function handleArticleClick(event, articleId) {
         // If clicked on checkbox or its container, let the existing handler work
         if (event.target.closest('.article-checkbox')) {
-            return false; // Prevent navigation, checkbox handler will take over
+            event.stopPropagation();
+            return; // Checkbox handler will take over
         }
 
         // If any articles are selected, we're in "selection mode"
@@ -312,11 +313,17 @@
             event.preventDefault();
             event.stopPropagation();
             toggleArticleSelection(articleId);
-            return false; // Prevent HTMX navigation
+            return;
         }
 
-        // No articles selected - allow normal navigation
-        return true;
+        // No articles selected - navigate to article page
+        const articleCard = event.currentTarget;
+        const url = articleCard.dataset.articleUrl;
+        if (url) {
+            htmx.ajax('GET', url, {target: 'body', swap: 'innerHTML'}).then(function() {
+                history.pushState({}, '', url);
+            });
+        }
     }
 
     function toggleArticleSelection(articleId) {
