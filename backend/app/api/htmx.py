@@ -164,25 +164,29 @@ async def fetch_categories_with_counts(db: AsyncSession, user_id: UUID) -> list[
     )
     categories = result.scalars().all()
 
-    # Get article counts per category
+    # Get article counts per category (direct counts only)
     count_result = await db.execute(
         select(ArticleCategory.category_id, func.count(ArticleCategory.article_id))
         .join(Article, Article.id == ArticleCategory.article_id)
         .where(Article.user_id == user_id)
         .group_by(ArticleCategory.category_id)
     )
-    counts = {row[0]: row[1] for row in count_result.all()}
+    direct_counts = {row[0]: row[1] for row in count_result.all()}
 
-    # Build tree structure
+    # Build tree structure with recursive counts
     def build_tree(parent_id: UUID | None) -> list[dict]:
         children = []
         for cat in categories:
             if cat.parent_id == parent_id:
+                child_nodes = build_tree(cat.id)
+                # Sum direct count + all descendant counts
+                direct_count = direct_counts.get(cat.id, 0)
+                descendant_count = sum(c["article_count"] for c in child_nodes)
                 children.append({
                     "id": str(cat.id),
                     "name": cat.name,
-                    "article_count": counts.get(cat.id, 0),
-                    "children": build_tree(cat.id),
+                    "article_count": direct_count + descendant_count,
+                    "children": child_nodes,
                 })
         return children
 
