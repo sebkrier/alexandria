@@ -52,6 +52,10 @@
     <!-- DOMPurify for sanitizing HTML -->
     <script src="https://unpkg.com/dompurify@3.0.8/dist/purify.min.js"></script>
 
+    <!-- Quill WYSIWYG Editor -->
+    <link href="https://cdn.jsdelivr.net/npm/quill@2.0.2/dist/quill.snow.css" rel="stylesheet">
+    <script src="https://cdn.jsdelivr.net/npm/quill@2.0.2/dist/quill.js"></script>
+
     <!-- Inter font -->
     <link rel="preconnect" href="https://fonts.googleapis.com">
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
@@ -176,6 +180,100 @@
         .prose-dark a:hover {
             text-decoration: underline;
         }
+
+        /* Quill Dark Theme */
+        .notes-editor .ql-toolbar {
+            background: #1a1a1a;
+            border: 1px solid #2a2a2a;
+            border-radius: 0.5rem 0.5rem 0 0;
+            padding: 4px 6px;
+        }
+        .notes-editor .ql-toolbar .ql-formats {
+            margin-right: 8px;
+        }
+        .notes-editor .ql-toolbar button {
+            width: 22px;
+            height: 22px;
+            padding: 2px;
+        }
+        .notes-editor .ql-toolbar button svg {
+            width: 14px;
+            height: 14px;
+        }
+        .notes-editor .ql-toolbar .ql-stroke {
+            stroke: #888888;
+        }
+        .notes-editor .ql-toolbar .ql-fill {
+            fill: #888888;
+        }
+        .notes-editor .ql-toolbar .ql-picker {
+            color: #888888;
+        }
+        .notes-editor .ql-toolbar .ql-picker-options {
+            background: #1a1a1a;
+            border-color: #2a2a2a;
+        }
+        .notes-editor .ql-toolbar .ql-picker-item:hover,
+        .notes-editor .ql-toolbar button:hover {
+            color: #e5e5e5;
+        }
+        .notes-editor .ql-toolbar button:hover .ql-stroke {
+            stroke: #e5e5e5;
+        }
+        .notes-editor .ql-toolbar button:hover .ql-fill {
+            fill: #e5e5e5;
+        }
+        .notes-editor .ql-toolbar button.ql-active .ql-stroke {
+            stroke: #6B7FD7;
+        }
+        .notes-editor .ql-toolbar button.ql-active .ql-fill {
+            fill: #6B7FD7;
+        }
+        .notes-editor .ql-container {
+            background: #0f0f0f;
+            border: 1px solid #2a2a2a;
+            border-top: none;
+            border-radius: 0 0 0.5rem 0.5rem;
+            font-family: inherit;
+            font-size: 14px;
+        }
+        .notes-editor .ql-editor {
+            color: #e5e5e5;
+            min-height: 100px;
+        }
+        .notes-editor .ql-editor.ql-blank::before {
+            color: #888888;
+            font-style: normal;
+        }
+        .notes-editor .ql-editor a {
+            color: #6B7FD7;
+        }
+        .notes-editor .ql-editor blockquote {
+            border-left-color: #2a2a2a;
+            color: #888888;
+        }
+        .notes-editor .ql-editor code,
+        .notes-editor .ql-editor pre {
+            background: #2a2a2a;
+            color: #e5e5e5;
+        }
+        /* Dropdown styling */
+        .notes-editor .ql-picker-label {
+            color: #888888;
+        }
+        .notes-editor .ql-picker-label:hover {
+            color: #e5e5e5;
+        }
+        .notes-editor .ql-snow .ql-picker.ql-expanded .ql-picker-options {
+            background: #1a1a1a;
+            border-color: #2a2a2a;
+        }
+        .notes-editor .ql-snow .ql-picker-options .ql-picker-item {
+            color: #888888;
+        }
+        .notes-editor .ql-snow .ql-picker-options .ql-picker-item:hover {
+            color: #e5e5e5;
+        }
     </style>
 
     {% block head %}{% endblock %}
@@ -239,7 +337,6 @@
 
             // Run initial render
             renderMarkdown();
-            console.log('Markdown rendering initialized');
         }
 
         // Start initialization

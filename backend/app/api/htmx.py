@@ -461,6 +461,47 @@ async def fetch_articles(
 
 
 # =============================================================================
+# Article Card Route (for polling during processing)
+# =============================================================================
+
+
+@router.get("/article/{article_id}/card", response_class=HTMLResponse)
+async def get_article_card(
+    request: Request,
+    article_id: UUID,
+    view_mode: str = Query("grid", description="View mode: grid or list"),
+    db: AsyncSession = Depends(get_db),
+    current_user: User = Depends(get_current_user),
+):
+    """Get a single article card - used for polling during processing."""
+    query = (
+        select(Article)
+        .where(Article.id == article_id, Article.user_id == current_user.id)
+        .options(
+            selectinload(Article.categories).selectinload(ArticleCategory.category),
+            selectinload(Article.tags).selectinload(ArticleTag.tag),
+            selectinload(Article.color),
+        )
+    )
+    result = await db.execute(query)
+    article = result.scalar_one_or_none()
+
+    if not article:
+        return HTMLResponse("")
+
+    article_dict = article_to_dict(article)
+
+    return templates.TemplateResponse(
+        request=request,
+        name="partials/article_card.html",
+        context={
+            "article": article_dict,
+            "view_mode": view_mode,
+        },
+    )
+
+
+# =============================================================================
 # Test Routes (for development)
 # =============================================================================
 
@@ -901,20 +942,24 @@ async def create_article_note(
     # Create note
     note = Note(article_id=article_id, content=content)
     db.add(note)
+    await db.flush()  # Flush to get the ID and timestamp
+    await db.refresh(note)  # Refresh to get DB-generated values
     await db.commit()
-    await db.refresh(note)
 
-    # Fetch all notes for this article
+    # Fetch existing notes (excluding the new one to avoid duplicates)
     notes_result = await db.execute(
         select(Note)
-        .where(Note.article_id == article_id)
+        .where(Note.article_id == article_id, Note.id != note.id)
         .order_by(Note.created_at.desc())
     )
-    notes = notes_result.scalars().all()
+    existing_notes = notes_result.scalars().all()
 
+    # Build list with new note first (it's newest)
     notes_list = [
+        {"id": str(note.id), "content": note.content, "created_at": note.created_at}
+    ] + [
         {"id": str(n.id), "content": n.content, "created_at": n.created_at}
-        for n in notes
+        for n in existing_notes
     ]
 
     return templates.TemplateResponse(
@@ -1106,6 +1151,9 @@ async def delete_article_note(
 
     await db.delete(note)
     await db.commit()
+
+    # Expire all to clear cache, then fetch fresh notes
+    db.expire_all()
 
     # Fetch remaining notes
     notes_result = await db.execute(
@@ -2453,6 +2501,11 @@ async def test_click(request: Request):
     color = random.choice(colors)  # noqa: S311
     return f'<span class="{color} font-bold">Button clicked! HTMX is working.</span>'
 
+
+# =============================================================================
+# DEVELOPMENT-ONLY: Test Routes (used for previewing UI components)
+# These routes are safe to keep - they use mock data and don't affect production
+# =============================================================================
 
 # Mock article data for testing
 MOCK_ARTICLES = [
