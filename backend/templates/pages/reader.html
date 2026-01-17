@@ -1,0 +1,376 @@
+{% extends "base.html" %}
+
+{% block title %}{{ article.title }} - Reader - Alexandria{% endblock %}
+
+{% block head %}
+<style>
+    /* Progress bar glow effect */
+    .progress-bar {
+        box-shadow: 0 0 10px rgba(107, 127, 215, 0.5);
+    }
+
+    /* Smooth page transitions */
+    .reader-content {
+        animation: fadeIn 0.3s ease-out;
+    }
+
+    @keyframes fadeIn {
+        from { opacity: 0; transform: translateY(10px); }
+        to { opacity: 1; transform: translateY(0); }
+    }
+
+    /* Summary prose styling */
+    .summary-prose h1, .summary-prose h2, .summary-prose h3 {
+        color: white;
+        margin-top: 1.5em;
+        margin-bottom: 0.5em;
+        font-weight: 600;
+    }
+    .summary-prose h1 { font-size: 1.5rem; }
+    .summary-prose h2 { font-size: 1.25rem; }
+    .summary-prose h3 { font-size: 1.1rem; }
+    .summary-prose p { margin-bottom: 1em; line-height: 1.7; }
+    .summary-prose ul, .summary-prose ol { margin-left: 1.5em; margin-bottom: 1em; }
+    .summary-prose li { margin-bottom: 0.5em; }
+    .summary-prose code {
+        background: #2a2a2a;
+        padding: 0.2em 0.4em;
+        border-radius: 0.25em;
+        font-size: 0.9em;
+    }
+    .summary-prose pre {
+        background: #1a1a1a;
+        padding: 1em;
+        border-radius: 0.5em;
+        overflow-x: auto;
+        margin-bottom: 1em;
+    }
+    .summary-prose a { color: #6B7FD7; }
+    .summary-prose a:hover { text-decoration: underline; }
+    .summary-prose strong { color: white; }
+
+    /* Keyboard hint styling */
+    kbd {
+        background: #333;
+        border: 1px solid #444;
+        border-radius: 4px;
+        padding: 2px 6px;
+        font-size: 0.75rem;
+        font-family: inherit;
+    }
+</style>
+{% endblock %}
+
+{% block body %}
+<div class="min-h-screen bg-dark-bg" x-data="readerKeyboard()" @keydown.window="handleKeydown($event)">
+    {# Progress bar #}
+    {% if total_unread > 0 %}
+    <div class="fixed top-0 left-0 right-0 z-20 h-1 bg-dark-surface">
+        <div
+            class="h-full bg-article-blue progress-bar transition-all duration-300"
+            style="width: {{ (current_position / total_unread * 100)|round(1) }}%;"
+        ></div>
+    </div>
+    {% endif %}
+
+    {# Header #}
+    <header class="sticky top-1 z-10 bg-dark-surface/95 backdrop-blur border-b border-dark-border">
+        <div class="max-w-4xl mx-auto px-4 py-2 flex items-center justify-between">
+            {# Back to library #}
+            <a
+                href="/app/"
+                class="flex items-center gap-2 text-dark-muted hover:text-white transition-colors"
+            >
+                <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 19l-7-7 7-7"></path>
+                </svg>
+                <span class="text-sm">Library</span>
+            </a>
+
+            {# Position indicator #}
+            <div class="text-sm text-dark-muted">
+                {% if current_position > 0 %}
+                <span class="text-white font-medium">{{ current_position }}</span>
+                <span class="mx-1">/</span>
+                <span>{{ total_unread }}</span>
+                {% endif %}
+            </div>
+
+            {# Navigation arrows #}
+            <div class="flex items-center gap-2">
+                {% if prev_id %}
+                <a
+                    href="/app/reader/{{ prev_id }}"
+                    class="p-1.5 rounded text-dark-muted hover:text-white hover:bg-dark-hover transition-colors"
+                    title="Previous (J or Left Arrow)"
+                >
+                    <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 19l-7-7 7-7"></path>
+                    </svg>
+                </a>
+                {% else %}
+                <span class="p-1.5 text-dark-muted/30 cursor-not-allowed">
+                    <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 19l-7-7 7-7"></path>
+                    </svg>
+                </span>
+                {% endif %}
+
+                {% if next_id %}
+                <a
+                    href="/app/reader/{{ next_id }}"
+                    class="p-1.5 rounded text-dark-muted hover:text-white hover:bg-dark-hover transition-colors"
+                    title="Next (K or Right Arrow)"
+                >
+                    <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 5l7 7-7 7"></path>
+                    </svg>
+                </a>
+                {% else %}
+                <span class="p-1.5 text-dark-muted/30 cursor-not-allowed">
+                    <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 5l7 7-7 7"></path>
+                    </svg>
+                </span>
+                {% endif %}
+            </div>
+        </div>
+    </header>
+
+    {# Main content #}
+    <main class="max-w-4xl mx-auto px-4 py-8 pb-32 reader-content">
+        {# Article info #}
+        <div class="mb-8 mt-4">
+            {# Title #}
+            <h1 class="text-2xl md:text-3xl font-bold text-white mb-4 leading-tight">
+                {{ article.title }}
+            </h1>
+
+            {# Source with favicon #}
+            {% if source_domain %}
+            <div class="flex items-center gap-2 mb-3">
+                <img
+                    src="https://www.google.com/s2/favicons?domain={{ source_domain }}&sz=16"
+                    alt=""
+                    class="w-4 h-4"
+                    onerror="this.style.display='none'"
+                >
+                <span class="text-sm text-dark-muted">{{ source_domain }}</span>
+            </div>
+            {% endif %}
+
+            {# Authors #}
+            {% if article.authors and article.authors|length > 0 %}
+            <p class="text-sm text-dark-muted mb-4">
+                {{ article.authors|join(", ") }}
+            </p>
+            {% endif %}
+
+            {# Metadata row #}
+            <div class="flex flex-wrap items-center gap-2 mb-6">
+                {% if article.reading_time_minutes %}
+                <span class="inline-flex items-center gap-1.5 px-3 py-1 bg-dark-hover rounded-full text-sm text-dark-muted">
+                    <svg class="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <circle cx="12" cy="12" r="10"></circle>
+                        <polyline points="12 6 12 12 16 14"></polyline>
+                    </svg>
+                    {{ article.reading_time_minutes }} min read
+                </span>
+                {% endif %}
+
+                {# Tags #}
+                {% for tag in article.tags %}
+                <span
+                    class="flex-shrink-0 px-3 py-1 rounded-full text-sm whitespace-nowrap"
+                    style="background-color: {{ (tag.color or '#8B5CF6') }}20; color: {{ tag.color or '#8B5CF6' }};"
+                >
+                    {{ tag.name }}
+                </span>
+                {% endfor %}
+            </div>
+
+            {# Action buttons #}
+            <div class="flex flex-col gap-3">
+                {# Open article button #}
+                <a
+                    href="{{ article.original_url or ('https://www.google.com/search?q=' + article.title|urlencode) }}"
+                    target="_blank"
+                    rel="noopener noreferrer"
+                    class="w-full flex items-center justify-center gap-2 px-6 py-3.5 bg-article-blue text-white rounded-xl font-medium transition-all hover:brightness-110 hover:scale-[1.01] active:scale-[0.99]"
+                >
+                    <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M10 6H6a2 2 0 00-2 2v10a2 2 0 002 2h10a2 2 0 002-2v-4M14 4h6m0 0v6m0-6L10 14"></path>
+                    </svg>
+                    <span>Open Article</span>
+                </a>
+
+                {# Mark as read button - opens color picker #}
+                <div x-data="{ showColorPicker: false }" class="relative">
+                    <button
+                        @click="showColorPicker = !showColorPicker"
+                        class="w-full flex items-center justify-center gap-2 px-6 py-3.5 border border-dark-border text-white rounded-xl font-medium transition-all hover:bg-dark-hover hover:scale-[1.01] active:scale-[0.99]"
+                    >
+                        <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 13l4 4L19 7"></path>
+                        </svg>
+                        <span>Mark as Read</span>
+                    </button>
+
+                    {# Color picker dropdown #}
+                    <div
+                        x-show="showColorPicker"
+                        x-cloak
+                        @click.outside="showColorPicker = false"
+                        @keydown.escape.window="showColorPicker = false"
+                        class="absolute left-0 right-0 top-full mt-2 z-50 bg-dark-surface border border-dark-border rounded-xl shadow-xl p-3"
+                    >
+                        <div class="text-xs text-dark-muted px-2 py-1 mb-2">Choose a color label:</div>
+
+                        <div class="grid grid-cols-2 gap-2">
+                            {% for color in colors %}
+                            <form action="/app/reader/{{ article.id }}/mark-read" method="POST">
+                                <input type="hidden" name="color_id" value="{{ color.id }}">
+                                <button
+                                    type="submit"
+                                    class="w-full flex items-center gap-2 px-3 py-2 rounded-lg hover:bg-dark-hover transition-colors text-left"
+                                >
+                                    <div
+                                        class="w-4 h-4 rounded-full flex-shrink-0"
+                                        style="background-color: {{ color.hex_value }};"
+                                    ></div>
+                                    <span class="text-sm text-dark-text truncate">{{ color.name }}</span>
+                                </button>
+                            </form>
+                            {% endfor %}
+
+                            {# No color option #}
+                            <form action="/app/reader/{{ article.id }}/mark-read" method="POST" class="col-span-2 border-t border-dark-border pt-2 mt-1">
+                                <button
+                                    type="submit"
+                                    class="w-full flex items-center gap-2 px-3 py-2 rounded-lg hover:bg-dark-hover transition-colors text-left"
+                                >
+                                    <div class="w-4 h-4 rounded-full flex-shrink-0 border border-dark-border bg-dark-bg"></div>
+                                    <span class="text-sm text-dark-muted">No color (just mark read)</span>
+                                </button>
+                            </form>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        {# Summary #}
+        {% if article.summary %}
+        <div class="bg-dark-surface border border-dark-border rounded-lg p-6 mb-8" x-data="{ expanded: false }">
+            <h2 class="text-lg font-semibold text-white mb-4">Summary</h2>
+            <div
+                class="summary-prose text-dark-text relative"
+                :class="{ 'max-h-80 overflow-hidden': !expanded && {{ 'true' if (article.summary|wordcount > 300) else 'false' }} }"
+            >
+                {{ article.summary|safe }}
+
+                {# Gradient fade for long summaries #}
+                <div
+                    x-show="!expanded && {{ 'true' if (article.summary|wordcount > 300) else 'false' }}"
+                    class="absolute bottom-0 left-0 right-0 h-20 bg-gradient-to-t from-dark-surface to-transparent"
+                ></div>
+            </div>
+
+            {% if article.summary|wordcount > 300 %}
+            <button
+                @click="expanded = !expanded"
+                class="mt-4 text-sm text-article-blue hover:text-article-blue/80 transition-colors"
+                x-text="expanded ? 'Show less' : 'Show more'"
+            ></button>
+            {% endif %}
+
+            {% if article.summary_model %}
+            <p class="mt-4 text-xs text-dark-muted">
+                Generated by {{ article.summary_model }}
+            </p>
+            {% endif %}
+        </div>
+        {% endif %}
+
+        {# Categories #}
+        {% if article.categories and article.categories|length > 0 %}
+        <div class="mb-8">
+            <span class="text-xs uppercase tracking-wider text-dark-muted mb-3 block">
+                Categories
+            </span>
+            <div class="flex flex-wrap gap-2">
+                {% for cat in article.categories %}
+                <span class="px-3 py-1.5 bg-dark-hover text-dark-muted rounded-lg text-sm">
+                    {{ cat.name }}
+                </span>
+                {% endfor %}
+            </div>
+        </div>
+        {% endif %}
+
+        {# Keyboard hints #}
+        <div
+            x-data="{ show: !localStorage.getItem('alexandria-keyboard-hints-dismissed') }"
+            x-show="show"
+            class="hidden md:flex items-center justify-center gap-4 mt-12 text-xs text-dark-muted"
+        >
+            <span>
+                Press <kbd>J</kbd>/<kbd>K</kbd> to navigate
+                <span class="mx-2">·</span>
+                <kbd>O</kbd> to open
+                <span class="mx-2">·</span>
+                <kbd>M</kbd> to mark read
+            </span>
+            <button
+                @click="show = false; localStorage.setItem('alexandria-keyboard-hints-dismissed', 'true')"
+                class="p-1 hover:text-white transition-colors"
+                title="Dismiss"
+            >
+                <svg class="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"></path>
+                </svg>
+            </button>
+        </div>
+    </main>
+</div>
+
+<script>
+    function readerKeyboard() {
+        return {
+            prevId: {{ ("'" + prev_id + "'")|safe if prev_id else 'null' }},
+            nextId: {{ ("'" + next_id + "'")|safe if next_id else 'null' }},
+            articleUrl: {{ ("'" + article.original_url + "'")|safe if article.original_url else ("'https://www.google.com/search?q=' + encodeURIComponent('" + article.title|replace("'", "\\'") + "')")|safe }},
+
+            handleKeydown(e) {
+                // Ignore if typing in an input
+                if (e.target.tagName === 'INPUT' || e.target.tagName === 'TEXTAREA') return;
+
+                switch (e.key) {
+                    case 'ArrowLeft':
+                    case 'j':
+                        if (this.prevId) window.location.href = '/app/reader/' + this.prevId;
+                        break;
+                    case 'ArrowRight':
+                    case 'k':
+                        if (this.nextId) window.location.href = '/app/reader/' + this.nextId;
+                        break;
+                    case 'o':
+                    case 'Enter':
+                        window.open(this.articleUrl, '_blank');
+                        break;
+                    case 'm':
+                        // Toggle the color picker
+                        const picker = document.querySelector('[x-data*="showColorPicker"]');
+                        if (picker && picker.__x) {
+                            picker.__x.$data.showColorPicker = !picker.__x.$data.showColorPicker;
+                        }
+                        break;
+                    case 'Escape':
+                        window.location.href = '/app/';
+                        break;
+                }
+            }
+        }
+    }
+</script>
+{% endblock %}
