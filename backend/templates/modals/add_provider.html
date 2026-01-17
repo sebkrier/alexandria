@@ -17,10 +17,24 @@
         loading: false,
         error: '',
         providerName: 'anthropic',
-        displayName: '',
+        displayName: 'My Anthropic API',
         modelId: '{{ available_providers.anthropic.default_model if available_providers else '' }}',
-        providers: {{ available_providers|tojson|safe if available_providers else '{}' }}
+        providers: {{ available_providers|tojson|safe if available_providers else '{}' }},
+
+        updateProvider() {
+            const provider = this.providers[this.providerName];
+            if (provider) {
+                this.displayName = 'My ' + provider.display_name + ' API';
+                this.modelId = provider.default_model || '';
+            }
+        },
+
+        getModels() {
+            const provider = this.providers[this.providerName];
+            return provider ? Object.entries(provider.models || {}) : [];
+        }
     }"
+    x-init="updateProvider()"
     @htmx:before-request="loading = true; error = ''"
     @htmx:after-request="loading = false; if(event.detail.successful) document.getElementById('add-provider-modal').remove()"
     @htmx:response-error="error = 'Failed to add provider. Please check your API key.'"
@@ -42,7 +56,7 @@
                 name="provider_name"
                 id="provider_name"
                 x-model="providerName"
-                @change="modelId = providers[providerName]?.default_model || ''; displayName = providers[providerName]?.display_name + ' API' || ''"
+                @change="updateProvider()"
                 class="w-full px-3 py-2 bg-dark-bg border border-dark-border rounded-lg text-white focus:outline-none focus:ring-2 focus:ring-article-blue"
             >
                 {% for key, provider in available_providers.items() %}
@@ -61,13 +75,13 @@
                 name="display_name"
                 id="display_name"
                 x-model="displayName"
-                placeholder="My Claude API"
                 required
                 class="w-full px-3 py-2 bg-dark-bg border border-dark-border rounded-lg text-white placeholder-dark-muted focus:outline-none focus:ring-2 focus:ring-article-blue"
             >
+            <p class="mt-1 text-xs text-dark-muted">A friendly name to identify this API key</p>
         </div>
 
-        {# Model select #}
+        {# Model select - rendered dynamically #}
         <div>
             <label for="model_id" class="block text-sm font-medium text-dark-text mb-1.5">
                 Model
@@ -78,13 +92,9 @@
                 x-model="modelId"
                 class="w-full px-3 py-2 bg-dark-bg border border-dark-border rounded-lg text-white focus:outline-none focus:ring-2 focus:ring-article-blue"
             >
-                {% for provider_key, provider in available_providers.items() %}
-                <template x-if="providerName === '{{ provider_key }}'">
-                    <template x-for="[key, name] in Object.entries(providers['{{ provider_key }}']?.models || {})">
-                        <option :value="key" x-text="name"></option>
-                    </template>
+                <template x-for="[modelKey, modelName] in getModels()" :key="modelKey">
+                    <option :value="modelKey" x-text="modelName" :selected="modelKey === modelId"></option>
                 </template>
-                {% endfor %}
             </select>
         </div>
 
@@ -97,10 +107,21 @@
                 type="password"
                 name="api_key"
                 id="api_key"
-                placeholder="sk-..."
+                placeholder="Enter your API key"
                 required
                 class="w-full px-3 py-2 bg-dark-bg border border-dark-border rounded-lg text-white placeholder-dark-muted focus:outline-none focus:ring-2 focus:ring-article-blue"
             >
+            <p class="mt-1 text-xs text-dark-muted">
+                <template x-if="providerName === 'anthropic'">
+                    <span>Get your key from <a href="https://console.anthropic.com/settings/keys" target="_blank" class="text-article-blue hover:underline">console.anthropic.com</a></span>
+                </template>
+                <template x-if="providerName === 'openai'">
+                    <span>Get your key from <a href="https://platform.openai.com/api-keys" target="_blank" class="text-article-blue hover:underline">platform.openai.com</a></span>
+                </template>
+                <template x-if="providerName === 'google'">
+                    <span>Get your key from <a href="https://aistudio.google.com/apikey" target="_blank" class="text-article-blue hover:underline">aistudio.google.com</a></span>
+                </template>
+            </p>
         </div>
     </div>
 
@@ -120,9 +141,9 @@
         >
             <span x-show="loading" class="flex items-center gap-2">
                 {{ loader_2('w-4 h-4 animate-spin') }}
-                Adding...
+                Saving...
             </span>
-            <span x-show="!loading">Add Provider</span>
+            <span x-show="!loading">Save Provider</span>
         </button>
     </div>
 </form>
