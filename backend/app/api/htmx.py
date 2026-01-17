@@ -1234,12 +1234,12 @@ async def create_color(
     await db.commit()
     await db.refresh(color)
 
-    # Fetch all colors and return the full list
+    # Fetch all colors and return the full section
     colors = await fetch_colors(db, current_user.id)
 
     return templates.TemplateResponse(
         request=request,
-        name="partials/settings_colors_list.html",
+        name="partials/settings_colors.html",
         context={"colors": colors},
     )
 
@@ -1275,12 +1275,12 @@ async def delete_color(
     await db.delete(color)
     await db.commit()
 
-    # Fetch remaining colors and return the full list
+    # Fetch remaining colors and return the full section
     colors = await fetch_colors(db, current_user.id)
 
     return templates.TemplateResponse(
         request=request,
-        name="partials/settings_colors_list.html",
+        name="partials/settings_colors.html",
         context={"colors": colors},
     )
 
