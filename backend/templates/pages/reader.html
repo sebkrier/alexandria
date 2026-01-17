@@ -204,57 +204,106 @@
                     <span>Open Article</span>
                 </a>
 
-                {# Mark as read button - opens color picker #}
-                <div x-data="{ showColorPicker: false }" class="relative">
-                    <button
-                        @click="showColorPicker = !showColorPicker"
-                        class="w-full flex items-center justify-center gap-2 px-6 py-3.5 border border-dark-border text-white rounded-xl font-medium transition-all hover:bg-dark-hover hover:scale-[1.01] active:scale-[0.99]"
-                    >
-                        <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 13l4 4L19 7"></path>
-                        </svg>
-                        <span>Mark as Read</span>
-                    </button>
+                {# Action buttons row #}
+                <div class="flex gap-3">
+                    {# Mark as Read button #}
+                    <form action="/app/reader/{{ article.id }}/mark-read" method="POST" class="flex-1">
+                        <button
+                            type="submit"
+                            class="w-full flex items-center justify-center gap-2 px-4 py-3.5 bg-article-green text-white rounded-xl font-medium transition-all hover:brightness-110 hover:scale-[1.01] active:scale-[0.99]"
+                        >
+                            <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 13l4 4L19 7"></path>
+                            </svg>
+                            <span>Mark as Read</span>
+                        </button>
+                    </form>
 
-                    {# Color picker dropdown #}
-                    <div
-                        x-show="showColorPicker"
-                        x-cloak
-                        @click.outside="showColorPicker = false"
-                        @keydown.escape.window="showColorPicker = false"
-                        class="absolute left-0 right-0 top-full mt-2 z-50 bg-dark-surface border border-dark-border rounded-xl shadow-xl p-3"
-                    >
-                        <div class="text-xs text-dark-muted px-2 py-1 mb-2">Choose a color label:</div>
+                    {# Color label button #}
+                    <div x-data="{ showColorPicker: false }" class="relative">
+                        <button
+                            @click="showColorPicker = !showColorPicker"
+                            class="flex items-center justify-center gap-2 px-4 py-3.5 border border-dark-border text-white rounded-xl font-medium transition-all hover:bg-dark-hover hover:scale-[1.01] active:scale-[0.99]"
+                            title="Add optional color label"
+                        >
+                            <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M7 21a4 4 0 01-4-4V5a2 2 0 012-2h4a2 2 0 012 2v12a4 4 0 01-4 4zm0 0h12a2 2 0 002-2v-4a2 2 0 00-2-2h-2.343M11 7.343l1.657-1.657a2 2 0 012.828 0l2.829 2.829a2 2 0 010 2.828l-8.486 8.485M7 17h.01"></path>
+                            </svg>
+                            {% if article.color %}
+                            <div class="w-4 h-4 rounded-full" style="background-color: {{ article.color.hex_value }};"></div>
+                            {% endif %}
+                        </button>
 
-                        <div class="grid grid-cols-2 gap-2">
-                            {% for color in colors %}
-                            <form action="/app/reader/{{ article.id }}/mark-read" method="POST">
-                                <input type="hidden" name="color_id" value="{{ color.id }}">
-                                <button
-                                    type="submit"
-                                    class="w-full flex items-center gap-2 px-3 py-2 rounded-lg hover:bg-dark-hover transition-colors text-left"
-                                >
-                                    <div
-                                        class="w-4 h-4 rounded-full flex-shrink-0"
-                                        style="background-color: {{ color.hex_value }};"
-                                    ></div>
-                                    <span class="text-sm text-dark-text truncate">{{ color.name }}</span>
-                                </button>
-                            </form>
-                            {% endfor %}
+                        {# Color picker dropdown #}
+                        <div
+                            x-show="showColorPicker"
+                            x-cloak
+                            @click.outside="showColorPicker = false"
+                            @keydown.escape.window="showColorPicker = false"
+                            class="absolute right-0 top-full mt-2 z-50 bg-dark-surface border border-dark-border rounded-xl shadow-xl p-3 min-w-[200px]"
+                        >
+                            <div class="text-xs text-dark-muted px-2 py-1 mb-2">Optional color label:</div>
 
-                            {# No color option #}
-                            <form action="/app/reader/{{ article.id }}/mark-read" method="POST" class="col-span-2 border-t border-dark-border pt-2 mt-1">
-                                <button
-                                    type="submit"
-                                    class="w-full flex items-center gap-2 px-3 py-2 rounded-lg hover:bg-dark-hover transition-colors text-left"
-                                >
-                                    <div class="w-4 h-4 rounded-full flex-shrink-0 border border-dark-border bg-dark-bg"></div>
-                                    <span class="text-sm text-dark-muted">No color (just mark read)</span>
-                                </button>
-                            </form>
+                            <div class="space-y-1">
+                                {% for color in colors %}
+                                <form action="/app/reader/{{ article.id }}/set-color" method="POST">
+                                    <input type="hidden" name="color_id" value="{{ color.id }}">
+                                    <button
+                                        type="submit"
+                                        class="w-full flex items-center gap-2 px-3 py-2 rounded-lg hover:bg-dark-hover transition-colors text-left {% if article.color and article.color.id == color.id %}bg-dark-hover{% endif %}"
+                                    >
+                                        <div
+                                            class="w-4 h-4 rounded-full flex-shrink-0"
+                                            style="background-color: {{ color.hex_value }};"
+                                        ></div>
+                                        <span class="text-sm text-dark-text truncate">{{ color.name }}</span>
+                                        {% if article.color and article.color.id == color.id %}
+                                        <svg class="w-4 h-4 ml-auto text-article-blue" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 13l4 4L19 7"></path>
+                                        </svg>
+                                        {% endif %}
+                                    </button>
+                                </form>
+                                {% endfor %}
+
+                                {# Clear color option #}
+                                {% if article.color %}
+                                <form action="/app/reader/{{ article.id }}/set-color" method="POST" class="border-t border-dark-border pt-2 mt-2">
+                                    <button
+                                        type="submit"
+                                        class="w-full flex items-center gap-2 px-3 py-2 rounded-lg hover:bg-dark-hover transition-colors text-left"
+                                    >
+                                        <div class="w-4 h-4 rounded-full flex-shrink-0 border border-dashed border-dark-muted"></div>
+                                        <span class="text-sm text-dark-muted">Clear color</span>
+                                    </button>
+                                </form>
+                                {% endif %}
+                            </div>
                         </div>
                     </div>
+                </div>
+
+                {# Current status indicator #}
+                <div class="flex items-center gap-2 text-sm text-dark-muted mt-2">
+                    <span>Status:</span>
+                    {% if article.is_read %}
+                    <span class="inline-flex items-center gap-1 px-2 py-0.5 bg-article-green/20 text-article-green rounded-full text-xs">
+                        <svg class="w-3 h-3" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 13l4 4L19 7"></path>
+                        </svg>
+                        Read
+                    </span>
+                    {% else %}
+                    <span class="inline-flex items-center px-2 py-0.5 bg-dark-hover text-dark-muted rounded-full text-xs">
+                        Unread
+                    </span>
+                    {% endif %}
+                    {% if article.color %}
+                    <span class="inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-xs" style="background-color: {{ article.color.hex_value }}20; color: {{ article.color.hex_value }};">
+                        <div class="w-2 h-2 rounded-full" style="background-color: {{ article.color.hex_value }};"></div>
+                        {{ article.color.name }}
+                    </span>
+                    {% endif %}
                 </div>
             </div>
         </div>

@@ -813,6 +813,77 @@ async def create_article_note(
     )
 
 
+@router.post("/article/{article_id}/reprocess", response_class=HTMLResponse)
+async def reprocess_article(
+    request: Request,
+    article_id: UUID,
+    db: AsyncSession = Depends(get_db),
+    current_user: User = Depends(get_current_user),
+):
+    """Reprocess an article (regenerate summary and categories) via HTMX."""
+    import asyncio
+
+    from app.database import async_session_maker
+
+    # Fetch article
+    result = await db.execute(
+        select(Article).where(
+            Article.id == article_id,
+            Article.user_id == current_user.id,
+        )
+    )
+    article = result.scalar_one_or_none()
+
+    if not article:
+        return templates.TemplateResponse(
+            request=request,
+            name="components/toast.html",
+            context={
+                "toast_type": "error",
+                "toast_message": "Article not found",
+            },
+        )
+
+    # Skip if already processing
+    if article.processing_status == ProcessingStatus.PROCESSING:
+        return templates.TemplateResponse(
+            request=request,
+            name="components/toast.html",
+            context={
+                "toast_type": "warning",
+                "toast_message": "Article is already being processed",
+            },
+        )
+
+    # Mark as pending
+    article.processing_status = ProcessingStatus.PENDING
+    article.processing_error = None
+    await db.commit()
+
+    # Schedule background processing
+    async def process_in_background(aid: UUID, uid: UUID):
+        async with async_session_maker() as bg_db:
+            try:
+                from app.ai.service import AIService
+                ai_service = AIService(bg_db)
+                await ai_service.process_article(article_id=aid, user_id=uid)
+            except Exception as e:
+                import logging
+                logging.error(f"Background reprocessing failed for {aid}: {e}")
+
+    asyncio.create_task(process_in_background(article_id, current_user.id))
+
+    response = templates.TemplateResponse(
+        request=request,
+        name="components/toast.html",
+        context={
+            "toast_type": "success",
+            "toast_message": f"Re-analyzing: {article.title[:40]}{'...' if len(article.title or '') > 40 else ''}",
+        },
+    )
+    return response
+
+
 @router.delete("/article/{article_id}/notes/{note_id}", response_class=HTMLResponse)
 async def delete_article_note(
     request: Request,
@@ -2377,7 +2448,41 @@ async def reader_mark_read(
     db: AsyncSession = Depends(get_db),
     current_user: User = Depends(get_current_user),
 ):
-    """Mark article as read and return redirect info for next article."""
+    """Mark article as read and redirect to next unread article."""
+    from fastapi.responses import RedirectResponse
+
+    # Update the article
+    result = await db.execute(
+        select(Article).where(
+            Article.id == article_id,
+            Article.user_id == current_user.id,
+        )
+    )
+    article = result.scalar_one_or_none()
+
+    if article:
+        article.is_read = True
+        await db.commit()
+
+    # Get next unread article
+    unread = await get_unread_articles_ordered(db, current_user.id)
+
+    if unread:
+        # Redirect to next unread
+        return RedirectResponse(url=f"/app/reader/{unread[0].id}", status_code=302)
+    else:
+        # All done - redirect to empty state
+        return RedirectResponse(url="/app/reader", status_code=302)
+
+
+@router.post("/reader/{article_id}/set-color", response_class=HTMLResponse)
+async def reader_set_color(
+    request: Request,
+    article_id: UUID,
+    db: AsyncSession = Depends(get_db),
+    current_user: User = Depends(get_current_user),
+):
+    """Set or clear the color label on an article and reload the reader page."""
     from fastapi.responses import RedirectResponse
 
     form = await request.form()
@@ -2393,17 +2498,8 @@ async def reader_mark_read(
     article = result.scalar_one_or_none()
 
     if article:
-        article.is_read = True
-        if color_id:
-            article.color_id = color_id
+        article.color_id = UUID(color_id) if color_id else None
         await db.commit()
 
-    # Get next unread article
-    unread = await get_unread_articles_ordered(db, current_user.id)
-
-    if unread:
-        # Redirect to next unread
-        return RedirectResponse(url=f"/app/reader/{unread[0].id}", status_code=302)
-    else:
-        # All done - redirect to empty state
-        return RedirectResponse(url="/app/reader", status_code=302)
+    # Redirect back to the same article
+    return RedirectResponse(url=f"/app/reader/{article_id}", status_code=302)

@@ -147,10 +147,22 @@
 
         {# Actions #}
         <div class="flex items-center gap-1">
+            {# Mark as Read #}
+            <button
+                @click="markAsRead()"
+                :disabled="isMarkingRead"
+                class="flex items-center gap-2 px-3 py-2 rounded-lg transition-colors bg-article-green/10 text-article-green hover:bg-article-green/20 disabled:opacity-50 disabled:cursor-not-allowed"
+            >
+                <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 13l4 4L19 7"></path>
+                </svg>
+                <span class="text-sm">Mark Read</span>
+            </button>
+
             {# Color #}
             <div class="relative">
                 <button
-                    @click="showColorPicker = !showColorPicker; showMarkReadPicker = false"
+                    @click="showColorPicker = !showColorPicker"
                     class="flex items-center gap-2 px-3 py-2 rounded-lg transition-colors text-dark-muted hover:text-white hover:bg-dark-hover"
                 >
                     <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -321,9 +333,9 @@
             selectedCount: 0,
             allSelected: false,
             showColorPicker: false,
-            showMarkReadPicker: false,
             isReanalyzing: false,
             isDeleting: false,
+            isMarkingRead: false,
 
             init() {
                 // Listen for delete confirmation
@@ -332,7 +344,6 @@
 
             closeAll() {
                 this.showColorPicker = false;
-                this.showMarkReadPicker = false;
             },
 
             toggleSelectAll() {
@@ -354,6 +365,33 @@
                 selectedArticleIds.clear();
                 updateSelectionUI();
                 this.allSelected = false;
+            },
+
+            async markAsRead() {
+                if (this.isMarkingRead) return;
+                this.isMarkingRead = true;
+
+                const ids = Array.from(selectedArticleIds);
+
+                try {
+                    const formData = new FormData();
+                    formData.append('article_ids', JSON.stringify(ids));
+
+                    const response = await fetch('/app/articles/bulk/mark-read', {
+                        method: 'POST',
+                        body: formData,
+                    });
+
+                    if (response.ok) {
+                        const html = await response.text();
+                        document.getElementById('toast-container').insertAdjacentHTML('beforeend', html);
+                        window.dispatchEvent(new CustomEvent('articles-updated'));
+                    }
+                } catch (error) {
+                    console.error('Failed to mark as read:', error);
+                } finally {
+                    this.isMarkingRead = false;
+                }
             },
 
             async updateColor(colorId) {
