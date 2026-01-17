@@ -36,13 +36,11 @@
    LIST VIEW - ArticleCard.tsx lines 59-146
    ============================================================================ #}
 
-{# Lines 61-68: Root container - using div with hx-get #}
+{# Lines 61-68: Root container - click handled by JS #}
 <div
     data-article-id="{{ article.id }}"
-    hx-get="/app/article/{{ article.id }}"
-    hx-target="body"
-    hx-push-url="true"
-    onclick="return handleArticleClick(event, '{{ article.id }}')"
+    data-article-url="/app/article/{{ article.id }}"
+    onclick="handleArticleClick(event, '{{ article.id }}')"
     class="flex items-start gap-4 p-4 bg-dark-surface border rounded-lg transition-colors cursor-pointer {% if is_selected %}border-article-blue bg-article-blue/5{% else %}border-dark-border hover:border-dark-hover hover:bg-dark-hover/50{% endif %}"
 >
     {# Lines 71-76: Color indicator - vertical bar on left #}
@@ -136,13 +134,11 @@
    GRID VIEW - ArticleCard.tsx lines 150-248
    ============================================================================ #}
 
-{# Lines 151-158: Root container - using div with hx-get #}
+{# Lines 151-158: Root container - click handled by JS #}
 <div
     data-article-id="{{ article.id }}"
-    hx-get="/app/article/{{ article.id }}"
-    hx-target="body"
-    hx-push-url="true"
-    onclick="return handleArticleClick(event, '{{ article.id }}')"
+    data-article-url="/app/article/{{ article.id }}"
+    onclick="handleArticleClick(event, '{{ article.id }}')"
     class="flex flex-col p-4 bg-dark-surface border rounded-lg transition-colors h-full cursor-pointer {% if is_selected %}border-article-blue bg-article-blue/5{% else %}border-dark-border hover:border-dark-hover hover:bg-dark-hover/50{% endif %}"
 >
     {# Line 161: Header #}
