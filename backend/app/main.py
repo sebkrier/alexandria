@@ -4,6 +4,7 @@ from pathlib import Path
 
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
+from fastapi.responses import RedirectResponse
 from fastapi.staticfiles import StaticFiles
 from fastapi.templating import Jinja2Templates
 
@@ -47,6 +48,10 @@ app.add_middleware(
     allow_headers=["*"],
 )
 
+# Mount static files
+STATIC_DIR = Path(__file__).parent.parent / "static"
+app.mount("/static", StaticFiles(directory=str(STATIC_DIR)), name="static")
+
 # Include API routes
 app.include_router(api_router, prefix="/api")
 
@@ -62,3 +67,9 @@ async def root():
         "version": "0.1.0",
         "docs": "/docs",
     }
+
+
+@app.get("/favicon.ico")
+async def favicon():
+    """Redirect favicon requests to the logo."""
+    return RedirectResponse(url="/static/logo-eyes.png", status_code=301)

@@ -98,6 +98,38 @@ async def complete(
     return response.choices[0].message.content
 
 
+async def complete_stream(
+    messages: list[dict],
+    api_key: str,
+    model: str,
+    provider: str,
+    temperature: float = 0.3,
+    max_tokens: int = 2000,
+):
+    """
+    Streaming completion using LiteLLM.
+
+    Yields chunks of the response as they arrive.
+    """
+    from typing import AsyncGenerator
+
+    prefix = PROVIDER_PREFIXES.get(provider, "")
+    full_model = f"{prefix}{model}"
+
+    response = await litellm.acompletion(
+        model=full_model,
+        messages=messages,
+        api_key=api_key,
+        temperature=temperature,
+        max_tokens=max_tokens,
+        stream=True,
+    )
+
+    async for chunk in response:
+        if chunk.choices and chunk.choices[0].delta.content:
+            yield chunk.choices[0].delta.content
+
+
 def _extract_json(text: str) -> dict | list:
     """Extract JSON from model response, handling markdown code blocks."""
     # Try to find JSON in code blocks first
@@ -310,6 +342,31 @@ class LiteLLMProvider(AIProvider):
         except Exception as e:
             logger.error(f"LiteLLM question answering failed: {e}")
             raise
+
+    async def answer_question_stream(
+        self,
+        question: str,
+        context: str,
+    ):
+        """Stream answer to a question using provided context."""
+        user_prompt = QUESTION_USER_PROMPT.format(
+            question=question,
+            context=context,
+        )
+
+        messages = [
+            {"role": "system", "content": QUESTION_SYSTEM_PROMPT},
+            {"role": "user", "content": user_prompt},
+        ]
+
+        async for chunk in complete_stream(
+            messages=messages,
+            api_key=self.api_key,
+            model=self.model_id,
+            provider=self._provider_name,
+            max_tokens=2000,
+        ):
+            yield chunk
 
     async def health_check(self) -> bool:
         """Check if the API key is valid."""
