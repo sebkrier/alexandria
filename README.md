@@ -44,7 +44,7 @@ A personal research library for storing, organizing, and retrieving articles wit
 ### 1. Clone and setup
 
 ```bash
-git clone https://github.com/yourusername/alexandria.git
+git clone https://github.com/sebkrier/alexandria.git
 cd alexandria
 ```
 
@@ -142,6 +142,40 @@ pm2 start bot.js --name alexandria-whatsapp
 pm2 startup && pm2 save
 ```
 
+## Backup & Restore
+
+Alexandria supports exporting and importing your entire library for backup or migration purposes.
+
+### Export via UI
+
+1. Go to **Settings** → **Backup** tab
+2. Click **"Export Library"**
+3. A JSON file containing all your articles, tags, categories, and notes will download
+
+### Import via UI
+
+1. Go to **Settings** → **Backup** tab
+2. Click **"Import Library"** and select a previously exported JSON file
+3. Choose whether to merge with existing data or replace
+
+### Local Database Backup
+
+For a full PostgreSQL backup (recommended for production):
+
+```bash
+# Run the backup script
+./scripts/backup_local.sh
+
+# Or specify a custom backup directory
+./scripts/backup_local.sh /path/to/backups
+```
+
+Backups are saved as timestamped `.sql.gz` files. To restore:
+
+```bash
+gunzip -c backup_file.sql.gz | PGPASSWORD=localdev psql -h localhost -U postgres -d alexandria
+```
+
 ## Development
 
 ### Linting & Formatting
@@ -235,7 +269,7 @@ alexandria/
 ├── whatsapp-bot/            # WhatsApp bot for remote article adding
 │   ├── bot.js               # Bot implementation
 │   └── package.json
-├── scripts/                 # Utility scripts
+├── scripts/                 # Utility scripts (backup_local.sh, etc.)
 ├── DEPLOYMENT.md            # Production deployment guide
 └── docker-compose.yml       # Docker setup (alternative)
 ```
