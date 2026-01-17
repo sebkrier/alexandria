@@ -96,15 +96,36 @@
 
                 {# Bulk selection bar (shown when articles selected) #}
                 <div
-                    x-data="{ selectedCount: 0 }"
+                    x-data="{ selectedCount: 0, showColorPicker: false }"
                     x-show="selectedCount > 0"
                     x-cloak
                     @selection-changed.window="selectedCount = $event.detail.count"
-                    class="flex items-center gap-4 px-4 py-2 bg-dark-surface border border-article-blue rounded-lg"
+                    @articles-updated.window="showColorPicker = false"
+                    class="flex items-center gap-4 px-4 py-2 bg-dark-surface border border-article-blue rounded-lg relative"
                 >
                     <span class="text-sm text-white" x-text="selectedCount + ' selected'"></span>
-                    <button class="text-sm text-article-blue hover:underline">Mark as read</button>
-                    <button class="text-sm text-article-red hover:underline">Delete</button>
+
+                    {# Mark as read with color picker #}
+                    <div class="relative color-picker-container">
+                        <button
+                            @click="showColorPicker = !showColorPicker"
+                            hx-get="/app/articles/bulk/color-picker"
+                            hx-target="next .color-picker-dropdown"
+                            hx-swap="innerHTML"
+                            hx-trigger="click once"
+                            class="text-sm text-article-blue hover:underline"
+                        >Mark as read</button>
+                        <div class="color-picker-dropdown" x-show="showColorPicker" @click.outside="showColorPicker = false"></div>
+                    </div>
+
+                    <button
+                        hx-post="/app/articles/bulk/delete"
+                        hx-target="#toast-container"
+                        hx-swap="beforeend"
+                        hx-vals="js:{article_ids: JSON.stringify(Array.from(selectedArticleIds))}"
+                        hx-confirm="Are you sure you want to delete the selected articles?"
+                        class="text-sm text-article-red hover:underline"
+                    >Delete</button>
                 </div>
             </div>
 
@@ -136,6 +157,15 @@
         if (modal) modal.remove();
     });
 
+    // Listen for articlesUpdated event (from bulk operations) to refresh list and clear selection
+    document.body.addEventListener('articlesUpdated', function() {
+        // Clear selection
+        selectedArticleIds.clear();
+        updateSelectionUI();
+        // Refresh articles list
+        htmx.ajax('GET', '/app/articles', {target: '#articles-container', swap: 'innerHTML'});
+    });
+
     // Article selection management
     const selectedArticleIds = new Set();
 
@@ -154,20 +184,23 @@
         document.querySelectorAll('[data-article-id]').forEach(el => {
             const id = el.dataset.articleId;
             const checkbox = el.querySelector('.article-checkbox');
+            const checkmark = el.querySelector('.checkmark');
             if (checkbox) {
                 if (selectedArticleIds.has(id)) {
                     checkbox.classList.add('bg-article-blue', 'border-article-blue');
                     checkbox.classList.remove('border-dark-border');
+                    if (checkmark) checkmark.classList.remove('hidden');
                 } else {
                     checkbox.classList.remove('bg-article-blue', 'border-article-blue');
                     checkbox.classList.add('border-dark-border');
+                    if (checkmark) checkmark.classList.add('hidden');
                 }
             }
         });
 
-        // Update count in Alpine component (if used)
+        // Update count in Alpine component
         const event = new CustomEvent('selection-changed', { detail: { count: selectedArticleIds.size } });
-        document.dispatchEvent(event);
+        window.dispatchEvent(event);
     }
 </script>
 {% endblock %}

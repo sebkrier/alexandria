@@ -1,0 +1,48 @@
+{#
+  Color picker dropdown for bulk mark as read
+  Shows available colors and triggers mark-read with selected color
+#}
+
+<div
+    x-data="{ open: true }"
+    x-show="open"
+    @click.outside="open = false; $el.remove()"
+    @keydown.escape.window="open = false; $el.remove()"
+    class="absolute right-0 top-full mt-1 z-50 bg-dark-surface border border-dark-border rounded-lg shadow-xl p-2 min-w-[180px]"
+>
+    <div class="text-xs text-dark-muted px-2 py-1 mb-1">Choose a color:</div>
+
+    {% for color in colors %}
+    <button
+        type="button"
+        hx-post="/app/articles/bulk/mark-read"
+        hx-target="#toast-container"
+        hx-swap="beforeend"
+        hx-vals="js:{article_ids: JSON.stringify(Array.from(selectedArticleIds)), color_id: '{{ color.id }}'}"
+        @click="open = false; setTimeout(() => $el.closest('.color-picker-container')?.remove(), 100)"
+        class="w-full flex items-center gap-2 px-2 py-1.5 rounded hover:bg-dark-hover transition-colors text-left"
+    >
+        <div
+            class="w-4 h-4 rounded-full flex-shrink-0"
+            style="background-color: {{ color.hex_value }};"
+        ></div>
+        <span class="text-sm text-dark-text">{{ color.name }}</span>
+    </button>
+    {% endfor %}
+
+    <div class="border-t border-dark-border my-1"></div>
+
+    {# Option to mark as read without color #}
+    <button
+        type="button"
+        hx-post="/app/articles/bulk/mark-read"
+        hx-target="#toast-container"
+        hx-swap="beforeend"
+        hx-vals="js:{article_ids: JSON.stringify(Array.from(selectedArticleIds))}"
+        @click="open = false; setTimeout(() => $el.closest('.color-picker-container')?.remove(), 100)"
+        class="w-full flex items-center gap-2 px-2 py-1.5 rounded hover:bg-dark-hover transition-colors text-left"
+    >
+        <div class="w-4 h-4 rounded-full flex-shrink-0 border border-dark-border bg-dark-bg"></div>
+        <span class="text-sm text-dark-muted">No color (just mark read)</span>
+    </button>
+</div>

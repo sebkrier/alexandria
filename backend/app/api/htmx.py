@@ -1084,6 +1084,148 @@ async def upload_article_pdf(
 
 
 # =============================================================================
+# Bulk Article Operations
+# =============================================================================
+
+
+@router.post("/articles/bulk/mark-read", response_class=HTMLResponse)
+async def bulk_mark_read(
+    request: Request,
+    db: AsyncSession = Depends(get_db),
+    current_user: User = Depends(get_current_user),
+):
+    """Mark selected articles as read and optionally assign a color."""
+    import json
+
+    form = await request.form()
+    article_ids_json = form.get("article_ids", "[]")
+    color_id = form.get("color_id")
+
+    try:
+        article_ids = json.loads(article_ids_json)
+    except json.JSONDecodeError:
+        article_ids = []
+
+    if not article_ids:
+        return templates.TemplateResponse(
+            request=request,
+            name="components/toast.html",
+            context={
+                "toast_type": "error",
+                "toast_message": "No articles selected",
+            },
+        )
+
+    # Update articles
+    count = 0
+    for article_id in article_ids:
+        try:
+            result = await db.execute(
+                select(Article).where(
+                    Article.id == article_id,
+                    Article.user_id == current_user.id,
+                )
+            )
+            article = result.scalar_one_or_none()
+            if article:
+                article.is_read = True
+                if color_id:
+                    article.color_id = color_id
+                count += 1
+        except Exception:
+            continue
+
+    await db.commit()
+
+    # Return success toast and trigger refresh
+    response = templates.TemplateResponse(
+        request=request,
+        name="components/toast.html",
+        context={
+            "toast_type": "success",
+            "toast_message": f"Marked {count} article{'s' if count != 1 else ''} as read",
+        },
+    )
+    response.headers["HX-Trigger"] = "articlesUpdated"
+    return response
+
+
+@router.get("/articles/bulk/color-picker", response_class=HTMLResponse)
+async def bulk_color_picker(
+    request: Request,
+    db: AsyncSession = Depends(get_db),
+    current_user: User = Depends(get_current_user),
+):
+    """Return the color picker dropdown for bulk mark as read."""
+    colors = await fetch_colors(db, current_user.id)
+
+    return templates.TemplateResponse(
+        request=request,
+        name="partials/bulk_color_picker.html",
+        context={"colors": colors},
+    )
+
+
+@router.post("/articles/bulk/delete", response_class=HTMLResponse)
+async def bulk_delete(
+    request: Request,
+    db: AsyncSession = Depends(get_db),
+    current_user: User = Depends(get_current_user),
+):
+    """Delete selected articles."""
+    import json
+
+    form = await request.form()
+    article_ids_json = form.get("article_ids", "[]")
+
+    try:
+        article_ids = json.loads(article_ids_json)
+    except json.JSONDecodeError:
+        article_ids = []
+
+    if not article_ids:
+        return templates.TemplateResponse(
+            request=request,
+            name="components/toast.html",
+            context={
+                "toast_type": "error",
+                "toast_message": "No articles selected",
+            },
+        )
+
+    # Delete articles
+    count = 0
+    for article_id in article_ids:
+        try:
+            result = await db.execute(
+                select(Article).where(
+                    Article.id == article_id,
+                    Article.user_id == current_user.id,
+                )
+            )
+            article = result.scalar_one_or_none()
+            if article:
+                await db.delete(article)
+                count += 1
+        except Exception:
+            continue
+
+    await db.commit()
+
+    # Return success toast and trigger refresh
+    response = templates.TemplateResponse(
+        request=request,
+        name="components/toast.html",
+        context={
+            "toast_type": "success",
+            "toast_message": f"Deleted {count} article{'s' if count != 1 else ''}",
+        },
+    )
+    response.headers["HX-Trigger"] = "articlesUpdated"
+    return response
+
+
+# =============================================================================
 # Remote Add Route
 # =============================================================================
 
