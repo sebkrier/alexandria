@@ -1625,6 +1625,32 @@ async def bulk_mark_read(
     return response
 
 
+@router.get("/sidebar/unread-count", response_class=HTMLResponse)
+async def sidebar_unread_count(
+    request: Request,
+    db: AsyncSession = Depends(get_db),
+    current_user: User = Depends(get_current_user),
+):
+    """Return the sidebar unread count partial for HTMX updates."""
+    # Count unread articles
+    result = await db.execute(
+        select(func.count(Article.id)).where(
+            Article.user_id == current_user.id,
+            Article.is_read == False,
+        )
+    )
+    unread_count = result.scalar() or 0
+
+    return templates.TemplateResponse(
+        request=request,
+        name="partials/sidebar_unread_count.html",
+        context={
+            "unread_count": unread_count,
+            "current_path": str(request.url.path),
+        },
+    )
+
+
 @router.get("/articles/bulk/color-picker", response_class=HTMLResponse)
 async def bulk_color_picker(
     request: Request,

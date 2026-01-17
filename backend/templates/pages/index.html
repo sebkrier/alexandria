@@ -281,13 +281,20 @@
         if (modal) modal.remove();
     });
 
-    // Listen for articlesUpdated event (from bulk operations) to refresh list and clear selection
-    document.body.addEventListener('articlesUpdated', function() {
+    // Listen for articles-updated event (from bulk operations) to refresh list and clear selection
+    window.addEventListener('articles-updated', function() {
         // Clear selection
         selectedArticleIds.clear();
         updateSelectionUI();
         // Refresh articles list
         htmx.ajax('GET', '/app/articles', {target: '#articles-container', swap: 'innerHTML'});
+        // Refresh sidebar unread count
+        htmx.ajax('GET', '/app/sidebar/unread-count', {target: '#unread-reader-link', swap: 'outerHTML'});
+    });
+
+    // Also listen for HTMX-triggered articlesUpdated event (for backwards compatibility)
+    document.body.addEventListener('articlesUpdated', function() {
+        window.dispatchEvent(new CustomEvent('articles-updated'));
     });
 
     // Article selection management
