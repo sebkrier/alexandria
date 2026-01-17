@@ -263,16 +263,17 @@
         {% if article.summary %}
         <div class="bg-dark-surface border border-dark-border rounded-lg p-6 mb-8" x-data="{ expanded: false }">
             <h2 class="text-lg font-semibold text-white mb-4">Summary</h2>
-            <div
-                class="summary-prose text-dark-text relative"
-                :class="{ 'max-h-80 overflow-hidden': !expanded && {{ 'true' if (article.summary|wordcount > 300) else 'false' }} }"
-            >
-                {{ article.summary|safe }}
+            <div class="relative">
+                <div
+                    class="summary-prose text-dark-text"
+                    :class="{ 'max-h-80 overflow-hidden': !expanded && {{ 'true' if (article.summary|wordcount > 300) else 'false' }} }"
+                    data-markdown
+                >{{ article.summary }}</div>
 
                 {# Gradient fade for long summaries #}
                 <div
                     x-show="!expanded && {{ 'true' if (article.summary|wordcount > 300) else 'false' }}"
-                    class="absolute bottom-0 left-0 right-0 h-20 bg-gradient-to-t from-dark-surface to-transparent"
+                    class="absolute bottom-0 left-0 right-0 h-20 bg-gradient-to-t from-dark-surface to-transparent pointer-events-none"
                 ></div>
             </div>
 
