@@ -30,9 +30,8 @@
                 x-show="showForm"
                 x-cloak
                 hx-post="/app/settings/colors"
-                hx-target="#colors-list"
+                hx-target="#colors-section"
                 hx-swap="outerHTML"
-                @htmx:after-request="showForm = false"
                 class="flex items-center gap-2"
             >
                 <input
@@ -91,7 +90,7 @@
                 >
                 <button
                     hx-delete="/app/settings/colors/{{ color.id }}"
-                    hx-target="#colors-list"
+                    hx-target="#colors-section"
                     hx-swap="outerHTML"
                     hx-confirm="Delete this color? Articles using it will have their color cleared."
                     class="p-1 text-dark-muted hover:text-article-red transition-colors opacity-0 group-hover:opacity-100"
