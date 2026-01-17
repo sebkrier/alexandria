@@ -928,9 +928,12 @@ async def reprocess_article(
         "toast_message": f"Re-analyzing: {article.title[:40]}{'...' if len(article.title or '') > 40 else ''}",
     })
 
-    # Build processing banner HTML directly (the partial includes the wrapper div)
-    processing_banner = '''
-    <div id="processing-status-banner" hx-swap-oob="outerHTML">
+    # Build processing banner HTML with polling to check status
+    processing_banner = f'''
+    <div id="processing-status-banner" hx-swap-oob="outerHTML"
+         hx-get="/app/article/{article_id}/status"
+         hx-trigger="every 2s"
+         hx-swap="outerHTML">
         <div class="mb-6 p-4 rounded-lg border bg-article-blue/10 border-article-blue/30">
             <div class="flex items-center gap-3">
                 <svg class="w-5 h-5 text-article-blue animate-spin" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke="currentColor">
@@ -945,6 +948,87 @@ async def reprocess_article(
     '''
 
     return HTMLResponse(content=toast_html + processing_banner)
+
+
+@router.get("/article/{article_id}/status", response_class=HTMLResponse)
+async def get_article_processing_status(
+    request: Request,
+    article_id: UUID,
+    db: AsyncSession = Depends(get_db),
+    current_user: User = Depends(get_current_user),
+):
+    """Get article processing status - used for polling during reprocessing."""
+    result = await db.execute(
+        select(Article).where(
+            Article.id == article_id,
+            Article.user_id == current_user.id,
+        )
+    )
+    article = result.scalar_one_or_none()
+
+    if not article:
+        return HTMLResponse("<div id='processing-status-banner'></div>")
+
+    status = article.processing_status.value if hasattr(article.processing_status, 'value') else str(article.processing_status)
+
+    # If still processing, return banner with polling
+    if status == 'processing':
+        return HTMLResponse(f'''
+        <div id="processing-status-banner"
+             hx-get="/app/article/{article_id}/status"
+             hx-trigger="every 2s"
+             hx-swap="outerHTML">
+            <div class="mb-6 p-4 rounded-lg border bg-article-blue/10 border-article-blue/30">
+                <div class="flex items-center gap-3">
+                    <svg class="w-5 h-5 text-article-blue animate-spin" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15" />
+                    </svg>
+                    <div>
+                        <p class="font-medium text-white">Processing...</p>
+                    </div>
+                </div>
+            </div>
+        </div>
+        ''')
+
+    # If failed, show error
+    if status == 'failed':
+        error_msg = article.processing_error or "Unknown error"
+        return HTMLResponse(f'''
+        <div id="processing-status-banner">
+            <div class="mb-6 p-4 rounded-lg border bg-article-red/10 border-article-red/30">
+                <div class="flex items-center gap-3">
+                    <svg class="w-5 h-5 text-article-red" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                        <circle cx="12" cy="12" r="10" stroke-width="2"></circle>
+                        <line x1="12" y1="8" x2="12" y2="12" stroke-width="2"></line>
+                        <line x1="12" y1="16" x2="12.01" y2="16" stroke-width="2"></line>
+                    </svg>
+                    <div>
+                        <p class="font-medium text-white">Processing failed</p>
+                        <p class="text-sm text-dark-muted mt-1">{error_msg}</p>
+                    </div>
+                </div>
+            </div>
+        </div>
+        ''')
+
+    # Completed - show success briefly then trigger page refresh
+    return HTMLResponse(f'''
+    <div id="processing-status-banner">
+        <div class="mb-6 p-4 rounded-lg border bg-article-green/10 border-article-green/30">
+            <div class="flex items-center gap-3">
+                <svg class="w-5 h-5 text-article-green" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 13l4 4L19 7" />
+                </svg>
+                <div>
+                    <p class="font-medium text-white">Processing complete!</p>
+                    <p class="text-sm text-dark-muted mt-1">Refreshing page...</p>
+                </div>
+            </div>
+        </div>
+    </div>
+    <script>setTimeout(function() {{ window.location.reload(); }}, 1000);</script>
+    ''')
 
 
 @router.delete("/article/{article_id}/notes/{note_id}", response_class=HTMLResponse)
