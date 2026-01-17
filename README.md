@@ -10,13 +10,14 @@ A personal research library for storing, organizing, and retrieving articles wit
 - **AI summarization**: Generate structured summaries with key contributions, findings, and relevance notes
 - **Auto-tagging**: AI suggests relevant tags based on content
 - **Hierarchical categories**: Two-level category system (parent → subcategory) with automatic AI categorization
+- **Taxonomy Optimization**: AI-powered category restructuring that analyzes your entire library and proposes an optimal category structure
 - **Unread Reader**: Dedicated reading queue with keyboard navigation (J/K), progress tracking, and quick mark-as-read workflow
 - **Semantic search**: Find conceptually related articles using local embeddings (all-mpnet-base-v2)
 - **Ask your library**: Hybrid RAG with intelligent query routing — content questions use semantic + keyword search, metadata questions query the database directly
 - **Remote add via WhatsApp**: Add articles from anywhere by sending links to a WhatsApp bot
-- **Bulk actions**: Select multiple articles for bulk delete, recolor, or re-analyze
+- **Bulk actions**: Select multiple articles for bulk delete, recolor, mark read/unread, or re-analyze
 - **Media type badges**: Visual indicators for article sources (URL, PDF, arXiv, Video)
-- **Rich notes**: Markdown notes with formatting toolbar on each article
+- **Rich notes**: WYSIWYG editor with formatting toolbar on each article
 - **Full-text search**: PostgreSQL full-text search across content, title, and metadata
 - **Color coding**: Visual organization with customizable color labels (editable in settings)
 - **Reading time**: Estimated reading time based on word count
@@ -25,7 +26,7 @@ A personal research library for storing, organizing, and retrieving articles wit
 ## Tech Stack
 
 - **Backend**: Python 3.11+ / FastAPI / SQLAlchemy + psycopg3 / PostgreSQL
-- **Frontend**: Next.js 14 / React / Tailwind CSS
+- **Frontend**: HTMX + Jinja2 + Alpine.js + Tailwind CSS (via CDN)
 - **Package Management**: pixi + uv (fast, reproducible Python environments)
 - **AI Integration**: LiteLLM (unified interface for Anthropic, OpenAI, Google)
 - **Embeddings**: sentence-transformers (all-mpnet-base-v2) — runs locally, no API key needed
@@ -38,7 +39,6 @@ A personal research library for storing, organizing, and retrieving articles wit
 ### Prerequisites
 
 - Python 3.11+
-- Node.js 20+
 - PostgreSQL 15+ with pgvector extension (via Docker or local install)
 
 ### 1. Clone and setup
@@ -88,25 +88,9 @@ pixi run dev
 
 **Note:** The first time you add an article, the embedding model (~420MB) will be downloaded from Hugging Face. This is a one-time download.
 
-### 4. Setup the frontend
+### 4. Open the app
 
-Open a new terminal:
-```bash
-cd frontend
-
-# Install dependencies
-npm install
-
-# Configure environment
-cp .env.example .env.local
-
-# Start the dev server
-npm run dev
-```
-
-### 5. Open the app
-
-Visit **http://localhost:3000** — the app is ready to use immediately (no login required).
+Visit **http://localhost:8000/app/** — the app is ready to use immediately (no login required).
 
 ## Adding AI Providers
 
@@ -165,20 +149,6 @@ pixi run lint-fix
 pixi run format
 ```
 
-**Frontend (TypeScript):**
-```bash
-cd frontend
-
-# Check for issues
-npm run lint
-
-# Auto-fix
-npm run lint:fix
-
-# Type check
-npm run typecheck
-```
-
 ### Running Tests
 
 ```bash
@@ -207,22 +177,16 @@ Save this as `Alexandria.bat` on your Desktop:
 
 ```batch
 @echo off
-:: Alexandria - Start Backend and Frontend
+:: Alexandria - Start Backend
 
 :: Start backend
 start wt -w 0 new-tab -p "Ubuntu" -- wsl bash -c "cd ~/alexandria/backend && ~/.local/bin/pixi run dev; exec bash"
 
 :: Wait for backend to start
-timeout /t 3 /nobreak > nul
-
-:: Start frontend
-start wt -w 0 new-tab -p "Ubuntu" -- wsl bash -c "cd ~/alexandria/frontend && npm run dev; exec bash"
-
-:: Wait for frontend to start
 timeout /t 5 /nobreak > nul
 
 :: Open browser
-start http://localhost:3000
+start http://localhost:8000/app/
 ```
 
 **Note:** Replace `"Ubuntu"` with your WSL distribution name (e.g., `"Ubuntu (Preview)"`).
@@ -242,23 +206,23 @@ alexandria/
 ├── backend/
 │   ├── app/
 │   │   ├── ai/              # AI provider abstraction (LiteLLM)
-│   │   ├── api/             # FastAPI routes
+│   │   ├── api/             # FastAPI routes (htmx.py for UI, routes/ for JSON API)
 │   │   ├── core/            # Constants and shared utilities
 │   │   ├── db/              # psycopg3 connection pool & parameterized queries
 │   │   ├── extractors/      # Content extraction (URL, PDF, arXiv, YouTube, LessWrong)
 │   │   ├── models/          # SQLAlchemy models
 │   │   └── schemas/         # Pydantic schemas
+│   ├── templates/           # Jinja2 templates for HTMX UI
+│   │   ├── pages/           # Full page templates
+│   │   ├── partials/        # HTMX partial templates
+│   │   ├── components/      # Reusable UI components
+│   │   └── modals/          # Modal dialogs
+│   ├── static/              # Static assets (images, etc.)
 │   ├── alembic/             # Database migrations
 │   ├── pixi.toml            # Pixi configuration
 │   ├── pyproject.toml       # Python dependencies
 │   └── tests/
-├── frontend/
-│   ├── src/
-│   │   ├── app/             # Next.js pages
-│   │   ├── components/      # React components
-│   │   ├── hooks/           # React Query hooks
-│   │   └── lib/             # API client, state, constants
-│   └── public/
+├── frontend/                # Legacy React frontend (kept for reference)
 ├── whatsapp-bot/            # WhatsApp bot for remote article adding
 │   ├── bot.js               # Bot implementation
 │   └── package.json
@@ -296,12 +260,6 @@ See [DEPLOYMENT.md](./DEPLOYMENT.md) for Railway deployment instructions.
 | `DEBUG` | Enable debug mode | `true` |
 | `CORS_ORIGINS` | Allowed frontend origins | `["http://localhost:3000"]` |
 | `R2_*` | Cloudflare R2 credentials (optional) | - |
-
-### Frontend (`frontend/.env.local`)
-
-| Variable | Description | Default |
-|----------|-------------|---------|
-| `NEXT_PUBLIC_API_URL` | Backend API URL | `http://localhost:8000` |
 
 ### WhatsApp Bot (`whatsapp-bot/`)
 
