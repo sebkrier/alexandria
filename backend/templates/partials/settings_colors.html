@@ -119,10 +119,8 @@
     </div>
     <div class="space-y-0.5">
         {% for color in colors %}
-        <button
-            hx-get="/app/articles?color_id={{ color.id }}"
-            hx-target="#articles-container"
-            hx-push-url="true"
+        <a
+            href="/app/?color_id={{ color.id }}"
             class="w-full flex items-center gap-2 px-3 py-1.5 text-sm rounded-lg transition-colors text-dark-muted hover:text-dark-text hover:bg-dark-hover"
         >
             <div
@@ -130,7 +128,7 @@
                 style="background-color: {{ color.hex_value }};"
             ></div>
             <span class="flex-1 text-left truncate">{{ color.name }}</span>
-        </button>
+        </a>
         {% endfor %}
     </div>
     {% endif %}

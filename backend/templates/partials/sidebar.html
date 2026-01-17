@@ -21,10 +21,8 @@
 {% set is_parent = depth == 0 %}
 
 <div x-data="{ expanded: false }">
-    <button
-        hx-get="/app/articles?category_id={{ category.id }}"
-        hx-target="#articles-container"
-        hx-push-url="true"
+    <a
+        href="/app/?category_id={{ category.id }}"
         @click="if ($event.target.closest('.expand-btn')) { $event.preventDefault(); expanded = !expanded; }"
         class="w-full flex items-center gap-2 px-3 py-1 text-xs rounded-lg transition-colors {% if is_selected %}bg-article-blue/20 text-article-blue{% else %}text-dark-muted hover:text-dark-text hover:bg-dark-hover{% endif %}{% if is_parent %} font-medium{% endif %}"
         style="padding-left: {{ 12 + depth * 16 }}px;"
@@ -41,7 +39,7 @@
         <span class="text-xs {% if is_selected %}text-article-blue{% else %}text-dark-muted{% endif %}">
             {{ category.article_count|default(0) }}
         </span>
-    </button>
+    </a>
 
     {% if has_children %}
     <div x-show="expanded" x-cloak class="border-l border-dark-border/50 ml-5">
