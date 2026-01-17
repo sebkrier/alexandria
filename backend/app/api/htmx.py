@@ -644,6 +644,49 @@ async def delete_article(
     return response
 
 
+@router.post("/article/{article_id}/toggle-read", response_class=HTMLResponse)
+async def toggle_article_read(
+    request: Request,
+    article_id: UUID,
+    db: AsyncSession = Depends(get_db),
+    current_user: User = Depends(get_current_user),
+):
+    """Toggle article read/unread status via HTMX."""
+    result = await db.execute(
+        select(Article).where(
+            Article.id == article_id,
+            Article.user_id == current_user.id,
+        )
+    )
+    article = result.scalar_one_or_none()
+
+    if not article:
+        return templates.TemplateResponse(
+            request=request,
+            name="components/toast.html",
+            context={
+                "toast_type": "error",
+                "toast_message": "Article not found",
+            },
+        )
+
+    # Toggle the read status
+    article.is_read = not article.is_read
+    await db.commit()
+
+    # Return updated button section
+    return templates.TemplateResponse(
+        request=request,
+        name="partials/article_read_status_section.html",
+        context={
+            "article": {
+                "id": str(article.id),
+                "is_read": article.is_read,
+            },
+        },
+    )
+
+
 # =============================================================================
 # Article Edit Routes (HTMX)
 # =============================================================================

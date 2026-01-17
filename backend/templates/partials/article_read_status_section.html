@@ -1,0 +1,33 @@
+{#
+  Article Read Status Section - for article detail page sidebar
+
+  Expected context:
+    - article: dict with id, is_read
+#}
+
+<div id="article-read-status-section" class="bg-dark-surface border border-dark-border rounded-lg p-4">
+    <h3 class="text-sm font-semibold text-white mb-3">Reading Status</h3>
+
+    <button
+        hx-post="/app/article/{{ article.id }}/toggle-read"
+        hx-target="#article-read-status-section"
+        hx-swap="outerHTML"
+        class="w-full flex items-center justify-center gap-2 px-4 py-2 rounded-lg transition-colors {% if article.is_read %}bg-dark-hover text-dark-text hover:bg-dark-border{% else %}bg-article-blue text-white hover:bg-article-blue/90{% endif %}"
+    >
+        {% if article.is_read %}
+        <span class="text-lg">🌹</span>
+        <span>Mark as Unread</span>
+        {% else %}
+        <span class="text-lg">🥀</span>
+        <span>Mark as Read</span>
+        {% endif %}
+    </button>
+
+    <p class="text-xs text-dark-muted mt-2 text-center">
+        {% if article.is_read %}
+        This article has been read
+        {% else %}
+        This article is unread
+        {% endif %}
+    </p>
+</div>
