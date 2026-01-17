@@ -21,25 +21,40 @@
 {% set is_parent = depth == 0 %}
 
 <div x-data="{ expanded: false }">
-    <a
-        href="/app/?category_id={{ category.id }}"
-        @click="if ($event.target.closest('.expand-btn')) { $event.preventDefault(); expanded = !expanded; }"
-        class="w-full flex items-center gap-2 px-3 py-1 text-xs rounded-lg transition-colors {% if is_selected %}bg-article-blue/20 text-article-blue{% else %}text-dark-muted hover:text-dark-text hover:bg-dark-hover{% endif %}{% if is_parent %} font-medium{% endif %}"
-        style="padding-left: {{ 12 + depth * 16 }}px;"
-    >
+    <div class="flex items-center w-full">
+        {# Expand/collapse button for categories with children #}
         {% if has_children %}
-        <span class="expand-btn p-0.5 hover:bg-dark-hover rounded" @click.stop="expanded = !expanded">
-            <template x-if="expanded">{{ chevron_down('w-3.5 h-3.5') }}</template>
-            <template x-if="!expanded">{{ chevron_right('w-3.5 h-3.5') }}</template>
-        </span>
+        <button
+            type="button"
+            @click="expanded = !expanded"
+            class="expand-btn p-1 hover:bg-dark-hover rounded flex-shrink-0"
+            style="margin-left: {{ 8 + depth * 16 }}px;"
+        >
+            <template x-if="expanded">{{ chevron_down('w-3.5 h-3.5 text-dark-muted') }}</template>
+            <template x-if="!expanded">{{ chevron_right('w-3.5 h-3.5 text-dark-muted') }}</template>
+        </button>
         {% else %}
-        {{ circle_small('w-2 h-2 ml-1 mr-1 ' + ('text-article-blue' if is_selected else 'text-dark-muted/50')) }}
-        {% endif %}
-        <span class="flex-1 text-left truncate">{{ category.name }}</span>
-        <span class="text-xs {% if is_selected %}text-article-blue{% else %}text-dark-muted{% endif %}">
-            {{ category.article_count|default(0) }}
+        <span class="flex-shrink-0" style="margin-left: {{ 12 + depth * 16 }}px;">
+            {{ circle_small('w-2 h-2 ' + ('text-article-blue' if is_selected else 'text-dark-muted/50')) }}
         </span>
-    </a>
+        {% endif %}
+
+        {# Category link - uses HTMX for smooth filtering on library page, regular navigation elsewhere #}
+        <a
+            href="/app/?category_id={{ category.id }}"
+            hx-get="/app/articles?category_id={{ category.id }}"
+            hx-target="#article-list"
+            hx-swap="innerHTML"
+            hx-push-url="/app/?category_id={{ category.id }}"
+            hx-select="#article-list"
+            class="flex-1 flex items-center gap-2 px-2 py-1 text-xs rounded-lg transition-colors {% if is_selected %}bg-article-blue/20 text-article-blue{% else %}text-dark-muted hover:text-dark-text hover:bg-dark-hover{% endif %}{% if is_parent %} font-medium{% endif %}"
+        >
+            <span class="flex-1 text-left truncate">{{ category.name }}</span>
+            <span class="text-xs {% if is_selected %}text-article-blue{% else %}text-dark-muted{% endif %}">
+                {{ category.article_count|default(0) }}
+            </span>
+        </a>
+    </div>
 
     {% if has_children %}
     <div x-show="expanded" x-cloak class="border-l border-dark-border/50 ml-5">
