@@ -25,15 +25,16 @@ class OpenAIProvider(AIProvider):
 
     provider_name = "openai"
 
-    # Model options (2025)
+    # Model options (January 2026)
     MODELS = {
-        "gpt-4o": "GPT-4o (Recommended)",
-        "gpt-4o-mini": "GPT-4o Mini (Fast, efficient)",
-        "o1": "o1 (Advanced reasoning)",
-        "o1-mini": "o1-mini (Fast reasoning)",
+        "gpt-4.1": "GPT-4.1 (Recommended)",
+        "gpt-4.1-mini": "GPT-4.1 Mini (Fast)",
+        "gpt-4.1-nano": "GPT-4.1 Nano (Fastest)",
+        "gpt-4o": "GPT-4o (Legacy)",
+        "o3-mini": "o3-mini (Reasoning)",
     }
 
-    DEFAULT_MODEL = "gpt-4o"
+    DEFAULT_MODEL = "gpt-4.1"
 
     def __init__(self, api_key: str, model_id: str | None = None):
         self.client = AsyncOpenAI(api_key=api_key)

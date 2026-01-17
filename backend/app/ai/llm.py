@@ -50,23 +50,27 @@ PROVIDER_PREFIXES = {
 }
 
 # Available models per provider (for UI display)
+# Updated January 2026 - reflects latest model releases
 PROVIDER_MODELS = {
     "anthropic": {
+        "claude-sonnet-4-5-20250929": "Claude Sonnet 4.5 (Recommended)",
         "claude-opus-4-5-20251101": "Claude Opus 4.5 (Most capable)",
-        "claude-sonnet-4-20250514": "Claude Sonnet 4 (Recommended)",
-        "claude-3-5-sonnet-20241022": "Claude 3.5 Sonnet (Fast)",
-        "claude-3-5-haiku-20241022": "Claude 3.5 Haiku (Fastest)",
+        "claude-haiku-4-5-20251101": "Claude Haiku 4.5 (Fastest)",
+        "claude-opus-4-1-20250805": "Claude Opus 4.1 (Agentic)",
+        "claude-sonnet-4-20250514": "Claude Sonnet 4",
     },
     "openai": {
-        "gpt-4o": "GPT-4o (Recommended)",
-        "gpt-4o-mini": "GPT-4o Mini (Fast)",
-        "gpt-4-turbo": "GPT-4 Turbo",
-        "o1": "o1 (Reasoning)",
+        "gpt-4.1": "GPT-4.1 (Recommended)",
+        "gpt-4.1-mini": "GPT-4.1 Mini (Fast)",
+        "gpt-4.1-nano": "GPT-4.1 Nano (Fastest)",
+        "gpt-4o": "GPT-4o (Legacy)",
+        "o3-mini": "o3-mini (Reasoning)",
     },
     "google": {
-        "gemini-2.0-flash": "Gemini 2.0 Flash (Recommended)",
-        "gemini-1.5-pro": "Gemini 1.5 Pro",
-        "gemini-1.5-flash": "Gemini 1.5 Flash",
+        "gemini-2.5-flash": "Gemini 2.5 Flash (Recommended)",
+        "gemini-2.5-pro": "Gemini 2.5 Pro (Most capable)",
+        "gemini-3-flash-preview": "Gemini 3 Flash (Preview)",
+        "gemini-3-pro-preview": "Gemini 3 Pro (Preview)",
     },
 }
 
