@@ -59,10 +59,8 @@
             <div class="flex-1 min-w-0">
                 {# Line 83: Title row #}
                 <div class="flex items-center gap-2">
-                    {# Lines 84-86: Unread dot - CONDITIONAL: !article.is_read #}
-                    {% if not article.is_read %}
-                    <span class="w-2 h-2 rounded-full bg-article-blue flex-shrink-0" title="Unread"></span>
-                    {% endif %}
+                    {# Read/Unread indicator: 🌹 for read, 🥀 for unread #}
+                    <span class="flex-shrink-0 text-sm" title="{{ 'Read' if article.is_read else 'Unread' }}">{{ '🌹' if article.is_read else '🥀' }}</span>
                     {# Line 87: Title #}
                     <h3 class="font-medium text-white truncate">{{ article.title }}</h3>
                 </div>
@@ -174,10 +172,8 @@
 
     {# Line 197: Title section #}
     <div class="flex items-start gap-2 mb-2">
-        {# Lines 198-200: Unread dot - CONDITIONAL: !article.is_read #}
-        {% if not article.is_read %}
-        <span class="w-2 h-2 rounded-full bg-article-blue flex-shrink-0 mt-1.5" title="Unread"></span>
-        {% endif %}
+        {# Read/Unread indicator: 🌹 for read, 🥀 for unread #}
+        <span class="flex-shrink-0 text-sm mt-0.5" title="{{ 'Read' if article.is_read else 'Unread' }}">{{ '🌹' if article.is_read else '🥀' }}</span>
         {# Line 201: Title #}
         <h3 class="font-medium text-white line-clamp-2">{{ article.title }}</h3>
     </div>
