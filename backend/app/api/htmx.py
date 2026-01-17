@@ -845,8 +845,8 @@ async def reprocess_article(
             },
         )
 
-    # Mark as pending
-    article.processing_status = ProcessingStatus.PENDING
+    # Mark as processing immediately for better UX
+    article.processing_status = ProcessingStatus.PROCESSING
     article.processing_error = None
     await db.commit()
 
@@ -856,22 +856,49 @@ async def reprocess_article(
             try:
                 from app.ai.service import AIService
                 ai_service = AIService(bg_db)
+                logging.info(f"Starting background reprocess for article {aid}")
                 await ai_service.process_article(article_id=aid, user_id=uid)
+                logging.info(f"Background reprocess completed for article {aid}")
             except Exception as e:
-                import logging
-                logging.error(f"Background reprocessing failed for {aid}: {e}")
+                logging.error(f"Background reprocessing failed for {aid}: {e}", exc_info=True)
+                # Update article status to failed
+                try:
+                    result = await bg_db.execute(
+                        select(Article).where(Article.id == aid)
+                    )
+                    article = result.scalar_one_or_none()
+                    if article:
+                        article.processing_status = ProcessingStatus.FAILED
+                        article.processing_error = str(e)
+                        await bg_db.commit()
+                except Exception as update_err:
+                    logging.error(f"Failed to update article status: {update_err}")
 
     asyncio.create_task(process_in_background(article_id, current_user.id))
 
-    response = templates.TemplateResponse(
-        request=request,
-        name="components/toast.html",
-        context={
-            "toast_type": "success",
-            "toast_message": f"Re-analyzing: {article.title[:40]}{'...' if len(article.title or '') > 40 else ''}",
-        },
-    )
-    return response
+    # Return toast + OOB swap for processing banner
+    toast_html = templates.get_template("components/toast.html").render({
+        "toast_type": "success",
+        "toast_message": f"Re-analyzing: {article.title[:40]}{'...' if len(article.title or '') > 40 else ''}",
+    })
+
+    # Build processing banner HTML directly (the partial includes the wrapper div)
+    processing_banner = '''
+    <div id="processing-status-banner" hx-swap-oob="outerHTML">
+        <div class="mb-6 p-4 rounded-lg border bg-article-blue/10 border-article-blue/30">
+            <div class="flex items-center gap-3">
+                <svg class="w-5 h-5 text-article-blue animate-spin" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15" />
+                </svg>
+                <div>
+                    <p class="font-medium text-white">Processing...</p>
+                </div>
+            </div>
+        </div>
+    </div>
+    '''
+
+    return HTMLResponse(content=toast_html + processing_banner)
 
 
 @router.delete("/article/{article_id}/notes/{note_id}", response_class=HTMLResponse)

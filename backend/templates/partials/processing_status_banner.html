@@ -1,0 +1,42 @@
+{#
+  Processing Status Banner Partial
+
+  Expected context (one of):
+    - article: dict with processing_status and processing_error
+    OR
+    - processing_status: string ('pending', 'processing', 'failed', 'completed')
+    - processing_error: string | None
+#}
+
+{% from 'components/icons.html' import loader_2, alert_circle, clock %}
+
+{% set status = processing_status if processing_status is defined else article.processing_status %}
+{% set error = processing_error if processing_error is defined else article.processing_error %}
+
+<div id="processing-status-banner">
+{% if status != 'completed' %}
+<div class="mb-6 p-4 rounded-lg border {% if status == 'failed' %}bg-article-red/10 border-article-red/30{% else %}bg-article-blue/10 border-article-blue/30{% endif %}">
+    <div class="flex items-center gap-3">
+        {% if status == 'processing' %}
+        {{ loader_2("w-5 h-5 text-article-blue animate-spin") }}
+        {% elif status == 'failed' %}
+        {{ alert_circle("w-5 h-5 text-article-red") }}
+        {% else %}
+        {{ clock("w-5 h-5 text-dark-muted") }}
+        {% endif %}
+
+        <div>
+            <p class="font-medium text-white">
+                {% if status == 'pending' %}Pending processing
+                {% elif status == 'processing' %}Processing...
+                {% elif status == 'failed' %}Processing failed
+                {% else %}{{ status }}{% endif %}
+            </p>
+            {% if error %}
+            <p class="text-sm text-dark-muted mt-1">{{ error }}</p>
+            {% endif %}
+        </div>
+    </div>
+</div>
+{% endif %}
+</div>

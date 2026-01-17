@@ -153,31 +153,7 @@
                 </div>
 
                 {# Processing status banner #}
-                {% if article.processing_status != 'completed' %}
-                <div class="mb-6 p-4 rounded-lg border {% if article.processing_status == 'failed' %}bg-article-red/10 border-article-red/30{% else %}bg-article-blue/10 border-article-blue/30{% endif %}">
-                    <div class="flex items-center gap-3">
-                        {% if article.processing_status == 'processing' %}
-                        {{ loader_2("w-5 h-5 text-article-blue animate-spin") }}
-                        {% elif article.processing_status == 'failed' %}
-                        {{ alert_circle("w-5 h-5 text-article-red") }}
-                        {% else %}
-                        {{ clock("w-5 h-5 text-dark-muted") }}
-                        {% endif %}
-
-                        <div>
-                            <p class="font-medium text-white">
-                                {% if article.processing_status == 'pending' %}Pending processing
-                                {% elif article.processing_status == 'processing' %}Processing...
-                                {% elif article.processing_status == 'failed' %}Processing failed
-                                {% else %}{{ article.processing_status }}{% endif %}
-                            </p>
-                            {% if article.processing_error %}
-                            <p class="text-sm text-dark-muted mt-1">{{ article.processing_error }}</p>
-                            {% endif %}
-                        </div>
-                    </div>
-                </div>
-                {% endif %}
+                {% include 'partials/processing_status_banner.html' with context %}
 
                 {# Summary #}
                 {% if article.summary %}
