@@ -1,0 +1,79 @@
+{#
+  Article Color Section Partial
+
+  Expected context:
+    - article: dict with id, color (dict with id, hex_value, name or None)
+    - colors: list of color dicts
+#}
+
+{% from 'components/icons.html' import palette, check %}
+
+<div id="article-color-section" class="bg-dark-surface border border-dark-border rounded-lg p-4">
+    <div class="flex items-center justify-between mb-3">
+        <h3 class="text-sm font-semibold text-white">Color</h3>
+    </div>
+
+    <div x-data="{ showPicker: false }">
+        {# Current color display / trigger #}
+        <button
+            @click="showPicker = !showPicker"
+            class="w-full flex items-center gap-2 p-2 rounded-lg hover:bg-dark-hover transition-colors text-left"
+        >
+            {% if article.color %}
+            <div
+                class="w-6 h-6 rounded-full flex-shrink-0"
+                style="background-color: {{ article.color.hex_value }};"
+            ></div>
+            <span class="text-sm text-dark-text flex-1">{{ article.color.name }}</span>
+            {% else %}
+            <div class="w-6 h-6 rounded-full flex-shrink-0 border border-dark-border bg-dark-bg"></div>
+            <span class="text-sm text-dark-muted flex-1">No color</span>
+            {% endif %}
+            {{ palette("w-4 h-4 text-dark-muted") }}
+        </button>
+
+        {# Color picker dropdown #}
+        <div
+            x-show="showPicker"
+            x-cloak
+            @click.outside="showPicker = false"
+            class="mt-2 p-2 bg-dark-bg border border-dark-border rounded-lg"
+        >
+            <div class="grid grid-cols-2 gap-1">
+                {% for color in colors %}
+                <button
+                    hx-patch="/app/article/{{ article.id }}/color"
+                    hx-target="#article-color-section"
+                    hx-swap="outerHTML"
+                    hx-vals='{"color_id": "{{ color.id }}"}'
+                    class="flex items-center gap-2 px-2 py-1.5 rounded hover:bg-dark-hover transition-colors text-left"
+                >
+                    <div
+                        class="w-4 h-4 rounded-full flex-shrink-0"
+                        style="background-color: {{ color.hex_value }};"
+                    ></div>
+                    <span class="text-xs text-dark-text truncate flex-1">{{ color.name }}</span>
+                    {% if article.color and article.color.id == color.id %}
+                    {{ check("w-3 h-3 text-article-blue") }}
+                    {% endif %}
+                </button>
+                {% endfor %}
+
+                {# No color option #}
+                <button
+                    hx-patch="/app/article/{{ article.id }}/color"
+                    hx-target="#article-color-section"
+                    hx-swap="outerHTML"
+                    hx-vals='{"color_id": ""}'
+                    class="flex items-center gap-2 px-2 py-1.5 rounded hover:bg-dark-hover transition-colors text-left col-span-2 border-t border-dark-border mt-1 pt-2"
+                >
+                    <div class="w-4 h-4 rounded-full flex-shrink-0 border border-dark-border bg-dark-bg"></div>
+                    <span class="text-xs text-dark-muted">Clear color</span>
+                    {% if not article.color %}
+                    {{ check("w-3 h-3 text-article-blue") }}
+                    {% endif %}
+                </button>
+            </div>
+        </div>
+    </div>
+</div>

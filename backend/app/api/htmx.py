@@ -21,6 +21,7 @@ from app.models.article_category import ArticleCategory
 from app.models.article_tag import ArticleTag
 from app.models.category import Category
 from app.models.color import Color
+from app.models.tag import Tag
 from app.models.user import User
 from app.schemas.article import MediaType
 from app.utils.auth import get_current_user
@@ -209,6 +210,25 @@ async def fetch_colors(db: AsyncSession, user_id: UUID) -> list[dict]:
             "hex_value": color.hex_value,
         }
         for color in colors
+    ]
+
+
+async def fetch_tags(db: AsyncSession, user_id: UUID) -> list[dict]:
+    """Fetch all tags for user."""
+    result = await db.execute(
+        select(Tag)
+        .where(Tag.user_id == user_id)
+        .order_by(Tag.name)
+    )
+    tags = result.scalars().all()
+
+    return [
+        {
+            "id": str(tag.id),
+            "name": tag.name,
+            "color": tag.color,
+        }
+        for tag in tags
     ]
 
 
@@ -478,10 +498,24 @@ async def article_detail_page(
         for note in notes
     ]
 
+    # Fetch colors for the color picker
+    colors = await fetch_colors(db, current_user.id)
+
+    # Fetch all categories for category editing
+    all_categories = await fetch_categories(db, current_user.id)
+
+    # Fetch all tags for tag editing
+    all_tags = await fetch_tags(db, current_user.id)
+
     return templates.TemplateResponse(
         request=request,
         name="pages/article.html",
-        context={"article": article_dict},
+        context={
+            "article": article_dict,
+            "colors": colors,
+            "all_categories": all_categories,
+            "all_tags": all_tags,
+        },
     )
 
 
@@ -544,6 +578,296 @@ def article_to_detail_dict(article: Article) -> dict:
         "tags": tags,
         "created_at": article.created_at,
     }
+
+
+# =============================================================================
+# Article Edit Routes (HTMX)
+# =============================================================================
+
+
+@router.patch("/article/{article_id}/color", response_class=HTMLResponse)
+async def update_article_color(
+    request: Request,
+    article_id: UUID,
+    db: AsyncSession = Depends(get_db),
+    current_user: User = Depends(get_current_user),
+):
+    """Update article color via HTMX."""
+    form = await request.form()
+    color_id_str = form.get("color_id")
+    color_id = UUID(color_id_str) if color_id_str else None
+
+    # Fetch article
+    result = await db.execute(
+        select(Article)
+        .where(Article.id == article_id, Article.user_id == current_user.id)
+        .options(selectinload(Article.color))
+    )
+    article = result.scalar_one_or_none()
+
+    if not article:
+        return HTMLResponse("<div>Article not found</div>", status_code=404)
+
+    # Update color
+    article.color_id = color_id
+    await db.commit()
+
+    # Fetch updated color info
+    color_info = None
+    if color_id:
+        color_result = await db.execute(
+            select(Color).where(Color.id == color_id)
+        )
+        color = color_result.scalar_one_or_none()
+        if color:
+            color_info = {
+                "id": str(color.id),
+                "hex_value": color.hex_value,
+                "name": color.name,
+            }
+
+    # Fetch all colors for the picker
+    colors = await fetch_colors(db, current_user.id)
+
+    return templates.TemplateResponse(
+        request=request,
+        name="partials/article_color_section.html",
+        context={
+            "article": {"id": str(article_id), "color": color_info},
+            "colors": colors,
+        },
+    )
+
+
+@router.patch("/article/{article_id}/categories", response_class=HTMLResponse)
+async def update_article_categories(
+    request: Request,
+    article_id: UUID,
+    db: AsyncSession = Depends(get_db),
+    current_user: User = Depends(get_current_user),
+):
+    """Update article categories via HTMX."""
+    from sqlalchemy import delete
+
+    form = await request.form()
+    # Get all category_ids from form (checkboxes send multiple values)
+    category_ids = form.getlist("category_ids")
+
+    # Fetch article
+    result = await db.execute(
+        select(Article).where(Article.id == article_id, Article.user_id == current_user.id)
+    )
+    article = result.scalar_one_or_none()
+
+    if not article:
+        return HTMLResponse("<div>Article not found</div>", status_code=404)
+
+    # Remove existing categories
+    await db.execute(
+        delete(ArticleCategory).where(ArticleCategory.article_id == article_id)
+    )
+
+    # Add new categories
+    for i, cat_id_str in enumerate(category_ids):
+        cat_id = UUID(cat_id_str)
+        ac = ArticleCategory(
+            article_id=article_id,
+            category_id=cat_id,
+            is_primary=(i == 0),
+        )
+        db.add(ac)
+
+    await db.commit()
+
+    # Fetch updated categories
+    result = await db.execute(
+        select(Article)
+        .where(Article.id == article_id)
+        .options(selectinload(Article.categories).selectinload(ArticleCategory.category))
+    )
+    article = result.scalar_one()
+
+    categories = [
+        {"id": str(ac.category.id), "name": ac.category.name, "is_primary": ac.is_primary}
+        for ac in article.categories
+    ]
+
+    # Fetch all categories for the picker
+    all_categories = await fetch_categories(db, current_user.id)
+
+    return templates.TemplateResponse(
+        request=request,
+        name="partials/article_categories_section.html",
+        context={
+            "article": {"id": str(article_id), "categories": categories},
+            "all_categories": all_categories,
+        },
+    )
+
+
+@router.patch("/article/{article_id}/tags", response_class=HTMLResponse)
+async def update_article_tags(
+    request: Request,
+    article_id: UUID,
+    db: AsyncSession = Depends(get_db),
+    current_user: User = Depends(get_current_user),
+):
+    """Update article tags via HTMX."""
+    from sqlalchemy import delete
+
+    form = await request.form()
+    # Get all tag_ids from form (checkboxes send multiple values)
+    tag_ids = form.getlist("tag_ids")
+
+    # Fetch article
+    result = await db.execute(
+        select(Article).where(Article.id == article_id, Article.user_id == current_user.id)
+    )
+    article = result.scalar_one_or_none()
+
+    if not article:
+        return HTMLResponse("<div>Article not found</div>", status_code=404)
+
+    # Remove existing tags
+    await db.execute(
+        delete(ArticleTag).where(ArticleTag.article_id == article_id)
+    )
+
+    # Add new tags
+    for tag_id_str in tag_ids:
+        tag_id = UUID(tag_id_str)
+        at = ArticleTag(
+            article_id=article_id,
+            tag_id=tag_id,
+        )
+        db.add(at)
+
+    await db.commit()
+
+    # Fetch updated tags
+    result = await db.execute(
+        select(Article)
+        .where(Article.id == article_id)
+        .options(selectinload(Article.tags).selectinload(ArticleTag.tag))
+    )
+    article = result.scalar_one()
+
+    tags = [
+        {"id": str(at.tag.id), "name": at.tag.name, "color": at.tag.color}
+        for at in article.tags
+    ]
+
+    # Fetch all tags for the picker
+    all_tags = await fetch_tags(db, current_user.id)
+
+    return templates.TemplateResponse(
+        request=request,
+        name="partials/article_tags_section.html",
+        context={
+            "article": {"id": str(article_id), "tags": tags},
+            "all_tags": all_tags,
+        },
+    )
+
+
+@router.post("/article/{article_id}/notes", response_class=HTMLResponse)
+async def create_article_note(
+    request: Request,
+    article_id: UUID,
+    db: AsyncSession = Depends(get_db),
+    current_user: User = Depends(get_current_user),
+):
+    """Create a note for an article via HTMX."""
+    from app.models.note import Note
+
+    form = await request.form()
+    content = form.get("content", "").strip()
+
+    if not content:
+        return HTMLResponse("<div>Note content is required</div>", status_code=400)
+
+    # Verify article belongs to user
+    result = await db.execute(
+        select(Article).where(Article.id == article_id, Article.user_id == current_user.id)
+    )
+    article = result.scalar_one_or_none()
+
+    if not article:
+        return HTMLResponse("<div>Article not found</div>", status_code=404)
+
+    # Create note
+    note = Note(article_id=article_id, content=content)
+    db.add(note)
+    await db.commit()
+    await db.refresh(note)
+
+    # Fetch all notes for this article
+    notes_result = await db.execute(
+        select(Note)
+        .where(Note.article_id == article_id)
+        .order_by(Note.created_at.desc())
+    )
+    notes = notes_result.scalars().all()
+
+    notes_list = [
+        {"id": str(n.id), "content": n.content, "created_at": n.created_at}
+        for n in notes
+    ]
+
+    return templates.TemplateResponse(
+        request=request,
+        name="partials/article_notes_section.html",
+        context={
+            "article": {"id": str(article_id), "notes": notes_list},
+        },
+    )
+
+
+@router.delete("/article/{article_id}/notes/{note_id}", response_class=HTMLResponse)
+async def delete_article_note(
+    request: Request,
+    article_id: UUID,
+    note_id: UUID,
+    db: AsyncSession = Depends(get_db),
+    current_user: User = Depends(get_current_user),
+):
+    """Delete a note via HTMX."""
+    from app.models.note import Note
+
+    # Verify note belongs to user's article
+    result = await db.execute(
+        select(Note)
+        .join(Article)
+        .where(Note.id == note_id, Article.user_id == current_user.id)
+    )
+    note = result.scalar_one_or_none()
+
+    if not note:
+        return HTMLResponse("<div>Note not found</div>", status_code=404)
+
+    await db.delete(note)
+    await db.commit()
+
+    # Fetch remaining notes
+    notes_result = await db.execute(
+        select(Note)
+        .where(Note.article_id == article_id)
+        .order_by(Note.created_at.desc())
+    )
+    notes = notes_result.scalars().all()
+
+    notes_list = [
+        {"id": str(n.id), "content": n.content, "created_at": n.created_at}
+        for n in notes
+    ]
+
+    return templates.TemplateResponse(
+        request=request,
+        name="partials/article_notes_section.html",
+        context={
+            "article": {"id": str(article_id), "notes": notes_list},
+        },
+    )
 
 
 # =============================================================================
@@ -878,6 +1202,86 @@ async def update_color(
                 "hex_value": color.hex_value,
             }
         },
+    )
+
+
+@router.post("/settings/colors", response_class=HTMLResponse)
+async def create_color(
+    request: Request,
+    db: AsyncSession = Depends(get_db),
+    current_user: User = Depends(get_current_user),
+):
+    """Create a new color label."""
+    form = await request.form()
+    name = form.get("name", "New Color")
+    hex_value = form.get("hex_value", "#808080")
+
+    # Get the max position for ordering
+    result = await db.execute(
+        select(func.max(Color.position))
+        .where(Color.user_id == current_user.id)
+    )
+    max_position = result.scalar() or 0
+
+    # Create new color
+    color = Color(
+        user_id=current_user.id,
+        name=name,
+        hex_value=hex_value,
+        position=max_position + 1,
+    )
+    db.add(color)
+    await db.commit()
+    await db.refresh(color)
+
+    # Fetch all colors and return the full list
+    colors = await fetch_colors(db, current_user.id)
+
+    return templates.TemplateResponse(
+        request=request,
+        name="partials/settings_colors_list.html",
+        context={"colors": colors},
+    )
+
+
+@router.delete("/settings/colors/{color_id}", response_class=HTMLResponse)
+async def delete_color(
+    request: Request,
+    color_id: UUID,
+    db: AsyncSession = Depends(get_db),
+    current_user: User = Depends(get_current_user),
+):
+    """Delete a color label. Articles with this color will have their color cleared."""
+    # Find the color
+    result = await db.execute(
+        select(Color).where(
+            Color.id == color_id,
+            Color.user_id == current_user.id,
+        )
+    )
+    color = result.scalar_one_or_none()
+
+    if not color:
+        return HTMLResponse("<div>Color not found</div>", status_code=404)
+
+    # Clear color from articles that use it
+    await db.execute(
+        Article.__table__.update()
+        .where(Article.color_id == color_id)
+        .values(color_id=None)
+    )
+
+    # Delete the color
+    await db.delete(color)
+    await db.commit()
+
+    # Fetch remaining colors and return the full list
+    colors = await fetch_colors(db, current_user.id)
+
+    return templates.TemplateResponse(
+        request=request,
+        name="partials/settings_colors_list.html",
+        context={"colors": colors},
     )
 
 

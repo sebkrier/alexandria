@@ -1,0 +1,63 @@
+{#
+  Article Notes Section Partial
+
+  Expected context:
+    - article: dict with id, notes (list of dicts with id, content, created_at)
+#}
+
+{% from 'components/icons.html' import pencil, trash_2, plus %}
+
+<div id="article-notes-section" class="bg-dark-surface border border-dark-border rounded-lg p-4">
+    <h3 class="text-sm font-semibold text-white mb-3">Notes</h3>
+
+    {# Add new note form #}
+    <form
+        hx-post="/app/article/{{ article.id }}/notes"
+        hx-target="#article-notes-section"
+        hx-swap="outerHTML"
+        hx-on::after-request="this.reset()"
+        class="mb-4"
+    >
+        <textarea
+            name="content"
+            placeholder="Add a note..."
+            rows="3"
+            required
+            class="w-full px-3 py-2 bg-dark-bg border border-dark-border rounded-lg text-dark-text placeholder-dark-muted text-sm focus:outline-none focus:ring-1 focus:ring-article-blue resize-none mb-2"
+        ></textarea>
+        <button
+            type="submit"
+            class="flex items-center gap-1 px-3 py-1.5 bg-article-blue text-white text-sm rounded-lg hover:bg-article-blue/90 transition-colors"
+        >
+            {{ plus("w-4 h-4") }}
+            Add Note
+        </button>
+    </form>
+
+    {# Notes list #}
+    {% if article.notes %}
+    <div class="space-y-3">
+        {% for note in article.notes %}
+        <div class="bg-dark-bg border border-dark-border rounded-lg p-3">
+            <div class="text-sm text-dark-text whitespace-pre-wrap">{{ note.content }}</div>
+            <div class="flex items-center justify-between mt-2 pt-2 border-t border-dark-border">
+                <span class="text-xs text-dark-muted">
+                    {{ note.created_at.strftime('%b %d, %Y') if note.created_at else '' }}
+                </span>
+                <button
+                    hx-delete="/app/article/{{ article.id }}/notes/{{ note.id }}"
+                    hx-target="#article-notes-section"
+                    hx-swap="outerHTML"
+                    hx-confirm="Delete this note?"
+                    class="p-1 text-dark-muted hover:text-article-red transition-colors"
+                >
+                    {{ trash_2("w-3.5 h-3.5") }}
+                </button>
+            </div>
+        </div>
+        {% endfor %}
+    </div>
+    {% else %}
+    <p class="text-sm text-dark-muted text-center py-2">No notes yet</p>
+    {% endif %}
+</div>

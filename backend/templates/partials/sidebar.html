@@ -94,10 +94,7 @@
         {# Main nav items #}
         <a
             href="/app/"
-            hx-get="/app/articles"
-            hx-target="#articles-container"
-            hx-push-url="/app/"
-            class="flex items-center gap-3 px-3 py-2 rounded-lg transition-colors {% if current_path == '/app/' and not selected_category_id %}bg-dark-hover text-white{% else %}text-dark-muted hover:text-dark-text hover:bg-dark-hover{% endif %}"
+            class="flex items-center gap-3 px-3 py-2 rounded-lg transition-colors {% if current_path == '/app/' and not selected_category_id and not selected_color_id %}bg-dark-hover text-white{% else %}text-dark-muted hover:text-dark-text hover:bg-dark-hover{% endif %}"
         >
             {{ library('w-5 h-5') }}
             <span>Library</span>
@@ -175,7 +172,7 @@
         <img
             src="/static/logo.jpg"
             alt="Alexandria"
-            class="h-32 w-auto object-contain opacity-80"
+            class="h-48 w-auto object-contain opacity-80"
             onerror="this.style.display='none'"
         >
     </div>
