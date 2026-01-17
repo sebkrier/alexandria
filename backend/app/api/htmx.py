@@ -8,7 +8,7 @@ The JSON API routes in /api/* remain unchanged for backwards compatibility.
 from pathlib import Path
 from uuid import UUID
 
-from fastapi import APIRouter, Depends, Query, Request
+from fastapi import APIRouter, BackgroundTasks, Depends, Query, Request
 from fastapi.responses import HTMLResponse, StreamingResponse
 from fastapi.templating import Jinja2Templates
 from sqlalchemy import func, or_, select
@@ -853,12 +853,11 @@ async def create_article_note(
 async def reprocess_article(
     request: Request,
     article_id: UUID,
+    background_tasks: BackgroundTasks,
     db: AsyncSession = Depends(get_db),
     current_user: User = Depends(get_current_user),
 ):
     """Reprocess an article (regenerate summary and categories) via HTMX."""
-    import asyncio
-
     from app.database import async_session_maker
 
     # Fetch article
@@ -920,7 +919,7 @@ async def reprocess_article(
                 except Exception as update_err:
                     logging.error(f"Failed to update article status: {update_err}")
 
-    asyncio.create_task(process_in_background(article_id, current_user.id))
+    background_tasks.add_task(process_in_background, article_id, current_user.id)
 
     # Return toast + OOB swap for processing banner
     toast_html = templates.get_template("components/toast.html").render({
@@ -1515,6 +1514,7 @@ async def add_article_modal(
 @router.post("/articles/add", response_class=HTMLResponse)
 async def add_article_url(
     request: Request,
+    background_tasks: BackgroundTasks,
     db: AsyncSession = Depends(get_db),
     current_user: User = Depends(get_current_user),
 ):
@@ -1562,8 +1562,6 @@ async def add_article_url(
         await db.refresh(article)
 
         # Schedule background processing
-        import asyncio
-
         async def process_in_background(article_id: UUID, user_id: UUID):
             async with async_session_maker() as bg_db:
                 try:
@@ -1574,7 +1572,7 @@ async def add_article_url(
                     import logging
                     logging.error(f"Background processing failed: {e}")
 
-        asyncio.create_task(process_in_background(article.id, current_user.id))
+        background_tasks.add_task(process_in_background, article.id, current_user.id)
 
         # Return success toast + trigger to close modal and refresh list
         response = templates.TemplateResponse(
@@ -1603,6 +1601,7 @@ async def add_article_url(
 @router.post("/articles/upload", response_class=HTMLResponse)
 async def upload_article_pdf(
     request: Request,
+    background_tasks: BackgroundTasks,
     db: AsyncSession = Depends(get_db),
     current_user: User = Depends(get_current_user),
 ):
@@ -1668,8 +1667,6 @@ async def upload_article_pdf(
         Path(temp_path).unlink(missing_ok=True)
 
         # Schedule background processing
-        import asyncio
-
         async def process_in_background(article_id: UUID, user_id: UUID):
             async with async_session_maker() as bg_db:
                 try:
@@ -1680,7 +1677,7 @@ async def upload_article_pdf(
                     import logging
                     logging.error(f"Background processing failed: {e}")
 
-        asyncio.create_task(process_in_background(article.id, current_user.id))
+        background_tasks.add_task(process_in_background, article.id, current_user.id)
 
         # Return success toast
         response = templates.TemplateResponse(
@@ -1995,11 +1992,11 @@ async def bulk_update_color(
 @router.post("/articles/bulk/reanalyze", response_class=HTMLResponse)
 async def bulk_reanalyze(
     request: Request,
+    background_tasks: BackgroundTasks,
     db: AsyncSession = Depends(get_db),
     current_user: User = Depends(get_current_user),
 ):
     """Re-analyze selected articles (re-generate summary and categories)."""
-    import asyncio
     import json
 
     from app.database import async_session_maker
@@ -2062,7 +2059,7 @@ async def bulk_reanalyze(
 
     for article_id in article_ids:
         try:
-            asyncio.create_task(process_in_background(UUID(article_id), current_user.id))
+            background_tasks.add_task(process_in_background, UUID(article_id), current_user.id)
         except Exception:
             continue
 
