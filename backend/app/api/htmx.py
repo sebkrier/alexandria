@@ -15,7 +15,7 @@ from sqlalchemy import func, or_, select
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy.orm import selectinload
 
-from app.database import get_db
+from app.database import async_session_maker, get_db
 from app.models.article import Article, ProcessingStatus, SourceType
 from app.models.article_category import ArticleCategory
 from app.models.article_tag import ArticleTag
@@ -31,6 +31,44 @@ router = APIRouter()
 # Template configuration
 TEMPLATES_DIR = Path(__file__).parent.parent.parent / "templates"
 templates = Jinja2Templates(directory=str(TEMPLATES_DIR))
+
+# Configure logging
+import logging
+logging.basicConfig(level=logging.INFO)
+logger = logging.getLogger(__name__)
+
+
+# =============================================================================
+# Background Processing Function (module-level for proper BackgroundTasks support)
+# =============================================================================
+
+
+async def process_article_background(article_id: UUID, user_id: UUID) -> None:
+    """
+    Process an article in the background.
+    This is a module-level function to work properly with FastAPI BackgroundTasks.
+    """
+    logger.info(f"Background task started for article {article_id}")
+    async with async_session_maker() as db:
+        try:
+            from app.ai.service import AIService
+            ai_service = AIService(db)
+            await ai_service.process_article(article_id=article_id, user_id=user_id)
+            logger.info(f"Background processing completed for article {article_id}")
+        except Exception as e:
+            logger.error(f"Background processing failed for article {article_id}: {e}", exc_info=True)
+            # Update article status to failed
+            try:
+                result = await db.execute(
+                    select(Article).where(Article.id == article_id)
+                )
+                article = result.scalar_one_or_none()
+                if article:
+                    article.processing_status = ProcessingStatus.FAILED
+                    article.processing_error = str(e)
+                    await db.commit()
+            except Exception as update_err:
+                logger.error(f"Failed to update article status: {update_err}")
 
 
 # =============================================================================
@@ -858,8 +896,6 @@ async def reprocess_article(
     current_user: User = Depends(get_current_user),
 ):
     """Reprocess an article (regenerate summary and categories) via HTMX."""
-    from app.database import async_session_maker
-
     # Fetch article
     result = await db.execute(
         select(Article).where(
@@ -895,31 +931,8 @@ async def reprocess_article(
     article.processing_error = None
     await db.commit()
 
-    # Schedule background processing
-    async def process_in_background(aid: UUID, uid: UUID):
-        async with async_session_maker() as bg_db:
-            try:
-                from app.ai.service import AIService
-                ai_service = AIService(bg_db)
-                logging.info(f"Starting background reprocess for article {aid}")
-                await ai_service.process_article(article_id=aid, user_id=uid)
-                logging.info(f"Background reprocess completed for article {aid}")
-            except Exception as e:
-                logging.error(f"Background reprocessing failed for {aid}: {e}", exc_info=True)
-                # Update article status to failed
-                try:
-                    result = await bg_db.execute(
-                        select(Article).where(Article.id == aid)
-                    )
-                    article = result.scalar_one_or_none()
-                    if article:
-                        article.processing_status = ProcessingStatus.FAILED
-                        article.processing_error = str(e)
-                        await bg_db.commit()
-                except Exception as update_err:
-                    logging.error(f"Failed to update article status: {update_err}")
-
-    background_tasks.add_task(process_in_background, article_id, current_user.id)
+    # Schedule background processing using module-level function
+    background_tasks.add_task(process_article_background, article_id, current_user.id)
 
     # Return toast + OOB swap for processing banner
     toast_html = templates.get_template("components/toast.html").render({
@@ -1519,9 +1532,7 @@ async def add_article_url(
     current_user: User = Depends(get_current_user),
 ):
     """Add an article from URL via HTMX."""
-    from app.database import async_session_maker
     from app.extractors import extract_content
-    from app.models.article import Article, ProcessingStatus, SourceType
 
     form = await request.form()
     url = form.get("url")
@@ -1561,18 +1572,8 @@ async def add_article_url(
         await db.commit()
         await db.refresh(article)
 
-        # Schedule background processing
-        async def process_in_background(article_id: UUID, user_id: UUID):
-            async with async_session_maker() as bg_db:
-                try:
-                    from app.ai.service import AIService
-                    ai_service = AIService(bg_db)
-                    await ai_service.process_article(article_id=article_id, user_id=user_id)
-                except Exception as e:
-                    import logging
-                    logging.error(f"Background processing failed: {e}")
-
-        background_tasks.add_task(process_in_background, article.id, current_user.id)
+        # Schedule background processing using module-level function
+        background_tasks.add_task(process_article_background, article.id, current_user.id)
 
         # Return success toast + trigger to close modal and refresh list
         response = templates.TemplateResponse(
@@ -1609,9 +1610,7 @@ async def upload_article_pdf(
     import tempfile
     from pathlib import Path
 
-    from app.database import async_session_maker
     from app.extractors import extract_content
-    from app.models.article import Article, ProcessingStatus, SourceType
 
     form = await request.form()
     file = form.get("file")
@@ -1666,18 +1665,8 @@ async def upload_article_pdf(
         # Clean up temp file
         Path(temp_path).unlink(missing_ok=True)
 
-        # Schedule background processing
-        async def process_in_background(article_id: UUID, user_id: UUID):
-            async with async_session_maker() as bg_db:
-                try:
-                    from app.ai.service import AIService
-                    ai_service = AIService(bg_db)
-                    await ai_service.process_article(article_id=article_id, user_id=user_id)
-                except Exception as e:
-                    import logging
-                    logging.error(f"Background processing failed: {e}")
-
-        background_tasks.add_task(process_in_background, article.id, current_user.id)
+        # Schedule background processing using module-level function
+        background_tasks.add_task(process_article_background, article.id, current_user.id)
 
         # Return success toast
         response = templates.TemplateResponse(
@@ -1999,8 +1988,6 @@ async def bulk_reanalyze(
     """Re-analyze selected articles (re-generate summary and categories)."""
     import json
 
-    from app.database import async_session_maker
-
     form = await request.form()
     article_ids_json = form.get("article_ids", "[]")
 
@@ -2046,20 +2033,10 @@ async def bulk_reanalyze(
 
     await db.commit()
 
-    # Schedule background processing for all queued articles
-    async def process_in_background(aid: UUID, uid: UUID):
-        async with async_session_maker() as bg_db:
-            try:
-                from app.ai.service import AIService
-                ai_service = AIService(bg_db)
-                await ai_service.process_article(article_id=aid, user_id=uid)
-            except Exception as e:
-                import logging
-                logging.error(f"Background reprocessing failed for {aid}: {e}")
-
+    # Schedule background processing for all queued articles using module-level function
     for article_id in article_ids:
         try:
-            background_tasks.add_task(process_in_background, UUID(article_id), current_user.id)
+            background_tasks.add_task(process_article_background, UUID(article_id), current_user.id)
         except Exception:
             continue
 
