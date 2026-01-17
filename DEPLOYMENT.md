@@ -2,6 +2,8 @@
 
 This guide walks through deploying Alexandria to Railway with Cloudflare R2 for file storage.
 
+> **Note:** Alexandria uses HTMX + Jinja2 templates served directly by the FastAPI backend. There is no separate frontend to deploy.
+
 ## Prerequisites
 
 1. [Railway account](https://railway.app/) (free tier works)
@@ -64,7 +66,6 @@ Your R2 endpoint will be: `https://<account-id>.r2.cloudflarestorage.com`
 JWT_SECRET=<generate with: openssl rand -hex 32>
 ENCRYPTION_KEY=<generate with: openssl rand -hex 32>
 DEBUG=false
-CORS_ORIGINS=["https://alexandria-frontend-production.up.railway.app"]
 R2_ACCESS_KEY_ID=<your R2 access key>
 R2_SECRET_ACCESS_KEY=<your R2 secret key>
 R2_BUCKET_NAME=alexandria-files
@@ -73,36 +74,13 @@ R2_ENDPOINT=https://<account-id>.r2.cloudflarestorage.com
 
 3. Generate a domain:
    - Settings → Networking → Generate Domain
-   - Note the URL (e.g., `alexandria-backend-production.up.railway.app`)
+   - Note the URL (e.g., `alexandria-production.up.railway.app`)
 
-### 3.4 Deploy Frontend
-
-1. Click "New" → "GitHub Repo" → Select `alexandria` again
-2. Configure the service:
-   - Root Directory: `frontend`
-   - Click "Add Variables":
-
-```
-NEXT_PUBLIC_API_URL=https://alexandria-backend-production.up.railway.app
-```
-
-3. Add build arguments (in Settings → Build):
-   - `NEXT_PUBLIC_API_URL=https://alexandria-backend-production.up.railway.app`
-
-4. Generate a domain:
-   - Settings → Networking → Generate Domain
-
-### 3.5 Update CORS
-
-Go back to the backend service and update `CORS_ORIGINS` with the actual frontend URL:
-
-```
-CORS_ORIGINS=["https://alexandria-frontend-production.up.railway.app"]
-```
+4. Access the app at `https://your-domain.up.railway.app/app/`
 
 ## Step 4: Initialize the Database
 
-The database migrations run automatically on deploy. Your first visit to the frontend will show the setup page.
+The database migrations run automatically on deploy. Your first visit to the app will show the library (empty initially).
 
 ### Embedding Model Download
 
@@ -144,18 +122,17 @@ SSH into Railway and run:
 
 ## Step 6: Custom Domain (Optional)
 
-1. In your frontend service: Settings → Networking → Custom Domain
+1. In your backend service: Settings → Networking → Custom Domain
 2. Add your domain (e.g., `alexandria.yourdomain.com`)
 3. Add the CNAME record to your DNS provider
-4. Update `CORS_ORIGINS` in backend to include the new domain
 
 ## Cost Estimate
 
 | Service | Cost |
 |---------|------|
-| Railway (backend + frontend + postgres) | ~$5-15/month |
+| Railway (backend + postgres) | ~$5-10/month |
 | Cloudflare R2 (storage) | ~$0.015/GB/month |
-| **Total** | **~$5-15/month** |
+| **Total** | **~$5-10/month** |
 
 Railway's free tier includes $5/month credit, so you may pay nothing initially.
 
@@ -165,11 +142,6 @@ Railway's free tier includes $5/month credit, so you may pay nothing initially.
 - Check logs in Railway dashboard
 - Verify DATABASE_URL is set (should be automatic)
 - Run migrations: `alembic upgrade head`
-
-### Frontend can't connect to backend
-- Check CORS_ORIGINS includes the frontend URL
-- Verify NEXT_PUBLIC_API_URL is correct
-- Check browser console for errors
 
 ### Database connection errors
 - PostgreSQL might still be starting up
@@ -195,7 +167,6 @@ Railway's free tier includes $5/month credit, so you may pay nothing initially.
 - [ ] JWT_SECRET is unique and random (32+ bytes)
 - [ ] ENCRYPTION_KEY is unique and random (32+ bytes)
 - [ ] DEBUG is set to `false` in production
-- [ ] CORS_ORIGINS only includes your frontend URL
 - [ ] R2 bucket is private (default)
 - [ ] Database is not publicly accessible (Railway default)
 - [ ] pgvector extension is enabled (check with `\dx` in psql)
