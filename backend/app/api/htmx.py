@@ -1190,7 +1190,16 @@ async def settings_page(
 ):
     """Settings page with AI providers and colors."""
     from app.ai.factory import get_available_providers
-    from app.ai.prompts import EXTRACT_SUMMARY_PROMPT, SUMMARY_SYSTEM_PROMPT
+    from app.ai.prompts import (
+        SUMMARY_SYSTEM_PROMPT,
+        EXTRACT_SUMMARY_PROMPT,
+        TAGS_SYSTEM_PROMPT,
+        TAGS_USER_PROMPT,
+        CATEGORY_SYSTEM_PROMPT,
+        CATEGORY_USER_PROMPT,
+        QUESTION_SYSTEM_PROMPT,
+        QUESTION_USER_PROMPT,
+    )
     from app.models.ai_provider import AIProvider as AIProviderModel
     from app.utils.encryption import decrypt_api_key, mask_api_key
 
@@ -1224,10 +1233,32 @@ async def settings_page(
     # Get available providers info
     available_providers = get_available_providers()
 
-    # Get prompts
+    # Get prompts - organized by function
     prompts = {
-        "system_prompt": SUMMARY_SYSTEM_PROMPT,
-        "user_prompt": EXTRACT_SUMMARY_PROMPT,
+        "summarization": {
+            "name": "Article Summarization",
+            "description": "Generates detailed summaries of saved articles",
+            "system": SUMMARY_SYSTEM_PROMPT,
+            "user": EXTRACT_SUMMARY_PROMPT,
+        },
+        "tagging": {
+            "name": "Tag Suggestion",
+            "description": "Suggests relevant tags for categorizing articles",
+            "system": TAGS_SYSTEM_PROMPT,
+            "user": TAGS_USER_PROMPT,
+        },
+        "categorization": {
+            "name": "Category Assignment",
+            "description": "Assigns articles to categories and subcategories",
+            "system": CATEGORY_SYSTEM_PROMPT,
+            "user": CATEGORY_USER_PROMPT,
+        },
+        "questioning": {
+            "name": "Ask Questions",
+            "description": "Answers questions based on your library content",
+            "system": QUESTION_SYSTEM_PROMPT,
+            "user": QUESTION_USER_PROMPT,
+        },
     }
 
     return templates.TemplateResponse(
