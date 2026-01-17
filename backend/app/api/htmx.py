@@ -560,6 +560,52 @@ def article_to_detail_dict(article: Article) -> dict:
     }
 
 
+@router.delete("/article/{article_id}", response_class=HTMLResponse)
+async def delete_article(
+    request: Request,
+    article_id: UUID,
+    db: AsyncSession = Depends(get_db),
+    current_user: User = Depends(get_current_user),
+):
+    """Delete a single article via HTMX."""
+    # Verify article exists and belongs to user
+    result = await db.execute(
+        select(Article).where(
+            Article.id == article_id,
+            Article.user_id == current_user.id,
+        )
+    )
+    article = result.scalar_one_or_none()
+
+    if not article:
+        return templates.TemplateResponse(
+            request=request,
+            name="components/toast.html",
+            context={
+                "toast_type": "error",
+                "toast_message": "Article not found",
+            },
+        )
+
+    title = article.title or "Untitled"
+
+    # Delete the article (cascade handles notes, tags, categories)
+    await db.delete(article)
+    await db.commit()
+
+    # Return redirect to library with success toast
+    response = templates.TemplateResponse(
+        request=request,
+        name="components/toast.html",
+        context={
+            "toast_type": "success",
+            "toast_message": f"Deleted: {title[:40]}{'...' if len(title) > 40 else ''}",
+        },
+    )
+    response.headers["HX-Redirect"] = "/app/"
+    return response
+
+
 # =============================================================================
 # Article Edit Routes (HTMX)
 # =============================================================================
