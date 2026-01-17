@@ -137,7 +137,7 @@
                                 </svg>
                                 <span class="font-medium text-white">{{ cat.category }}</span>
                                 <span class="text-xs text-dark-muted ml-auto">
-                                    {{ cat.subcategories|sum(attribute='article_ids')|list|length }} articles
+                                    {{ cat.subcategories|map(attribute='article_ids')|map('length')|sum }} articles
                                 </span>
                             </div>
 
