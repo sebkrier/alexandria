@@ -502,7 +502,7 @@ async def article_detail_page(
     colors = await fetch_colors(db, current_user.id)
 
     # Fetch all categories for category editing
-    all_categories = await fetch_categories(db, current_user.id)
+    all_categories = await fetch_categories_with_counts(db, current_user.id)
 
     # Fetch all tags for tag editing
     all_tags = await fetch_tags(db, current_user.id)
@@ -693,7 +693,7 @@ async def update_article_categories(
     ]
 
     # Fetch all categories for the picker
-    all_categories = await fetch_categories(db, current_user.id)
+    all_categories = await fetch_categories_with_counts(db, current_user.id)
 
     return templates.TemplateResponse(
         request=request,
