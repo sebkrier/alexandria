@@ -64,6 +64,39 @@ class CategorySuggestion(BaseModel):
     confidence: float = Field(ge=0, le=1, description="Confidence score 0-1")
     reasoning: str = Field(description="Why this categorization fits")
 
+
+class SubcategoryAssignment(BaseModel):
+    """Subcategory with assigned articles"""
+
+    name: str = Field(description="Name of the subcategory")
+    article_ids: list[str] = Field(description="IDs of articles in this subcategory")
+    description: str = Field(default="", description="Brief description of the subcategory")
+
+
+class CategoryStructure(BaseModel):
+    """Category with its subcategories"""
+
+    category: str = Field(description="Top-level category name")
+    subcategories: list[SubcategoryAssignment] = Field(description="Subcategories with article assignments")
+
+
+class TaxonomyChangesSummary(BaseModel):
+    """Summary of changes in the proposed taxonomy"""
+
+    new_categories: list[str] = Field(default_factory=list, description="New top-level categories")
+    new_subcategories: list[str] = Field(default_factory=list, description="New subcategories")
+    merged: list[str] = Field(default_factory=list, description="Categories that were merged")
+    split: list[str] = Field(default_factory=list, description="Categories that were split")
+    reorganized: list[str] = Field(default_factory=list, description="Articles that moved categories")
+
+
+class TaxonomyOptimizationResult(BaseModel):
+    """Result of taxonomy optimization analysis"""
+
+    taxonomy: list[CategoryStructure] = Field(description="Proposed category structure")
+    changes_summary: TaxonomyChangesSummary = Field(description="Summary of proposed changes")
+    reasoning: str = Field(description="Explanation of the proposed structure")
+
     # Legacy properties for backward compatibility during transition
     @property
     def category_name(self) -> str:
