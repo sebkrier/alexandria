@@ -28,13 +28,13 @@ class GoogleProvider(AIProvider):
 
     # Model options (January 2026)
     MODELS = {
-        "gemini-2.5-flash": "Gemini 2.5 Flash (Recommended)",
-        "gemini-2.5-pro": "Gemini 2.5 Pro (Most capable)",
-        "gemini-3-flash-preview": "Gemini 3 Flash (Preview)",
-        "gemini-3-pro-preview": "Gemini 3 Pro (Preview)",
+        "gemini-3.0-pro": "Gemini 3.0 Pro (Most capable)",
+        "gemini-3.0-flash": "Gemini 3.0 Flash (Fast)",
+        "gemini-2.5-pro": "Gemini 2.5 Pro",
+        "gemini-2.5-flash": "Gemini 2.5 Flash",
     }
 
-    DEFAULT_MODEL = "gemini-2.5-flash"
+    DEFAULT_MODEL = "gemini-3.0-pro"
 
     def __init__(self, api_key: str, model_id: str | None = None):
         genai.configure(api_key=api_key)

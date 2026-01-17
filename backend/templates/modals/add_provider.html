@@ -5,146 +5,202 @@
     - available_providers: dict of provider info with models
 #}
 
-{% from 'components/modal.html' import modal %}
-{% from 'components/icons.html' import loader_2 %}
+{% from 'components/icons.html' import x_icon, loader_2 %}
 
-{% call modal(title="Add AI Provider", id="add-provider-modal", size="md") %}
-<form
-    hx-post="/app/settings/providers"
-    hx-target="#providers-list"
-    hx-swap="innerHTML"
-    x-data="{
-        loading: false,
-        error: '',
-        providerName: 'anthropic',
-        displayName: 'My Anthropic API',
-        modelId: '{{ available_providers.anthropic.default_model if available_providers else '' }}',
-        providers: {{ available_providers|tojson|safe if available_providers else '{}' }},
-
-        updateProvider() {
-            const provider = this.providers[this.providerName];
-            if (provider) {
-                this.displayName = 'My ' + provider.display_name + ' API';
-                this.modelId = provider.default_model || '';
-            }
-        },
-
-        getModels() {
-            const provider = this.providers[this.providerName];
-            return provider ? Object.entries(provider.models || {}) : [];
-        }
-    }"
-    x-init="updateProvider()"
-    @htmx:before-request="loading = true; error = ''"
-    @htmx:after-request="loading = false; if(event.detail.successful) document.getElementById('add-provider-modal').remove()"
-    @htmx:response-error="error = 'Failed to add provider. Please check your API key.'"
+<div
+    id="add-provider-modal"
+    class="fixed inset-0 z-50 flex items-center justify-center p-4"
 >
-    {# Error message #}
-    <template x-if="error">
-        <div class="mb-4 p-3 bg-article-red/10 border border-article-red/30 rounded-lg text-sm text-article-red">
-            <span x-text="error"></span>
-        </div>
-    </template>
+    {# Backdrop #}
+    <div
+        class="absolute inset-0 bg-black/60 backdrop-blur-sm"
+        onclick="document.getElementById('add-provider-modal').remove()"
+    ></div>
 
-    <div class="space-y-4">
-        {# Provider select #}
-        <div>
-            <label for="provider_name" class="block text-sm font-medium text-dark-text mb-1.5">
-                Provider
-            </label>
-            <select
-                name="provider_name"
-                id="provider_name"
-                x-model="providerName"
-                @change="updateProvider()"
-                class="w-full px-3 py-2 bg-dark-bg border border-dark-border rounded-lg text-white focus:outline-none focus:ring-2 focus:ring-article-blue"
+    {# Modal content #}
+    <div
+        class="relative bg-dark-surface border border-dark-border rounded-xl shadow-2xl w-full max-w-md"
+        onclick="event.stopPropagation()"
+    >
+        {# Header #}
+        <div class="flex items-center justify-between px-6 py-4 border-b border-dark-border">
+            <h2 class="text-lg font-semibold text-white">Add AI Provider</h2>
+            <button
+                onclick="document.getElementById('add-provider-modal').remove()"
+                class="p-1.5 rounded-lg text-dark-muted hover:text-white hover:bg-dark-hover transition-colors"
             >
-                {% for key, provider in available_providers.items() %}
-                <option value="{{ key }}">{{ provider.display_name }}</option>
-                {% endfor %}
-            </select>
+                {{ x_icon('w-5 h-5') }}
+            </button>
         </div>
 
-        {# Display name #}
-        <div>
-            <label for="display_name" class="block text-sm font-medium text-dark-text mb-1.5">
-                Display Name
-            </label>
-            <input
-                type="text"
-                name="display_name"
-                id="display_name"
-                x-model="displayName"
-                required
-                class="w-full px-3 py-2 bg-dark-bg border border-dark-border rounded-lg text-white placeholder-dark-muted focus:outline-none focus:ring-2 focus:ring-article-blue"
+        {# Body #}
+        <div class="px-6 py-4">
+            <form
+                id="add-provider-form"
+                hx-post="/app/settings/providers"
+                hx-target="#providers-list"
+                hx-swap="innerHTML"
+                hx-on::after-request="if(event.detail.successful) document.getElementById('add-provider-modal').remove()"
             >
-            <p class="mt-1 text-xs text-dark-muted">A friendly name to identify this API key</p>
-        </div>
+                <div class="space-y-4">
+                    {# Provider select #}
+                    <div>
+                        <label for="provider_name" class="block text-sm font-medium text-dark-text mb-1.5">
+                            Provider
+                        </label>
+                        <select
+                            name="provider_name"
+                            id="provider_name"
+                            onchange="updateProviderForm()"
+                            class="w-full px-3 py-2 bg-dark-bg border border-dark-border rounded-lg text-white focus:outline-none focus:ring-2 focus:ring-article-blue"
+                        >
+                            {% for key, provider in available_providers.items() %}
+                            <option value="{{ key }}">{{ provider.display_name }}</option>
+                            {% endfor %}
+                        </select>
+                    </div>
 
-        {# Model select - rendered dynamically #}
-        <div>
-            <label for="model_id" class="block text-sm font-medium text-dark-text mb-1.5">
-                Model
-            </label>
-            <select
-                name="model_id"
-                id="model_id"
-                x-model="modelId"
-                class="w-full px-3 py-2 bg-dark-bg border border-dark-border rounded-lg text-white focus:outline-none focus:ring-2 focus:ring-article-blue"
-            >
-                <template x-for="[modelKey, modelName] in getModels()" :key="modelKey">
-                    <option :value="modelKey" x-text="modelName" :selected="modelKey === modelId"></option>
-                </template>
-            </select>
-        </div>
+                    {# Display name #}
+                    <div>
+                        <label for="display_name" class="block text-sm font-medium text-dark-text mb-1.5">
+                            Display Name
+                        </label>
+                        <input
+                            type="text"
+                            name="display_name"
+                            id="display_name"
+                            value="My Anthropic API"
+                            required
+                            class="w-full px-3 py-2 bg-dark-bg border border-dark-border rounded-lg text-white placeholder-dark-muted focus:outline-none focus:ring-2 focus:ring-article-blue"
+                        >
+                        <p class="mt-1 text-xs text-dark-muted">A friendly name to identify this API key</p>
+                    </div>
 
-        {# API Key #}
-        <div>
-            <label for="api_key" class="block text-sm font-medium text-dark-text mb-1.5">
-                API Key
-            </label>
-            <input
-                type="password"
-                name="api_key"
-                id="api_key"
-                placeholder="Enter your API key"
-                required
-                class="w-full px-3 py-2 bg-dark-bg border border-dark-border rounded-lg text-white placeholder-dark-muted focus:outline-none focus:ring-2 focus:ring-article-blue"
-            >
-            <p class="mt-1 text-xs text-dark-muted">
-                <template x-if="providerName === 'anthropic'">
-                    <span>Get your key from <a href="https://console.anthropic.com/settings/keys" target="_blank" class="text-article-blue hover:underline">console.anthropic.com</a></span>
-                </template>
-                <template x-if="providerName === 'openai'">
-                    <span>Get your key from <a href="https://platform.openai.com/api-keys" target="_blank" class="text-article-blue hover:underline">platform.openai.com</a></span>
-                </template>
-                <template x-if="providerName === 'google'">
-                    <span>Get your key from <a href="https://aistudio.google.com/apikey" target="_blank" class="text-article-blue hover:underline">aistudio.google.com</a></span>
-                </template>
-            </p>
+                    {# Model select #}
+                    <div>
+                        <label for="model_id" class="block text-sm font-medium text-dark-text mb-1.5">
+                            Model
+                        </label>
+
+                        {# Anthropic models #}
+                        <select
+                            name="model_id"
+                            id="model_id_anthropic"
+                            class="provider-models w-full px-3 py-2 bg-dark-bg border border-dark-border rounded-lg text-white focus:outline-none focus:ring-2 focus:ring-article-blue"
+                            data-provider="anthropic"
+                        >
+                            {% if available_providers and available_providers.anthropic %}
+                            {% for model_id, model_name in available_providers.anthropic.models.items() %}
+                            <option value="{{ model_id }}">{{ model_name }}</option>
+                            {% endfor %}
+                            {% endif %}
+                        </select>
+
+                        {# OpenAI models #}
+                        <select
+                            name="model_id"
+                            id="model_id_openai"
+                            class="provider-models w-full px-3 py-2 bg-dark-bg border border-dark-border rounded-lg text-white focus:outline-none focus:ring-2 focus:ring-article-blue hidden"
+                            data-provider="openai"
+                        >
+                            {% if available_providers and available_providers.openai %}
+                            {% for model_id, model_name in available_providers.openai.models.items() %}
+                            <option value="{{ model_id }}">{{ model_name }}</option>
+                            {% endfor %}
+                            {% endif %}
+                        </select>
+
+                        {# Google models #}
+                        <select
+                            name="model_id"
+                            id="model_id_google"
+                            class="provider-models w-full px-3 py-2 bg-dark-bg border border-dark-border rounded-lg text-white focus:outline-none focus:ring-2 focus:ring-article-blue hidden"
+                            data-provider="google"
+                        >
+                            {% if available_providers and available_providers.google %}
+                            {% for model_id, model_name in available_providers.google.models.items() %}
+                            <option value="{{ model_id }}">{{ model_name }}</option>
+                            {% endfor %}
+                            {% endif %}
+                        </select>
+                    </div>
+
+                    {# API Key #}
+                    <div>
+                        <label for="api_key" class="block text-sm font-medium text-dark-text mb-1.5">
+                            API Key
+                        </label>
+                        <input
+                            type="password"
+                            name="api_key"
+                            id="api_key"
+                            placeholder="Enter your API key"
+                            required
+                            class="w-full px-3 py-2 bg-dark-bg border border-dark-border rounded-lg text-white placeholder-dark-muted focus:outline-none focus:ring-2 focus:ring-article-blue"
+                        >
+                        <p id="api-key-help" class="mt-1 text-xs text-dark-muted">
+                            Get your key from <a href="https://console.anthropic.com/settings/keys" target="_blank" class="text-article-blue hover:underline">console.anthropic.com</a>
+                        </p>
+                    </div>
+                </div>
+
+                {# Actions #}
+                <div class="flex justify-end gap-3 mt-6 pt-4 border-t border-dark-border">
+                    <button
+                        type="button"
+                        onclick="document.getElementById('add-provider-modal').remove()"
+                        class="px-4 py-2 text-sm font-medium text-dark-muted hover:text-white bg-dark-bg border border-dark-border rounded-lg hover:bg-dark-hover transition-colors"
+                    >
+                        Cancel
+                    </button>
+                    <button
+                        type="submit"
+                        id="save-provider-btn"
+                        class="px-4 py-2 text-sm font-medium text-white bg-article-blue rounded-lg hover:bg-article-blue/90 transition-colors"
+                    >
+                        Save Provider
+                    </button>
+                </div>
+            </form>
         </div>
     </div>
+</div>
 
-    {# Actions #}
-    <div class="flex justify-end gap-3 mt-6">
-        <button
-            type="button"
-            hx-on:click="document.getElementById('add-provider-modal').remove()"
-            class="px-4 py-2 text-sm font-medium text-dark-muted hover:text-white bg-dark-bg border border-dark-border rounded-lg hover:bg-dark-hover transition-colors"
-        >
-            Cancel
-        </button>
-        <button
-            type="submit"
-            :disabled="loading"
-            class="px-4 py-2 text-sm font-medium text-white bg-article-blue rounded-lg hover:bg-article-blue/90 transition-colors disabled:opacity-50 disabled:cursor-not-allowed flex items-center gap-2"
-        >
-            <span x-show="loading" class="flex items-center gap-2">
-                {{ loader_2('w-4 h-4 animate-spin') }}
-                Saving...
-            </span>
-            <span x-show="!loading">Save Provider</span>
-        </button>
-    </div>
-</form>
-{% endcall %}
+<script>
+function updateProviderForm() {
+    const providerSelect = document.getElementById('provider_name');
+    const provider = providerSelect.value;
+
+    // Update display name
+    const displayNameInput = document.getElementById('display_name');
+    const displayNames = {
+        'anthropic': 'My Anthropic API',
+        'openai': 'My OpenAI API',
+        'google': 'My Google API'
+    };
+    displayNameInput.value = displayNames[provider] || 'My API';
+
+    // Show/hide model selects
+    document.querySelectorAll('.provider-models').forEach(select => {
+        if (select.dataset.provider === provider) {
+            select.classList.remove('hidden');
+            select.disabled = false;
+        } else {
+            select.classList.add('hidden');
+            select.disabled = true;
+        }
+    });
+
+    // Update API key help text
+    const helpText = document.getElementById('api-key-help');
+    const helpTexts = {
+        'anthropic': 'Get your key from <a href="https://console.anthropic.com/settings/keys" target="_blank" class="text-article-blue hover:underline">console.anthropic.com</a>',
+        'openai': 'Get your key from <a href="https://platform.openai.com/api-keys" target="_blank" class="text-article-blue hover:underline">platform.openai.com</a>',
+        'google': 'Get your key from <a href="https://aistudio.google.com/apikey" target="_blank" class="text-article-blue hover:underline">aistudio.google.com</a>'
+    };
+    helpText.innerHTML = helpTexts[provider] || '';
+}
+
+// Initialize on load
+updateProviderForm();
+</script>
