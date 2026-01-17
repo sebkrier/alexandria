@@ -101,8 +101,17 @@ To enable AI-powered summarization and categorization:
 3. Select your provider (Anthropic, OpenAI, or Google)
 4. Enter your API key
 5. Choose a model
-6. Click **"Test"** to verify it works
-7. Set as default if desired
+6. Click **"Save Provider"**
+7. Click on a provider card to make it active (the active provider is used for all AI operations)
+8. Use the **"Test"** button to verify your connection works
+
+### Supported Models (January 2026)
+
+| Provider | Models | Get API Key |
+|----------|--------|-------------|
+| **Anthropic** | Claude Opus 4.5, Sonnet 4.5, Haiku 4.5 | [console.anthropic.com](https://console.anthropic.com/settings/keys) |
+| **OpenAI** | GPT-5.2, GPT-5.1, GPT-4.1, o3-mini | [platform.openai.com](https://platform.openai.com/api-keys) |
+| **Google** | Gemini 3.0 Pro, Gemini 3.0 Flash, 2.5 Pro/Flash | [aistudio.google.com](https://aistudio.google.com/apikey) |
 
 Your API keys are encrypted and stored securely in the database.
 
