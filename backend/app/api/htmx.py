@@ -1772,6 +1772,65 @@ async def bulk_mark_read(
     return response
 
 
+@router.post("/articles/bulk/mark-unread", response_class=HTMLResponse)
+async def bulk_mark_unread(
+    request: Request,
+    db: AsyncSession = Depends(get_db),
+    current_user: User = Depends(get_current_user),
+):
+    """Mark selected articles as unread."""
+    import json
+
+    form = await request.form()
+    article_ids_json = form.get("article_ids", "[]")
+
+    try:
+        article_ids = json.loads(article_ids_json)
+    except json.JSONDecodeError:
+        article_ids = []
+
+    if not article_ids:
+        return templates.TemplateResponse(
+            request=request,
+            name="components/toast.html",
+            context={
+                "toast_type": "error",
+                "toast_message": "No articles selected",
+            },
+        )
+
+    # Update articles
+    count = 0
+    for article_id in article_ids:
+        try:
+            result = await db.execute(
+                select(Article).where(
+                    Article.id == article_id,
+                    Article.user_id == current_user.id,
+                )
+            )
+            article = result.scalar_one_or_none()
+            if article:
+                article.is_read = False
+                count += 1
+        except Exception:
+            continue
+
+    await db.commit()
+
+    # Return success toast and trigger refresh
+    response = templates.TemplateResponse(
+        request=request,
+        name="components/toast.html",
+        context={
+            "toast_type": "success",
+            "toast_message": f"Marked {count} article{'s' if count != 1 else ''} as unread",
+        },
+    )
+    response.headers["HX-Trigger"] = "articlesUpdated"
+    return response
+
+
 @router.get("/sidebar/unread-count", response_class=HTMLResponse)
 async def sidebar_unread_count(
     request: Request,
