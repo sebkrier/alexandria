@@ -1,0 +1,88 @@
+{#
+  Article Tags Section Partial
+
+  Expected context:
+    - article: dict with id, tags (list of dicts with id, name, color)
+    - all_tags: list of tag dicts
+#}
+
+{% from 'components/icons.html' import pencil, check %}
+{% from 'components/badge.html' import badge %}
+
+<div id="article-tags-section" class="bg-dark-surface border border-dark-border rounded-lg p-4">
+    <div class="flex items-center justify-between mb-3">
+        <h3 class="text-sm font-semibold text-white">Tags</h3>
+    </div>
+
+    <div x-data="{ editing: false }">
+        {# Display mode #}
+        <div x-show="!editing">
+            {% if article.tags %}
+            <div class="flex flex-wrap gap-2 mb-2">
+                {% for tag in article.tags %}
+                {{ badge(tag.name, color=tag.color, size="md") }}
+                {% endfor %}
+            </div>
+            {% else %}
+            <p class="text-sm text-dark-muted mb-2">No tags</p>
+            {% endif %}
+            <button
+                @click="editing = true"
+                class="text-xs text-article-blue hover:underline"
+            >
+                Edit tags
+            </button>
+        </div>
+
+        {# Edit mode #}
+        <form
+            x-show="editing"
+            x-cloak
+            hx-patch="/app/article/{{ article.id }}/tags"
+            hx-target="#article-tags-section"
+            hx-swap="outerHTML"
+            class="space-y-2"
+        >
+            <div class="max-h-48 overflow-y-auto bg-dark-bg border border-dark-border rounded-lg py-1">
+                {% set article_tag_ids = article.tags | map(attribute='id') | list %}
+                {% for tag in all_tags %}
+                {% set is_checked = tag.id in article_tag_ids %}
+                <label class="flex items-center gap-2 px-3 py-1.5 rounded hover:bg-dark-hover cursor-pointer">
+                    <input
+                        type="checkbox"
+                        name="tag_ids"
+                        value="{{ tag.id }}"
+                        {% if is_checked %}checked{% endif %}
+                        class="w-4 h-4 rounded border-dark-border bg-dark-bg text-article-blue focus:ring-article-blue focus:ring-offset-0"
+                    >
+                    <span
+                        class="text-sm px-2 py-0.5 rounded"
+                        style="background-color: {{ (tag.color or '#8B5CF6') }}20; color: {{ tag.color or '#8B5CF6' }};"
+                    >
+                        {{ tag.name }}
+                    </span>
+                </label>
+                {% endfor %}
+                {% if not all_tags %}
+                <p class="text-sm text-dark-muted text-center py-4">No tags available</p>
+                {% endif %}
+            </div>
+
+            <div class="flex gap-2">
+                <button
+                    type="submit"
+                    class="flex-1 px-3 py-1.5 bg-article-blue text-white text-sm rounded-lg hover:bg-article-blue/90 transition-colors"
+                >
+                    Save
+                </button>
+                <button
+                    type="button"
+                    @click="editing = false"
+                    class="px-3 py-1.5 bg-dark-bg border border-dark-border text-dark-text text-sm rounded-lg hover:bg-dark-hover transition-colors"
+                >
+                    Cancel
+                </button>
+            </div>
+        </form>
+    </div>
+</div>

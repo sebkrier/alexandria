@@ -84,10 +84,13 @@
             <div id="chat-messages" class="chat-container flex-1 overflow-y-auto px-4 sm:px-6 lg:px-8 py-6 chat-messages">
                 {# Empty state #}
                 <div id="empty-state" class="flex flex-col items-center justify-center h-full text-center">
-                    {% from 'components/icons.html' import message_circle %}
-                    <div class="w-16 h-16 rounded-full bg-article-blue/10 flex items-center justify-center mb-4">
-                        {{ message_circle('w-8 h-8 text-article-blue') }}
-                    </div>
+                    {# Bonzi buddy logo #}
+                    <img
+                        src="/static/bonzi.jpg"
+                        alt="Library assistant"
+                        class="h-64 w-auto mb-6 rounded-lg"
+                        onerror="this.style.display='none'"
+                    >
                     <h2 class="text-xl font-semibold text-white mb-2">Ask about your articles</h2>
                     <p class="text-dark-muted mb-6 max-w-md">
                         I can answer questions based on the articles in your library using semantic search.

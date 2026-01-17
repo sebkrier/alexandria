@@ -213,64 +213,14 @@
 
             {# Sidebar #}
             <div class="space-y-6">
-                {# Color section #}
-                <div class="bg-dark-surface border border-dark-border rounded-lg p-4">
-                    <div class="flex items-center justify-between mb-3">
-                        <h3 class="text-sm font-semibold text-white">Color</h3>
-                        <button class="text-dark-muted hover:text-white transition-colors">
-                            {{ palette("w-4 h-4") }}
-                        </button>
-                    </div>
-                    <div class="flex items-center gap-2">
-                        {% if article.color %}
-                        <div
-                            class="w-6 h-6 rounded-full"
-                            style="background-color: {{ article.color.hex_value }};"
-                        ></div>
-                        <span class="text-sm text-dark-text">{{ article.color.name }}</span>
-                        {% else %}
-                        <span class="text-sm text-dark-muted">No color</span>
-                        {% endif %}
-                    </div>
-                </div>
+                {# Color section - editable #}
+                {% include 'partials/article_color_section.html' %}
 
-                {# Categories #}
-                <div class="bg-dark-surface border border-dark-border rounded-lg p-4">
-                    <div class="flex items-center justify-between mb-3">
-                        <h3 class="text-sm font-semibold text-white">Categories</h3>
-                        <button class="text-dark-muted hover:text-white transition-colors">
-                            {{ pencil("w-4 h-4") }}
-                        </button>
-                    </div>
-                    {% if article.categories %}
-                    <div class="flex flex-wrap gap-2">
-                        {% for cat in article.categories %}
-                        {{ badge(cat.name, size="md") }}
-                        {% endfor %}
-                    </div>
-                    {% else %}
-                    <p class="text-sm text-dark-muted">No categories</p>
-                    {% endif %}
-                </div>
+                {# Categories - editable #}
+                {% include 'partials/article_categories_section.html' %}
 
-                {# Tags #}
-                <div class="bg-dark-surface border border-dark-border rounded-lg p-4">
-                    <div class="flex items-center justify-between mb-3">
-                        <h3 class="text-sm font-semibold text-white">Tags</h3>
-                        <button class="text-dark-muted hover:text-white transition-colors">
-                            {{ pencil("w-4 h-4") }}
-                        </button>
-                    </div>
-                    {% if article.tags %}
-                    <div class="flex flex-wrap gap-2">
-                        {% for tag in article.tags %}
-                        {{ badge(tag.name, color=tag.color, size="md") }}
-                        {% endfor %}
-                    </div>
-                    {% else %}
-                    <p class="text-sm text-dark-muted">No tags</p>
-                    {% endif %}
-                </div>
+                {# Tags - editable #}
+                {% include 'partials/article_tags_section.html' %}
 
                 {# Details/Metadata #}
                 <div class="bg-dark-surface border border-dark-border rounded-lg p-4">
@@ -299,43 +249,8 @@
                     </dl>
                 </div>
 
-                {# Notes section #}
-                <div class="bg-dark-surface border border-dark-border rounded-lg p-4">
-                    <h3 class="text-sm font-semibold text-white mb-3">Notes</h3>
-
-                    {# Add new note form #}
-                    <div class="mb-4">
-                        <textarea
-                            placeholder="Add a note..."
-                            rows="3"
-                            class="w-full px-3 py-2 bg-dark-bg border border-dark-border rounded-lg text-dark-text placeholder-dark-muted text-sm focus:outline-none focus:ring-1 focus:ring-article-blue resize-none"
-                        ></textarea>
-                    </div>
-
-                    {# Notes list #}
-                    {% if article.notes %}
-                    <div class="space-y-3">
-                        {% for note in article.notes %}
-                        <div class="bg-dark-bg border border-dark-border rounded-lg p-3">
-                            <div class="text-sm text-dark-text">{{ note.content }}</div>
-                            <div class="flex items-center justify-between mt-2 pt-2 border-t border-dark-border">
-                                <span class="text-xs text-dark-muted">{{ note.created_at.strftime('%b %d, %Y') if note.created_at else '' }}</span>
-                                <div class="flex items-center gap-1">
-                                    <button class="p-1 text-dark-muted hover:text-white transition-colors">
-                                        {{ pencil("w-3.5 h-3.5") }}
-                                    </button>
-                                    <button class="p-1 text-dark-muted hover:text-article-red transition-colors">
-                                        {{ trash_2("w-3.5 h-3.5") }}
-                                    </button>
-                                </div>
-                            </div>
-                        </div>
-                        {% endfor %}
-                    </div>
-                    {% else %}
-                    <p class="text-sm text-dark-muted text-center py-2">No notes yet</p>
-                    {% endif %}
-                </div>
+                {# Notes section - editable #}
+                {% include 'partials/article_notes_section.html' %}
             </div>
         </div>
     </main>

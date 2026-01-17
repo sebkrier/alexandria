@@ -1,0 +1,93 @@
+{#
+  Article Categories Section Partial
+
+  Expected context:
+    - article: dict with id, categories (list of dicts with id, name, is_primary)
+    - all_categories: list of category dicts (hierarchical)
+#}
+
+{% from 'components/icons.html' import pencil, check, x_icon %}
+{% from 'components/badge.html' import badge %}
+
+{# Macro to flatten categories for checkboxes #}
+{% macro category_checkbox(category, depth=0, article_category_ids=[]) %}
+{% set is_checked = category.id in article_category_ids %}
+<label class="flex items-center gap-2 px-2 py-1.5 rounded hover:bg-dark-hover cursor-pointer" style="padding-left: {{ 8 + depth * 16 }}px;">
+    <input
+        type="checkbox"
+        name="category_ids"
+        value="{{ category.id }}"
+        {% if is_checked %}checked{% endif %}
+        class="w-4 h-4 rounded border-dark-border bg-dark-bg text-article-blue focus:ring-article-blue focus:ring-offset-0"
+    >
+    <span class="text-sm text-dark-text">{{ category.name }}</span>
+</label>
+{% if category.children %}
+{% for child in category.children %}
+{{ category_checkbox(child, depth + 1, article_category_ids) }}
+{% endfor %}
+{% endif %}
+{% endmacro %}
+
+<div id="article-categories-section" class="bg-dark-surface border border-dark-border rounded-lg p-4">
+    <div class="flex items-center justify-between mb-3">
+        <h3 class="text-sm font-semibold text-white">Categories</h3>
+    </div>
+
+    <div x-data="{ editing: false }">
+        {# Display mode #}
+        <div x-show="!editing">
+            {% if article.categories %}
+            <div class="flex flex-wrap gap-2 mb-2">
+                {% for cat in article.categories %}
+                {{ badge(cat.name, size="md") }}
+                {% endfor %}
+            </div>
+            {% else %}
+            <p class="text-sm text-dark-muted mb-2">No categories</p>
+            {% endif %}
+            <button
+                @click="editing = true"
+                class="text-xs text-article-blue hover:underline"
+            >
+                Edit categories
+            </button>
+        </div>
+
+        {# Edit mode #}
+        <form
+            x-show="editing"
+            x-cloak
+            hx-patch="/app/article/{{ article.id }}/categories"
+            hx-target="#article-categories-section"
+            hx-swap="outerHTML"
+            class="space-y-2"
+        >
+            <div class="max-h-48 overflow-y-auto bg-dark-bg border border-dark-border rounded-lg py-1">
+                {% set article_category_ids = article.categories | map(attribute='id') | list %}
+                {% for category in all_categories %}
+                {{ category_checkbox(category, 0, article_category_ids) }}
+                {% endfor %}
+                {% if not all_categories %}
+                <p class="text-sm text-dark-muted text-center py-4">No categories available</p>
+                {% endif %}
+            </div>
+
+            <div class="flex gap-2">
+                <button
+                    type="submit"
+                    class="flex-1 px-3 py-1.5 bg-article-blue text-white text-sm rounded-lg hover:bg-article-blue/90 transition-colors"
+                >
+                    Save
+                </button>
+                <button
+                    type="button"
+                    @click="editing = false"
+                    class="px-3 py-1.5 bg-dark-bg border border-dark-border text-dark-text text-sm rounded-lg hover:bg-dark-hover transition-colors"
+                >
+                    Cancel
+                </button>
+            </div>
+        </form>
+    </div>
+</div>
