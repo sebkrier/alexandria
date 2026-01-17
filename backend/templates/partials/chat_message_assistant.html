@@ -36,9 +36,7 @@
                         </div>
                     </div>
                     {% else %}
-                    <div id="content-{{ message_id }}" class="chat-prose text-dark-text text-sm">
-                        {{ content|safe }}
-                    </div>
+                    <div id="content-{{ message_id }}" class="chat-prose text-dark-text text-sm" data-markdown>{{ content }}</div>
                     {% endif %}
                 </div>
 

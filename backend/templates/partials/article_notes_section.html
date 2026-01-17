@@ -7,7 +7,12 @@
 
 {% from 'components/icons.html' import pencil, trash_2, plus %}
 
-<div id="article-notes-section" class="bg-dark-surface border border-dark-border rounded-lg p-4">
+<div
+    id="article-notes-section"
+    class="bg-dark-surface border border-dark-border rounded-lg p-4"
+    x-data="notesEditor('{{ article.id }}')"
+    x-init="loadDraft()"
+>
     <h3 class="text-sm font-semibold text-white mb-3">Notes</h3>
 
     {# Add new note form #}
@@ -15,23 +20,84 @@
         hx-post="/app/article/{{ article.id }}/notes"
         hx-target="#article-notes-section"
         hx-swap="outerHTML"
-        hx-on::after-request="this.reset()"
+        @htmx:after-request="clearDraft()"
         class="mb-4"
     >
+        {# Formatting toolbar #}
+        <div class="flex items-center gap-1 mb-2 p-1 bg-dark-bg border border-dark-border rounded-t-lg border-b-0">
+            <button
+                type="button"
+                @click="insertFormat('**', '**')"
+                class="p-1.5 text-dark-muted hover:text-white hover:bg-dark-hover rounded transition-colors"
+                title="Bold (Ctrl+B)"
+            >
+                <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 4h8a4 4 0 014 4 4 4 0 01-4 4H6z"></path>
+                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 12h9a4 4 0 014 4 4 4 0 01-4 4H6z"></path>
+                </svg>
+            </button>
+            <button
+                type="button"
+                @click="insertFormat('*', '*')"
+                class="p-1.5 text-dark-muted hover:text-white hover:bg-dark-hover rounded transition-colors"
+                title="Italic (Ctrl+I)"
+            >
+                <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <line x1="19" y1="4" x2="10" y2="4"></line>
+                    <line x1="14" y1="20" x2="5" y2="20"></line>
+                    <line x1="15" y1="4" x2="9" y2="20"></line>
+                </svg>
+            </button>
+            <button
+                type="button"
+                @click="insertFormat('- ', '')"
+                class="p-1.5 text-dark-muted hover:text-white hover:bg-dark-hover rounded transition-colors"
+                title="List"
+            >
+                <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M8 6h13M8 12h13M8 18h13M3 6h.01M3 12h.01M3 18h.01"></path>
+                </svg>
+            </button>
+            <button
+                type="button"
+                @click="insertFormat('`', '`')"
+                class="p-1.5 text-dark-muted hover:text-white hover:bg-dark-hover rounded transition-colors"
+                title="Code"
+            >
+                <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M10 20l4-16m4 4l4 4-4 4M6 16l-4-4 4-4"></path>
+                </svg>
+            </button>
+            <span class="flex-1"></span>
+            <span x-show="hasDraft" class="text-xs text-dark-muted flex items-center gap-1">
+                <svg class="w-3 h-3" fill="currentColor" viewBox="0 0 20 20">
+                    <path d="M16.707 5.293a1 1 0 010 1.414l-8 8a1 1 0 01-1.414 0l-4-4a1 1 0 011.414-1.414L8 12.586l7.293-7.293a1 1 0 011.414 0z"></path>
+                </svg>
+                Draft saved
+            </span>
+        </div>
         <textarea
+            x-ref="textarea"
             name="content"
-            placeholder="Add a note..."
+            x-model="draft"
+            @input="saveDraft()"
+            @keydown.ctrl.b.prevent="insertFormat('**', '**')"
+            @keydown.ctrl.i.prevent="insertFormat('*', '*')"
+            placeholder="Add a note... (Markdown supported)"
             rows="3"
             required
-            class="w-full px-3 py-2 bg-dark-bg border border-dark-border rounded-lg text-dark-text placeholder-dark-muted text-sm focus:outline-none focus:ring-1 focus:ring-article-blue resize-none mb-2"
+            class="w-full px-3 py-2 bg-dark-bg border border-dark-border rounded-b-lg text-dark-text placeholder-dark-muted text-sm focus:outline-none focus:ring-1 focus:ring-article-blue resize-none mb-2 font-mono"
         ></textarea>
-        <button
-            type="submit"
-            class="flex items-center gap-1 px-3 py-1.5 bg-article-blue text-white text-sm rounded-lg hover:bg-article-blue/90 transition-colors"
-        >
-            {{ plus("w-4 h-4") }}
-            Add Note
-        </button>
+        <div class="flex items-center justify-between">
+            <button
+                type="submit"
+                class="flex items-center gap-1 px-3 py-1.5 bg-article-blue text-white text-sm rounded-lg hover:bg-article-blue/90 transition-colors"
+            >
+                {{ plus("w-4 h-4") }}
+                Add Note
+            </button>
+            <span class="text-xs text-dark-muted">Supports markdown formatting</span>
+        </div>
     </form>
 
     {# Notes list #}
@@ -39,7 +105,7 @@
     <div class="space-y-3">
         {% for note in article.notes %}
         <div class="bg-dark-bg border border-dark-border rounded-lg p-3">
-            <div class="text-sm text-dark-text whitespace-pre-wrap">{{ note.content }}</div>
+            <div class="text-sm text-dark-text prose-dark note-content" data-markdown>{{ note.content }}</div>
             <div class="flex items-center justify-between mt-2 pt-2 border-t border-dark-border">
                 <span class="text-xs text-dark-muted">
                     {{ note.created_at.strftime('%b %d, %Y') if note.created_at else '' }}
@@ -61,3 +127,67 @@
     <p class="text-sm text-dark-muted text-center py-2">No notes yet</p>
     {% endif %}
 </div>
+
+<script>
+    function notesEditor(articleId) {
+        return {
+            draft: '',
+            hasDraft: false,
+            storageKey: `alexandria-note-draft-${articleId}`,
+
+            loadDraft() {
+                const saved = localStorage.getItem(this.storageKey);
+                if (saved) {
+                    this.draft = saved;
+                    this.hasDraft = true;
+                }
+            },
+
+            saveDraft() {
+                if (this.draft.trim()) {
+                    localStorage.setItem(this.storageKey, this.draft);
+                    this.hasDraft = true;
+                } else {
+                    localStorage.removeItem(this.storageKey);
+                    this.hasDraft = false;
+                }
+            },
+
+            clearDraft() {
+                localStorage.removeItem(this.storageKey);
+                this.draft = '';
+                this.hasDraft = false;
+            },
+
+            insertFormat(before, after) {
+                const textarea = this.$refs.textarea;
+                const start = textarea.selectionStart;
+                const end = textarea.selectionEnd;
+                const text = this.draft;
+                const selected = text.substring(start, end);
+
+                // If inserting at start of line (like list), handle differently
+                if (after === '') {
+                    const lineStart = text.lastIndexOf('\n', start - 1) + 1;
+                    this.draft = text.substring(0, lineStart) + before + text.substring(lineStart);
+                    this.$nextTick(() => {
+                        textarea.selectionStart = textarea.selectionEnd = start + before.length;
+                        textarea.focus();
+                    });
+                } else {
+                    this.draft = text.substring(0, start) + before + selected + after + text.substring(end);
+                    this.$nextTick(() => {
+                        if (selected) {
+                            textarea.selectionStart = start;
+                            textarea.selectionEnd = end + before.length + after.length;
+                        } else {
+                            textarea.selectionStart = textarea.selectionEnd = start + before.length;
+                        }
+                        textarea.focus();
+                    });
+                }
+                this.saveDraft();
+            }
+        };
+    }
+</script>

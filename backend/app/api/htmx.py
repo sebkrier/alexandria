@@ -299,6 +299,7 @@ async def index_page(
             "current_path": str(request.url.path),
             "selected_category_id": str(category_id) if category_id else None,
             "selected_color_id": str(color_id) if color_id else None,
+            "colors": sidebar_data.get("colors", []),  # For bulk action bar color picker
             **sidebar_data,
         },
     )
@@ -1622,6 +1623,159 @@ async def bulk_delete(
         context={
             "toast_type": "success",
             "toast_message": f"Deleted {count} article{'s' if count != 1 else ''}",
+        },
+    )
+    response.headers["HX-Trigger"] = "articlesUpdated"
+    return response
+
+
+@router.post("/articles/bulk/color", response_class=HTMLResponse)
+async def bulk_update_color(
+    request: Request,
+    db: AsyncSession = Depends(get_db),
+    current_user: User = Depends(get_current_user),
+):
+    """Update color for selected articles."""
+    import json
+
+    form = await request.form()
+    article_ids_json = form.get("article_ids", "[]")
+    color_id = form.get("color_id")
+
+    try:
+        article_ids = json.loads(article_ids_json)
+    except json.JSONDecodeError:
+        article_ids = []
+
+    if not article_ids:
+        return templates.TemplateResponse(
+            request=request,
+            name="components/toast.html",
+            context={
+                "toast_type": "error",
+                "toast_message": "No articles selected",
+            },
+        )
+
+    # Update articles
+    count = 0
+    for article_id in article_ids:
+        try:
+            result = await db.execute(
+                select(Article).where(
+                    Article.id == article_id,
+                    Article.user_id == current_user.id,
+                )
+            )
+            article = result.scalar_one_or_none()
+            if article:
+                article.color_id = UUID(color_id) if color_id else None
+                count += 1
+        except Exception:
+            continue
+
+    await db.commit()
+
+    # Return success toast and trigger refresh
+    response = templates.TemplateResponse(
+        request=request,
+        name="components/toast.html",
+        context={
+            "toast_type": "success",
+            "toast_message": f"Updated color for {count} article{'s' if count != 1 else ''}",
+        },
+    )
+    response.headers["HX-Trigger"] = "articlesUpdated"
+    return response
+
+
+@router.post("/articles/bulk/reanalyze", response_class=HTMLResponse)
+async def bulk_reanalyze(
+    request: Request,
+    db: AsyncSession = Depends(get_db),
+    current_user: User = Depends(get_current_user),
+):
+    """Re-analyze selected articles (re-generate summary and categories)."""
+    import asyncio
+    import json
+
+    from app.database import async_session_maker
+
+    form = await request.form()
+    article_ids_json = form.get("article_ids", "[]")
+
+    try:
+        article_ids = json.loads(article_ids_json)
+    except json.JSONDecodeError:
+        article_ids = []
+
+    if not article_ids:
+        return templates.TemplateResponse(
+            request=request,
+            name="components/toast.html",
+            context={
+                "toast_type": "error",
+                "toast_message": "No articles selected",
+            },
+        )
+
+    # Queue articles for reprocessing
+    queued = 0
+    skipped = 0
+    for article_id in article_ids:
+        try:
+            result = await db.execute(
+                select(Article).where(
+                    Article.id == article_id,
+                    Article.user_id == current_user.id,
+                )
+            )
+            article = result.scalar_one_or_none()
+            if article:
+                # Skip if already processing
+                if article.processing_status == ProcessingStatus.PROCESSING:
+                    skipped += 1
+                    continue
+
+                # Mark as pending
+                article.processing_status = ProcessingStatus.PENDING
+                article.processing_error = None
+                queued += 1
+        except Exception:
+            continue
+
+    await db.commit()
+
+    # Schedule background processing for all queued articles
+    async def process_in_background(aid: UUID, uid: UUID):
+        async with async_session_maker() as bg_db:
+            try:
+                from app.ai.service import AIService
+                ai_service = AIService(bg_db)
+                await ai_service.process_article(article_id=aid, user_id=uid)
+            except Exception as e:
+                import logging
+                logging.error(f"Background reprocessing failed for {aid}: {e}")
+
+    for article_id in article_ids:
+        try:
+            asyncio.create_task(process_in_background(UUID(article_id), current_user.id))
+        except Exception:
+            continue
+
+    # Build response message
+    message_parts = []
+    if queued > 0:
+        message_parts.append(f"Re-analyzing {queued} article{'s' if queued != 1 else ''}")
+    if skipped > 0:
+        message_parts.append(f"Skipped {skipped} already processing")
+
+    response = templates.TemplateResponse(
+        request=request,
+        name="components/toast.html",
+        context={
+            "toast_type": "success" if queued > 0 else "warning",
+            "toast_message": ". ".join(message_parts) if message_parts else "No articles to process",
         },
     )
     response.headers["HX-Trigger"] = "articlesUpdated"

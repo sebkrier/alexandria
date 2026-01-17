@@ -47,6 +47,11 @@
     <!-- Alpine.js for client-side state -->
     <script defer src="https://unpkg.com/alpinejs@3.x.x/dist/cdn.min.js"></script>
 
+    <!-- Marked.js for markdown rendering -->
+    <script src="https://unpkg.com/marked@12.0.0/marked.min.js"></script>
+    <!-- DOMPurify for sanitizing HTML -->
+    <script src="https://unpkg.com/dompurify@3.0.8/dist/purify.min.js"></script>
+
     <!-- Inter font -->
     <link rel="preconnect" href="https://fonts.googleapis.com">
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
@@ -197,5 +202,37 @@
     <div id="toast-container" class="fixed bottom-4 right-4 z-50 flex flex-col gap-2"></div>
 
     {% block scripts %}{% endblock %}
+
+    <!-- Markdown rendering script -->
+    <script>
+        // Configure marked.js
+        marked.setOptions({
+            breaks: true,  // Convert \n to <br>
+            gfm: true,     // GitHub Flavored Markdown
+        });
+
+        // Function to render markdown in elements with data-markdown attribute
+        function renderMarkdown() {
+            document.querySelectorAll('[data-markdown]').forEach(el => {
+                // Skip if already rendered
+                if (el.dataset.markdownRendered === 'true') return;
+
+                const rawText = el.textContent || '';
+                if (rawText.trim()) {
+                    // Parse markdown and sanitize
+                    const html = DOMPurify.sanitize(marked.parse(rawText));
+                    el.innerHTML = html;
+                    el.dataset.markdownRendered = 'true';
+                }
+            });
+        }
+
+        // Run on page load
+        document.addEventListener('DOMContentLoaded', renderMarkdown);
+
+        // Run after HTMX swaps
+        document.body.addEventListener('htmx:afterSwap', renderMarkdown);
+        document.body.addEventListener('htmx:afterSettle', renderMarkdown);
+    </script>
 </body>
 </html>
