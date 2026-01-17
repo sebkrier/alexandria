@@ -49,7 +49,7 @@
             class="flex-1 flex items-center gap-2 px-2 py-1 text-xs rounded-lg transition-colors {% if is_selected %}bg-article-blue/20 text-article-blue{% else %}text-dark-muted hover:text-dark-text hover:bg-dark-hover{% endif %}{% if is_parent %} font-medium{% endif %} min-w-0"
         >
             <span class="flex-1 text-left truncate min-w-0">{{ category.name }}</span>
-            <span class="text-xs flex-shrink-0 {% if is_selected %}text-article-blue{% else %}text-dark-muted{% endif %}">
+            <span class="text-xs flex-shrink-0 w-6 text-right {% if is_selected %}text-article-blue{% else %}text-dark-muted{% endif %}">
                 {{ category.article_count|default(0) }}
             </span>
         </a>
