@@ -1191,17 +1191,13 @@ async def update_color(
         await db.commit()
         await db.refresh(color)
 
-    # Return updated color element
+    # Fetch all colors and return the full section (includes OOB swap for sidebar)
+    colors = await fetch_colors(db, current_user.id)
+
     return templates.TemplateResponse(
         request=request,
-        name="partials/settings_color_item.html",
-        context={
-            "color": {
-                "id": str(color.id),
-                "name": color.name,
-                "hex_value": color.hex_value,
-            }
-        },
+        name="partials/settings_colors.html",
+        context={"colors": colors},
     )
 
 
