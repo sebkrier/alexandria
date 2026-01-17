@@ -300,6 +300,25 @@
     // Article selection management
     const selectedArticleIds = new Set();
 
+    // Handle article card clicks - if in selection mode, toggle selection instead of navigating
+    function handleArticleClick(event, articleId) {
+        // If clicked on checkbox or its container, let the existing handler work
+        if (event.target.closest('.article-checkbox')) {
+            return false; // Prevent navigation, checkbox handler will take over
+        }
+
+        // If any articles are selected, we're in "selection mode"
+        if (selectedArticleIds.size > 0) {
+            event.preventDefault();
+            event.stopPropagation();
+            toggleArticleSelection(articleId);
+            return false; // Prevent HTMX navigation
+        }
+
+        // No articles selected - allow normal navigation
+        return true;
+    }
+
     function toggleArticleSelection(articleId) {
         if (selectedArticleIds.has(articleId)) {
             selectedArticleIds.delete(articleId);
