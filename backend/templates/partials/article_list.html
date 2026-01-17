@@ -49,12 +49,12 @@
 
 {# Pagination info and load more #}
 {% if total_pages > 1 %}
-<div class="mt-6 flex items-center justify-between text-sm text-dark-muted">
+<div id="load-more-container" class="mt-6 flex items-center justify-between text-sm text-dark-muted">
     <span>Showing {{ articles|length }} of {{ total }} articles</span>
 
     {% if page < total_pages %}
     <button
-        hx-get="/app/articles?page={{ page + 1 }}&page_size={{ page_size }}{% if search %}&search={{ search|urlencode }}{% endif %}&view={{ view_mode }}"
+        hx-get="/app/articles?page={{ page + 1 }}&page_size={{ page_size }}{% if search %}&search={{ search|urlencode }}{% endif %}&view={{ view_mode }}{% if category_id %}&category_id={{ category_id }}{% endif %}{% if color_id %}&color_id={{ color_id }}{% endif %}"
         hx-target="#article-list"
         hx-swap="beforeend"
         hx-indicator="#load-more-indicator"

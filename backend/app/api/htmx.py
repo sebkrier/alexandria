@@ -338,7 +338,24 @@ async def articles_partial(
     is_htmx = request.headers.get("HX-Request") == "true"
 
     if is_htmx:
-        # Return just the article list partial
+        # For pagination (page > 1), return just the cards without wrapper
+        if page > 1:
+            return templates.TemplateResponse(
+                request=request,
+                name="partials/article_cards_only.html",
+                context={
+                    "articles": [article_to_dict(a) for a in articles],
+                    "view_mode": view,
+                    "total": total,
+                    "page": page,
+                    "page_size": page_size,
+                    "total_pages": total_pages,
+                    "search": search,
+                    "category_id": category_id,
+                    "color_id": color_id,
+                },
+            )
+        # For initial load, return the full article list partial
         return templates.TemplateResponse(
             request=request,
             name="partials/article_list.html",
@@ -350,6 +367,8 @@ async def articles_partial(
                 "page_size": page_size,
                 "total_pages": total_pages,
                 "search": search,
+                "category_id": category_id,
+                "color_id": color_id,
             },
         )
     else:
