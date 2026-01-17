@@ -75,14 +75,14 @@
 
     {# Navigation #}
     <nav class="px-3 py-2">
-        {# Read Unread Link #}
+        {# Unread Reader Link #}
         {% if unread_count is defined and unread_count > 0 %}
         <a
             href="/app/reader"
             class="flex items-center gap-3 px-3 py-2 rounded-lg transition-colors mb-1 {% if '/reader' in current_path %}bg-article-blue/20 text-article-blue{% else %}text-white bg-dark-hover hover:bg-dark-hover/80{% endif %}"
         >
             {{ book_open('w-5 h-5') }}
-            <span class="flex-1">Read Unread</span>
+            <span class="flex-1">Unread Reader</span>
             <span class="text-xs px-2 py-0.5 rounded-full font-medium {% if '/reader' in current_path %}bg-article-blue text-white{% else %}bg-article-blue/20 text-article-blue{% endif %}">
                 {{ unread_count }}
             </span>
