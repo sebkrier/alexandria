@@ -75,7 +75,8 @@
 
     {# Navigation #}
     <nav class="px-3 py-2">
-        {# Unread Reader Link #}
+        {# Unread Reader Link - wrapped in div for HTMX updates #}
+        <div id="unread-reader-link">
         {% if unread_count is defined and unread_count > 0 %}
         <a
             href="/app/reader"
@@ -88,6 +89,7 @@
             </span>
         </a>
         {% endif %}
+        </div>
 
         {# Main nav items #}
         <a
