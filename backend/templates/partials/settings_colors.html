@@ -15,7 +15,7 @@
                 Customize color labels for organizing articles
             </p>
         </div>
-        <div x-data="{ showForm: false }">
+        <div id="add-color-form-container" x-data="{ showForm: false }">
             <button
                 @click="showForm = true"
                 x-show="!showForm"
@@ -32,7 +32,7 @@
                 hx-post="/app/settings/colors"
                 hx-target="#colors-list"
                 hx-swap="outerHTML"
-                hx-on::after-request="document.querySelector('[x-data]').__x.$data.showForm = false"
+                @htmx:after-request="showForm = false"
                 class="flex items-center gap-2"
             >
                 <input
