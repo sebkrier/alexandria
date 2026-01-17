@@ -1,0 +1,51 @@
+{#
+  Colors List Partial - swappable portion of color settings
+
+  Expected context:
+    - colors: list of color dicts with id, name, hex_value
+#}
+
+{% from 'components/icons.html' import trash_2 %}
+
+<div id="colors-list">
+    {% if colors and colors|length > 0 %}
+    <div class="grid grid-cols-2 gap-3">
+        {% for color in colors %}
+        <div
+            id="color-{{ color.id }}"
+            class="flex items-center gap-3 p-3 bg-dark-bg rounded-lg border border-dark-border group"
+        >
+            <div
+                class="w-4 h-4 rounded-full flex-shrink-0"
+                style="background-color: {{ color.hex_value }};"
+            ></div>
+            <input
+                type="text"
+                value="{{ color.name }}"
+                hx-patch="/app/settings/colors/{{ color.id }}"
+                hx-trigger="blur changed, keyup[key=='Enter']"
+                hx-target="#color-{{ color.id }}"
+                hx-swap="outerHTML"
+                hx-include="this"
+                name="name"
+                class="flex-1 bg-transparent text-dark-text border-none outline-none focus:ring-1 focus:ring-article-blue rounded px-1 text-sm min-w-0"
+            >
+            <button
+                hx-delete="/app/settings/colors/{{ color.id }}"
+                hx-target="#colors-list"
+                hx-swap="outerHTML"
+                hx-confirm="Delete this color? Articles using it will have their color cleared."
+                class="p-1 text-dark-muted hover:text-article-red transition-colors opacity-0 group-hover:opacity-100"
+                title="Delete color"
+            >
+                {{ trash_2("w-4 h-4") }}
+            </button>
+        </div>
+        {% endfor %}
+    </div>
+    {% else %}
+    <div class="py-4 text-center text-dark-muted">
+        <p>No color labels configured</p>
+    </div>
+    {% endif %}
+</div>
