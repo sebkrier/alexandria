@@ -94,11 +94,9 @@
                     {% endif %}
                 </div>
                 <div class="flex items-center gap-2">
-                    {# Optimize Categories button #}
+                    {# Optimize Categories button - shows confirmation first #}
                     <button
-                        hx-get="/app/taxonomy/optimize"
-                        hx-target="body"
-                        hx-swap="beforeend"
+                        @click="$dispatch('show-taxonomy-confirm')"
                         class="flex items-center gap-2 px-3 py-1.5 text-sm text-dark-muted hover:text-white hover:bg-dark-surface rounded-lg transition-colors border border-dark-border"
                         title="Optimize category structure with AI"
                     >
@@ -293,6 +291,72 @@
                 class="px-4 py-2 bg-article-red text-white rounded-lg hover:bg-article-red/90 transition-colors"
             >
                 Delete
+            </button>
+        </div>
+    </div>
+</div>
+
+{# Taxonomy optimization confirmation modal #}
+<div
+    id="taxonomy-confirm-modal"
+    x-data="{ show: false }"
+    x-show="show"
+    x-cloak
+    @show-taxonomy-confirm.window="show = true"
+    @keydown.escape.window="show = false"
+    class="fixed inset-0 z-50 flex items-center justify-center bg-black/50"
+>
+    <div class="bg-dark-surface border border-dark-border rounded-xl p-6 max-w-lg w-full mx-4 shadow-2xl">
+        <div class="flex items-center gap-3 mb-4">
+            <div class="w-10 h-10 rounded-full bg-article-purple/20 flex items-center justify-center">
+                <svg class="w-5 h-5 text-article-purple" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 11H5m14 0a2 2 0 012 2v6a2 2 0 01-2 2H5a2 2 0 01-2-2v-6a2 2 0 012-2m14 0V9a2 2 0 00-2-2M5 11V9a2 2 0 012-2m0 0V5a2 2 0 012-2h6a2 2 0 012 2v2M7 7h10"></path>
+                </svg>
+            </div>
+            <h3 class="text-lg font-semibold text-white">Optimize Category Structure</h3>
+        </div>
+
+        <div class="space-y-3 mb-6">
+            <p class="text-dark-text">
+                This feature uses AI to analyze your entire library and propose an optimal category/subcategory structure.
+            </p>
+            <div class="bg-dark-bg rounded-lg p-4 space-y-2">
+                <p class="text-sm text-dark-muted">
+                    <span class="text-article-blue font-medium">What will happen:</span>
+                </p>
+                <ul class="text-sm text-dark-muted space-y-1 ml-4 list-disc">
+                    <li>AI will review all articles and their summaries</li>
+                    <li>A new category structure will be proposed</li>
+                    <li>You'll preview the changes before applying</li>
+                    <li>If applied, <span class="text-article-orange">all existing categories will be replaced</span></li>
+                </ul>
+            </div>
+            <div class="bg-dark-bg rounded-lg p-4">
+                <p class="text-sm text-dark-muted">
+                    <span class="text-article-green font-medium">What stays the same:</span>
+                    Color labels, read/unread status, notes, and tags are preserved.
+                </p>
+            </div>
+        </div>
+
+        <div class="flex justify-end gap-3">
+            <button
+                @click="show = false"
+                class="px-4 py-2 text-dark-muted hover:text-white transition-colors"
+            >
+                Cancel
+            </button>
+            <button
+                @click="show = false"
+                hx-get="/app/taxonomy/optimize"
+                hx-target="body"
+                hx-swap="beforeend"
+                class="px-4 py-2 bg-article-purple text-white rounded-lg hover:bg-article-purple/90 transition-colors flex items-center gap-2"
+            >
+                <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13 10V3L4 14h7v7l9-11h-7z"></path>
+                </svg>
+                Start Analysis
             </button>
         </div>
     </div>
