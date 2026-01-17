@@ -2942,6 +2942,34 @@ async def taxonomy_apply(
         )
 
     try:
+        # Step 1: Delete ALL existing article-category associations for this user's articles
+        user_article_ids = await db.execute(
+            select(Article.id).where(Article.user_id == current_user.id)
+        )
+        article_id_list = [row[0] for row in user_article_ids.all()]
+
+        if article_id_list:
+            await db.execute(
+                delete(ArticleCategory).where(ArticleCategory.article_id.in_(article_id_list))
+            )
+
+        # Step 2: Delete ALL existing categories for this user (children first, then parents)
+        # First delete subcategories (those with parent_id)
+        await db.execute(
+            delete(Category).where(
+                Category.user_id == current_user.id,
+                Category.parent_id != None,
+            )
+        )
+        # Then delete parent categories
+        await db.execute(
+            delete(Category).where(
+                Category.user_id == current_user.id,
+            )
+        )
+        await db.flush()
+
+        # Step 3: Create the new taxonomy structure
         articles_updated = 0
         categories_created = 0
         subcategories_created = 0
@@ -2999,12 +3027,7 @@ async def taxonomy_apply(
                     try:
                         aid = UUID(article_id)
 
-                        # Remove existing category assignments
-                        await db.execute(
-                            delete(ArticleCategory).where(ArticleCategory.article_id == aid)
-                        )
-
-                        # Create new assignment
+                        # Create new assignment (old ones already deleted above)
                         ac = ArticleCategory(
                             article_id=aid,
                             category_id=subcategory.id,
