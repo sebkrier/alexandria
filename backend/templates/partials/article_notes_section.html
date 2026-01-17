@@ -88,16 +88,13 @@
             required
             class="w-full px-3 py-2 bg-dark-bg border border-dark-border rounded-b-lg text-dark-text placeholder-dark-muted text-sm focus:outline-none focus:ring-1 focus:ring-article-blue resize-none mb-2 font-mono"
         ></textarea>
-        <div class="flex items-center justify-between">
-            <button
-                type="submit"
-                class="flex items-center gap-1 px-3 py-1.5 bg-article-blue text-white text-sm rounded-lg hover:bg-article-blue/90 transition-colors"
-            >
-                {{ plus("w-4 h-4") }}
-                Add Note
-            </button>
-            <span class="text-xs text-dark-muted">Supports markdown formatting</span>
-        </div>
+        <button
+            type="submit"
+            class="flex items-center gap-1 px-3 py-1.5 bg-article-blue text-white text-sm rounded-lg hover:bg-article-blue/90 transition-colors"
+        >
+            {{ plus("w-4 h-4") }}
+            Add Note
+        </button>
     </form>
 
     {# Notes list #}
