@@ -309,8 +309,6 @@ async def articles_partial(
     request: Request,
     search: str | None = None,
     view: str = "grid",
-    page: int = Query(1, ge=1),
-    page_size: int = Query(20, ge=1, le=100),
     category_id: UUID | None = None,
     tag_id: UUID | None = None,
     color_id: UUID | None = None,
@@ -318,44 +316,24 @@ async def articles_partial(
     db: AsyncSession = Depends(get_db),
     current_user: User = Depends(get_current_user),
 ):
-    """Article list partial for HTMX requests."""
-    # Fetch articles
+    """Article list partial for HTMX requests. Returns all articles (no pagination)."""
+    # Fetch all articles (no pagination)
     articles, total = await fetch_articles(
         db=db,
         user_id=current_user.id,
         search=search,
-        page=page,
-        page_size=page_size,
+        page=1,
+        page_size=10000,  # Effectively no limit
         category_id=category_id,
         tag_id=tag_id,
         color_id=color_id,
         is_read=is_read,
     )
 
-    total_pages = (total + page_size - 1) // page_size
-
     # Check if this is an HTMX request
     is_htmx = request.headers.get("HX-Request") == "true"
 
     if is_htmx:
-        # For pagination (page > 1), return just the cards without wrapper
-        if page > 1:
-            return templates.TemplateResponse(
-                request=request,
-                name="partials/article_cards_only.html",
-                context={
-                    "articles": [article_to_dict(a) for a in articles],
-                    "view_mode": view,
-                    "total": total,
-                    "page": page,
-                    "page_size": page_size,
-                    "total_pages": total_pages,
-                    "search": search,
-                    "category_id": category_id,
-                    "color_id": color_id,
-                },
-            )
-        # For initial load, return the full article list partial
         return templates.TemplateResponse(
             request=request,
             name="partials/article_list.html",
@@ -363,12 +341,7 @@ async def articles_partial(
                 "articles": [article_to_dict(a) for a in articles],
                 "view_mode": view,
                 "total": total,
-                "page": page,
-                "page_size": page_size,
-                "total_pages": total_pages,
                 "search": search,
-                "category_id": category_id,
-                "color_id": color_id,
             },
         )
     else:
@@ -381,9 +354,6 @@ async def articles_partial(
                 "articles": [article_to_dict(a) for a in articles],
                 "view_mode": view,
                 "total": total,
-                "page": page,
-                "page_size": page_size,
-                "total_pages": total_pages,
                 "search": search,
                 "current_path": str(request.url.path),
                 "selected_category_id": str(category_id) if category_id else None,

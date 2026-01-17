@@ -47,28 +47,10 @@
 </div>
 {% endif %}
 
-{# Pagination info and load more #}
-{% if total_pages > 1 %}
-<div id="load-more-container" class="mt-6 flex items-center justify-between text-sm text-dark-muted">
-    <span>Showing {{ articles|length }} of {{ total }} articles</span>
-
-    {% if page < total_pages %}
-    <button
-        hx-get="/app/articles?page={{ page + 1 }}&page_size={{ page_size }}{% if search %}&search={{ search|urlencode }}{% endif %}&view={{ view_mode }}{% if category_id %}&category_id={{ category_id }}{% endif %}{% if color_id %}&color_id={{ color_id }}{% endif %}"
-        hx-target="#article-list"
-        hx-swap="beforeend"
-        hx-indicator="#load-more-indicator"
-        class="px-4 py-2 bg-dark-surface border border-dark-border rounded-lg hover:border-dark-hover transition-colors"
-    >
-        <span class="htmx-indicator" id="load-more-indicator">
-            <svg class="animate-spin h-4 w-4 mr-2 inline" fill="none" viewBox="0 0 24 24">
-                <circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"></circle>
-                <path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
-            </svg>
-        </span>
-        Load more
-    </button>
-    {% endif %}
+{# Article count #}
+{% if total > 0 %}
+<div class="mt-6 text-sm text-dark-muted">
+    <span>{{ total }} article{% if total != 1 %}s{% endif %}</span>
 </div>
 {% endif %}
 
