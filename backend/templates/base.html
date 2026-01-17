@@ -205,34 +205,57 @@
 
     <!-- Markdown rendering script -->
     <script>
-        // Configure marked.js
-        marked.setOptions({
-            breaks: true,  // Convert \n to <br>
-            gfm: true,     // GitHub Flavored Markdown
-        });
+        // Wait for marked.js and DOMPurify to be available
+        function initMarkdown() {
+            if (typeof marked === 'undefined' || typeof DOMPurify === 'undefined') {
+                console.warn('Markdown: waiting for libraries to load...');
+                setTimeout(initMarkdown, 100);
+                return;
+            }
 
-        // Function to render markdown in elements with data-markdown attribute
-        function renderMarkdown() {
-            document.querySelectorAll('[data-markdown]').forEach(el => {
-                // Skip if already rendered
-                if (el.dataset.markdownRendered === 'true') return;
-
-                const rawText = el.textContent || '';
-                if (rawText.trim()) {
-                    // Parse markdown and sanitize
-                    const html = DOMPurify.sanitize(marked.parse(rawText));
-                    el.innerHTML = html;
-                    el.dataset.markdownRendered = 'true';
-                }
+            // Configure marked.js
+            marked.setOptions({
+                breaks: true,  // Convert \n to <br>
+                gfm: true,     // GitHub Flavored Markdown
             });
+
+            // Function to render markdown in elements with data-markdown attribute
+            window.renderMarkdown = function(container) {
+                const root = container || document;
+                root.querySelectorAll('[data-markdown]:not([data-markdown-rendered])').forEach(el => {
+                    try {
+                        const rawText = el.textContent || '';
+                        if (rawText.trim()) {
+                            // Parse markdown and sanitize
+                            const html = DOMPurify.sanitize(marked.parse(rawText));
+                            el.innerHTML = html;
+                            el.setAttribute('data-markdown-rendered', 'true');
+                        }
+                    } catch (e) {
+                        console.error('Markdown rendering error:', e);
+                    }
+                });
+            };
+
+            // Run initial render
+            renderMarkdown();
+            console.log('Markdown rendering initialized');
         }
 
-        // Run on page load
-        document.addEventListener('DOMContentLoaded', renderMarkdown);
+        // Start initialization
+        if (document.readyState === 'loading') {
+            document.addEventListener('DOMContentLoaded', initMarkdown);
+        } else {
+            initMarkdown();
+        }
 
         // Run after HTMX swaps
-        document.body.addEventListener('htmx:afterSwap', renderMarkdown);
-        document.body.addEventListener('htmx:afterSettle', renderMarkdown);
+        document.body.addEventListener('htmx:afterSwap', function(e) {
+            if (window.renderMarkdown) renderMarkdown(e.detail.target);
+        });
+        document.body.addEventListener('htmx:afterSettle', function(e) {
+            if (window.renderMarkdown) renderMarkdown(e.detail.target);
+        });
     </script>
 </body>
 </html>
