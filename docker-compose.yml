@@ -4,9 +4,9 @@
 version: '3.8'
 
 services:
-  # PostgreSQL Database
+  # PostgreSQL Database with pgvector
   db:
-    image: postgres:15-alpine
+    image: pgvector/pgvector:pg15
     container_name: alexandria-db
     environment:
       POSTGRES_DB: alexandria
@@ -22,7 +22,7 @@ services:
       timeout: 5s
       retries: 5
 
-  # Backend API
+  # Backend API (serves both API and HTMX UI)
   backend:
     build:
       context: ./backend
@@ -33,7 +33,6 @@ services:
       JWT_SECRET: local-dev-secret-change-in-production
       ENCRYPTION_KEY: local-dev-encryption-key-change-in-production
       DEBUG: "true"
-      CORS_ORIGINS: '["http://localhost:3000"]'
     ports:
       - "8000:8000"
     depends_on:
@@ -48,21 +47,6 @@ services:
       interval: 30s
       timeout: 10s
       retries: 3
-
-  # Frontend
-  frontend:
-    build:
-      context: ./frontend
-      dockerfile: Dockerfile
-      args:
-        NEXT_PUBLIC_API_URL: http://localhost:8000
-    container_name: alexandria-frontend
-    ports:
-      - "3000:3000"
-    depends_on:
-      - backend
-    environment:
-      NEXT_PUBLIC_API_URL: http://localhost:8000
 
 volumes:
   postgres_data:
