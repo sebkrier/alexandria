@@ -141,6 +141,14 @@ def _instantiate_provider(config: AIProviderModel) -> AIProvider:
     )
 
 
+# Proper display names for providers
+PROVIDER_DISPLAY_NAMES = {
+    "anthropic": "Anthropic",
+    "openai": "OpenAI",
+    "google": "Google",
+}
+
+
 def get_available_providers() -> dict:
     """
     Get information about all available AI providers and their models.
@@ -148,7 +156,7 @@ def get_available_providers() -> dict:
     """
     return {
         provider_name: {
-            "display_name": provider_name.title(),
+            "display_name": PROVIDER_DISPLAY_NAMES.get(provider_name, provider_name.title()),
             "models": models,
             "default_model": list(models.keys())[0],
         }
