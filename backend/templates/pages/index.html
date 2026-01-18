@@ -39,7 +39,7 @@
                             <input
                                 type="text"
                                 name="search"
-                                value="{{ search|default('') }}"
+                                value="{{ search or '' }}"
                                 placeholder="Search articles..."
                                 class="search-input w-full pl-10 pr-4 py-2 bg-dark-surface border border-dark-border rounded-lg text-white placeholder-dark-muted transition-colors"
                                 hx-get="/app/articles"

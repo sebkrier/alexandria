@@ -64,6 +64,22 @@ class CategorySuggestion(BaseModel):
     confidence: float = Field(ge=0, le=1, description="Confidence score 0-1")
     reasoning: str = Field(description="Why this categorization fits")
 
+    # Legacy properties for backward compatibility
+    @property
+    def category_name(self) -> str:
+        """Returns subcategory name (the most specific category)"""
+        return self.subcategory.name
+
+    @property
+    def parent_category(self) -> str | None:
+        """Returns parent category name"""
+        return self.category.name
+
+    @property
+    def is_new_category(self) -> bool:
+        """Returns True if either category or subcategory is new"""
+        return self.category.is_new or self.subcategory.is_new
+
 
 class SubcategoryAssignment(BaseModel):
     """Subcategory with assigned articles"""
@@ -96,22 +112,6 @@ class TaxonomyOptimizationResult(BaseModel):
     taxonomy: list[CategoryStructure] = Field(description="Proposed category structure")
     changes_summary: TaxonomyChangesSummary = Field(description="Summary of proposed changes")
     reasoning: str = Field(description="Explanation of the proposed structure")
-
-    # Legacy properties for backward compatibility during transition
-    @property
-    def category_name(self) -> str:
-        """Returns subcategory name (the most specific category)"""
-        return self.subcategory.name
-
-    @property
-    def parent_category(self) -> str | None:
-        """Returns parent category name"""
-        return self.category.name
-
-    @property
-    def is_new_category(self) -> bool:
-        """Returns True if either category or subcategory is new"""
-        return self.category.is_new or self.subcategory.is_new
 
 
 class AIProvider(ABC):

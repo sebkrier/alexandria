@@ -6,52 +6,52 @@
 
 {% from 'components/icons.html' import file_down, upload, check, alert_circle, loader %}
 
-<section id="backup-section" class="bg-dark-surface border border-dark-border rounded-lg p-6">
+<section id="backup-section" class="bg-dark-surface border border-dark-border rounded-lg p-5">
     <div class="mb-4">
-        <h2 class="text-lg font-semibold text-white">Library Backup</h2>
-        <p class="text-sm text-dark-muted mt-1">
+        <h2 class="text-base font-semibold text-white">Library Backup</h2>
+        <p class="text-xs text-dark-muted mt-1">
             Export your library to a JSON file or restore from a backup
         </p>
     </div>
 
-    <div class="space-y-4">
+    <div class="space-y-3">
         {# Export Section #}
-        <div class="p-4 bg-dark-bg rounded-lg border border-dark-border">
+        <div class="p-3 bg-dark-bg rounded-lg border border-dark-border">
             <div class="flex items-start justify-between">
                 <div class="flex-1">
-                    <h3 class="text-sm font-medium text-white flex items-center gap-2">
-                        {{ file_down("w-4 h-4 text-article-blue") }}
+                    <h3 class="text-xs font-medium text-white flex items-center gap-1.5">
+                        {{ file_down("w-3.5 h-3.5 text-article-blue") }}
                         Export Library
                     </h3>
-                    <p class="text-sm text-dark-muted mt-1">
+                    <p class="text-xs text-dark-muted mt-1">
                         Download all your articles, categories, tags, and notes as a JSON file.
                     </p>
                 </div>
                 <div x-data="{ exporting: false, includeText: true }">
-                    <div class="flex items-center gap-3">
-                        <label class="flex items-center gap-2 text-sm text-dark-muted">
+                    <div class="flex items-center gap-2">
+                        <label class="flex items-center gap-1.5 text-xs text-dark-muted">
                             <input
                                 type="checkbox"
                                 x-model="includeText"
-                                class="rounded border-dark-border bg-dark-bg text-article-blue focus:ring-article-blue"
+                                class="rounded border-dark-border bg-dark-bg text-article-blue focus:ring-article-blue w-3.5 h-3.5"
                             >
                             Include full text
                         </label>
                         <a
                             :href="'/api/library/export?include_text=' + includeText"
                             @click="exporting = true; setTimeout(() => exporting = false, 3000)"
-                            class="flex items-center gap-2 px-4 py-2 bg-article-blue text-white text-sm rounded-lg hover:bg-article-blue/90 transition-colors"
+                            class="flex items-center gap-1.5 px-2.5 py-1 bg-article-blue text-white text-xs font-medium rounded-lg hover:bg-article-blue/90 transition-colors"
                             download
                         >
                             <template x-if="!exporting">
-                                <span class="flex items-center gap-2">
-                                    {{ file_down("w-4 h-4") }}
+                                <span class="flex items-center gap-1.5">
+                                    {{ file_down("w-3.5 h-3.5") }}
                                     Export
                                 </span>
                             </template>
                             <template x-if="exporting">
-                                <span class="flex items-center gap-2">
-                                    {{ loader("w-4 h-4 animate-spin") }}
+                                <span class="flex items-center gap-1.5">
+                                    {{ loader("w-3.5 h-3.5 animate-spin") }}
                                     Exporting...
                                 </span>
                             </template>
@@ -62,35 +62,35 @@
         </div>
 
         {# Import Section #}
-        <div class="p-4 bg-dark-bg rounded-lg border border-dark-border">
+        <div class="p-3 bg-dark-bg rounded-lg border border-dark-border">
             <div class="flex items-start justify-between">
                 <div class="flex-1">
-                    <h3 class="text-sm font-medium text-white flex items-center gap-2">
-                        {{ upload("w-4 h-4 text-article-green") }}
+                    <h3 class="text-xs font-medium text-white flex items-center gap-1.5">
+                        {{ upload("w-3.5 h-3.5 text-article-green") }}
                         Import Library
                     </h3>
-                    <p class="text-sm text-dark-muted mt-1">
+                    <p class="text-xs text-dark-muted mt-1">
                         Restore from a backup file. Existing items with the same URL will be skipped.
                     </p>
                 </div>
             </div>
 
-            <div x-data="importHandler()" class="mt-3">
+            <div x-data="importHandler()" class="mt-2">
                 <form
                     @submit.prevent="handleImport"
-                    class="space-y-3"
+                    class="space-y-2"
                 >
-                    <div class="flex items-center gap-3">
+                    <div class="flex items-center gap-2">
                         <label class="flex-1">
                             <input
                                 type="file"
                                 accept=".json"
                                 @change="fileSelected = $event.target.files.length > 0; fileName = $event.target.files[0]?.name || ''"
                                 x-ref="fileInput"
-                                class="block w-full text-sm text-dark-muted
-                                    file:mr-4 file:py-2 file:px-4
+                                class="block w-full text-xs text-dark-muted
+                                    file:mr-3 file:py-1 file:px-2.5
                                     file:rounded-lg file:border-0
-                                    file:text-sm file:font-medium
+                                    file:text-xs file:font-medium
                                     file:bg-dark-hover file:text-dark-text
                                     hover:file:bg-dark-border
                                     cursor-pointer"
@@ -99,17 +99,17 @@
                         <button
                             type="submit"
                             :disabled="!fileSelected || importing"
-                            class="flex items-center gap-2 px-4 py-2 bg-article-green text-white text-sm rounded-lg hover:bg-article-green/90 transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
+                            class="flex items-center gap-1.5 px-2.5 py-1 bg-article-green text-white text-xs font-medium rounded-lg hover:bg-article-green/90 transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
                         >
                             <template x-if="!importing">
-                                <span class="flex items-center gap-2">
-                                    {{ upload("w-4 h-4") }}
+                                <span class="flex items-center gap-1.5">
+                                    {{ upload("w-3.5 h-3.5") }}
                                     Import
                                 </span>
                             </template>
                             <template x-if="importing">
-                                <span class="flex items-center gap-2">
-                                    {{ loader("w-4 h-4 animate-spin") }}
+                                <span class="flex items-center gap-1.5">
+                                    {{ loader("w-3.5 h-3.5 animate-spin") }}
                                     Importing...
                                 </span>
                             </template>
@@ -120,17 +120,17 @@
                 {# Import Results #}
                 <template x-if="result">
                     <div
-                        class="mt-3 p-3 rounded-lg"
+                        class="mt-2 p-2.5 rounded-lg"
                         :class="result.errors && result.errors.length > 0 ? 'bg-article-yellow/10 border border-article-yellow/30' : 'bg-article-green/10 border border-article-green/30'"
                     >
                         <div class="flex items-start gap-2">
                             <template x-if="result.errors && result.errors.length > 0">
-                                {{ alert_circle("w-5 h-5 text-article-yellow flex-shrink-0 mt-0.5") }}
+                                {{ alert_circle("w-4 h-4 text-article-yellow flex-shrink-0 mt-0.5") }}
                             </template>
                             <template x-if="!result.errors || result.errors.length === 0">
-                                {{ check("w-5 h-5 text-article-green flex-shrink-0 mt-0.5") }}
+                                {{ check("w-4 h-4 text-article-green flex-shrink-0 mt-0.5") }}
                             </template>
-                            <div class="text-sm">
+                            <div class="text-xs">
                                 <p class="text-white font-medium">Import Complete</p>
                                 <ul class="text-dark-muted mt-1 space-y-0.5">
                                     <li>Categories: <span class="text-article-green" x-text="result.categories_created"></span> created, <span class="text-dark-muted" x-text="result.categories_skipped"></span> skipped</li>
@@ -141,7 +141,7 @@
                                 <template x-if="result.errors && result.errors.length > 0">
                                     <div class="mt-2 pt-2 border-t border-dark-border">
                                         <p class="text-article-yellow font-medium">Errors:</p>
-                                        <ul class="text-dark-muted text-xs mt-1">
+                                        <ul class="text-dark-muted text-[10px] mt-1">
                                             <template x-for="error in result.errors.slice(0, 5)" :key="error">
                                                 <li x-text="error"></li>
                                             </template>
@@ -155,10 +155,10 @@
 
                 {# Error message #}
                 <template x-if="error">
-                    <div class="mt-3 p-3 bg-article-red/10 border border-article-red/30 rounded-lg">
+                    <div class="mt-2 p-2.5 bg-article-red/10 border border-article-red/30 rounded-lg">
                         <div class="flex items-start gap-2">
-                            {{ alert_circle("w-5 h-5 text-article-red flex-shrink-0 mt-0.5") }}
-                            <div class="text-sm">
+                            {{ alert_circle("w-4 h-4 text-article-red flex-shrink-0 mt-0.5") }}
+                            <div class="text-xs">
                                 <p class="text-article-red font-medium">Import Failed</p>
                                 <p class="text-dark-muted mt-1" x-text="error"></p>
                             </div>
@@ -169,8 +169,8 @@
         </div>
 
         {# Info about database backups #}
-        <div class="p-3 bg-dark-bg/50 rounded-lg border border-dark-border/50">
-            <p class="text-xs text-dark-muted">
+        <div class="p-2.5 bg-dark-bg/50 rounded-lg border border-dark-border/50">
+            <p class="text-[10px] text-dark-muted">
                 <strong class="text-dark-text">Note:</strong> For full database backups including embeddings and search vectors,
                 use the <code class="px-1 py-0.5 bg-dark-hover rounded">scripts/backup_local.sh</code> script to create PostgreSQL dumps.
             </p>
