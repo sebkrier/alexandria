@@ -643,6 +643,16 @@ def article_to_detail_dict(article: Article) -> dict:
     else:
         proc_status_str = str(proc_status) if proc_status else "pending"
 
+    # Include notes if loaded
+    notes = []
+    if hasattr(article, 'notes') and article.notes:
+        for note in sorted(article.notes, key=lambda n: n.created_at, reverse=True):
+            notes.append({
+                "id": str(note.id),
+                "content": note.content,
+                "created_at": note.created_at,
+            })
+
     return {
         "id": str(article.id),
         "source_type": source_type_str,
@@ -660,6 +670,7 @@ def article_to_detail_dict(article: Article) -> dict:
         "color": color,
         "categories": categories,
         "tags": tags,
+        "notes": notes,
         "created_at": article.created_at,
     }
 
@@ -2703,7 +2714,9 @@ async def reader_article(
     current_user: User = Depends(get_current_user),
 ):
     """Show a specific article in reader mode."""
-    # Fetch the article
+    from app.models.note import Note
+
+    # Fetch the article with notes
     result = await db.execute(
         select(Article)
         .where(Article.id == article_id, Article.user_id == current_user.id)
@@ -2711,6 +2724,7 @@ async def reader_article(
             selectinload(Article.categories).selectinload(ArticleCategory.category),
             selectinload(Article.tags).selectinload(ArticleTag.tag),
             selectinload(Article.color),
+            selectinload(Article.notes),
         )
     )
     article = result.scalar_one_or_none()
