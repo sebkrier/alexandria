@@ -111,9 +111,7 @@ async def export_library(
 
     # Fetch all categories
     result = await db.execute(
-        select(Category)
-        .where(Category.user_id == current_user.id)
-        .order_by(Category.position)
+        select(Category).where(Category.user_id == current_user.id).order_by(Category.position)
     )
     categories = result.scalars().all()
 
@@ -136,17 +134,10 @@ async def export_library(
         )
 
     # Fetch all tags
-    result = await db.execute(
-        select(Tag)
-        .where(Tag.user_id == current_user.id)
-        .order_by(Tag.name)
-    )
+    result = await db.execute(select(Tag).where(Tag.user_id == current_user.id).order_by(Tag.name))
     tags = result.scalars().all()
 
-    tags_export = [
-        TagExport(name=tag.name, color=tag.color)
-        for tag in tags
-    ]
+    tags_export = [TagExport(name=tag.name, color=tag.color) for tag in tags]
 
     # Build tag lookup by ID
     tag_lookup = {tag.id: tag.name for tag in tags}
@@ -167,16 +158,10 @@ async def export_library(
     articles_export = []
     for article in articles:
         # Get category names
-        category_names = [
-            ac.category.name for ac in article.categories
-            if ac.category is not None
-        ]
+        category_names = [ac.category.name for ac in article.categories if ac.category is not None]
 
         # Get tag names
-        tag_names = [
-            at.tag.name for at in article.tags
-            if at.tag is not None
-        ]
+        tag_names = [at.tag.name for at in article.tags if at.tag is not None]
 
         # Get notes
         notes_export = [
@@ -193,8 +178,12 @@ async def export_library(
                 original_url=article.original_url,
                 title=article.title,
                 authors=article.authors,
-                publication_date=article.publication_date.isoformat() if article.publication_date else None,
-                source_type=article.source_type.value if hasattr(article.source_type, 'value') else (article.source_type or "url"),
+                publication_date=article.publication_date.isoformat()
+                if article.publication_date
+                else None,
+                source_type=article.source_type.value
+                if hasattr(article.source_type, "value")
+                else (article.source_type or "url"),
                 summary=article.summary,
                 summary_model=article.summary_model,
                 extracted_text=article.extracted_text if include_text else None,
@@ -300,14 +289,10 @@ async def import_library(
     )
 
     # Get existing data for duplicate checking
-    result = await db.execute(
-        select(Category).where(Category.user_id == current_user.id)
-    )
+    result = await db.execute(select(Category).where(Category.user_id == current_user.id))
     existing_categories = {cat.name: cat for cat in result.scalars().all()}
 
-    result = await db.execute(
-        select(Tag).where(Tag.user_id == current_user.id)
-    )
+    result = await db.execute(select(Tag).where(Tag.user_id == current_user.id))
     existing_tags = {tag.name: tag for tag in result.scalars().all()}
 
     result = await db.execute(
@@ -418,7 +403,9 @@ async def import_library(
                 word_count=article_data.get("word_count"),
                 is_read=article_data.get("is_read", False),
                 article_metadata=article_data.get("metadata"),
-                processing_status=ProcessingStatus.COMPLETED if article_data.get("summary") else ProcessingStatus.PENDING,
+                processing_status=ProcessingStatus.COMPLETED
+                if article_data.get("summary")
+                else ProcessingStatus.PENDING,
             )
             db.add(article)
             await db.flush()
@@ -456,7 +443,9 @@ async def import_library(
             stats.articles_created += 1
 
         except Exception as e:
-            error_msg = f"Failed to import article '{article_data.get('title', 'Unknown')}': {str(e)}"
+            error_msg = (
+                f"Failed to import article '{article_data.get('title', 'Unknown')}': {str(e)}"
+            )
             logger.error(error_msg)
             stats.errors.append(error_msg)
             if len(stats.errors) > 10:

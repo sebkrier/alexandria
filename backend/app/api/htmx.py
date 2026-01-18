@@ -34,6 +34,7 @@ templates = Jinja2Templates(directory=str(TEMPLATES_DIR))
 
 # Configure logging
 import logging
+
 logging.basicConfig(level=logging.INFO)
 logger = logging.getLogger(__name__)
 
@@ -52,16 +53,17 @@ async def process_article_background(article_id: UUID, user_id: UUID) -> None:
     async with async_session_maker() as db:
         try:
             from app.ai.service import AIService
+
             ai_service = AIService(db)
             await ai_service.process_article(article_id=article_id, user_id=user_id)
             logger.info(f"Background processing completed for article {article_id}")
         except Exception as e:
-            logger.error(f"Background processing failed for article {article_id}: {e}", exc_info=True)
+            logger.error(
+                f"Background processing failed for article {article_id}: {e}", exc_info=True
+            )
             # Update article status to failed
             try:
-                result = await db.execute(
-                    select(Article).where(Article.id == article_id)
-                )
+                result = await db.execute(select(Article).where(Article.id == article_id))
                 article = result.scalar_one_or_none()
                 if article:
                     article.processing_status = ProcessingStatus.FAILED
@@ -99,17 +101,32 @@ def determine_media_type(source_type: SourceType, original_url: str | None) -> s
             return "newsletter"
 
         blog_indicators = [
-            "medium.com", "dev.to", "hashnode.", "wordpress.com",
-            "/blog/", ".blog.", "blogger.com", "ghost.io",
+            "medium.com",
+            "dev.to",
+            "hashnode.",
+            "wordpress.com",
+            "/blog/",
+            ".blog.",
+            "blogger.com",
+            "ghost.io",
         ]
         if any(indicator in url_lower for indicator in blog_indicators):
             return "blog"
 
         paper_indicators = [
-            "arxiv.org", "doi.org", "nature.com", "science.org",
-            "ieee.org", "acm.org", "springer.com", "wiley.com",
-            "researchgate.net", "semanticscholar.org", ".edu/",
-            "pubmed", "ncbi.nlm.nih.gov",
+            "arxiv.org",
+            "doi.org",
+            "nature.com",
+            "science.org",
+            "ieee.org",
+            "acm.org",
+            "springer.com",
+            "wiley.com",
+            "researchgate.net",
+            "semanticscholar.org",
+            ".edu/",
+            "pubmed",
+            "ncbi.nlm.nih.gov",
         ]
         if any(indicator in url_lower for indicator in paper_indicators):
             return "paper"
@@ -121,19 +138,23 @@ def article_to_dict(article: Article) -> dict:
     """Convert Article model to a dict for templates"""
     categories = []
     for ac in article.categories:
-        categories.append({
-            "id": str(ac.category.id),
-            "name": ac.category.name,
-            "is_primary": ac.is_primary,
-        })
+        categories.append(
+            {
+                "id": str(ac.category.id),
+                "name": ac.category.name,
+                "is_primary": ac.is_primary,
+            }
+        )
 
     tags = []
     for at in article.tags:
-        tags.append({
-            "id": str(at.tag.id),
-            "name": at.tag.name,
-            "color": at.tag.color,
-        })
+        tags.append(
+            {
+                "id": str(at.tag.id),
+                "name": at.tag.name,
+                "color": at.tag.color,
+            }
+        )
 
     color = None
     if article.color:
@@ -145,14 +166,14 @@ def article_to_dict(article: Article) -> dict:
 
     # Handle source_type - might be enum or string
     source_type_val = article.source_type
-    if hasattr(source_type_val, 'value'):
+    if hasattr(source_type_val, "value"):
         source_type_str = source_type_val.value
     else:
         source_type_str = str(source_type_val) if source_type_val else "url"
 
     # Handle processing_status - might be enum or string
     proc_status = article.processing_status
-    if hasattr(proc_status, 'value'):
+    if hasattr(proc_status, "value"):
         proc_status_str = proc_status.value
     else:
         proc_status_str = str(proc_status) if proc_status else "pending"
@@ -221,12 +242,14 @@ async def fetch_categories_with_counts(db: AsyncSession, user_id: UUID) -> list[
                 # Sum direct count + all descendant counts
                 direct_count = direct_counts.get(cat.id, 0)
                 descendant_count = sum(c["article_count"] for c in child_nodes)
-                children.append({
-                    "id": str(cat.id),
-                    "name": cat.name,
-                    "article_count": direct_count + descendant_count,
-                    "children": child_nodes,
-                })
+                children.append(
+                    {
+                        "id": str(cat.id),
+                        "name": cat.name,
+                        "article_count": direct_count + descendant_count,
+                        "children": child_nodes,
+                    }
+                )
         return children
 
     return build_tree(None)
@@ -235,9 +258,7 @@ async def fetch_categories_with_counts(db: AsyncSession, user_id: UUID) -> list[
 async def fetch_colors(db: AsyncSession, user_id: UUID) -> list[dict]:
     """Fetch all colors for user."""
     result = await db.execute(
-        select(Color)
-        .where(Color.user_id == user_id)
-        .order_by(Color.position, Color.name)
+        select(Color).where(Color.user_id == user_id).order_by(Color.position, Color.name)
     )
     colors = result.scalars().all()
 
@@ -253,11 +274,7 @@ async def fetch_colors(db: AsyncSession, user_id: UUID) -> list[dict]:
 
 async def fetch_tags(db: AsyncSession, user_id: UUID) -> list[dict]:
     """Fetch all tags for user."""
-    result = await db.execute(
-        select(Tag)
-        .where(Tag.user_id == user_id)
-        .order_by(Tag.name)
-    )
+    result = await db.execute(select(Tag).where(Tag.user_id == user_id).order_by(Tag.name))
     tags = result.scalars().all()
 
     return [
@@ -273,8 +290,7 @@ async def fetch_tags(db: AsyncSession, user_id: UUID) -> list[dict]:
 async def fetch_unread_count(db: AsyncSession, user_id: UUID) -> int:
     """Count unread articles (is_read == False)."""
     result = await db.execute(
-        select(func.count(Article.id))
-        .where(Article.user_id == user_id, Article.is_read == False)
+        select(func.count(Article.id)).where(Article.user_id == user_id, Article.is_read == False)
     )
     return result.scalar() or 0
 
@@ -439,6 +455,7 @@ async def fetch_articles(
         )
 
     if category_id:
+
         async def get_descendant_ids(cat_id: UUID) -> list[UUID]:
             result = await db.execute(select(Category.id).where(Category.parent_id == cat_id))
             child_ids = [row[0] for row in result.all()]
@@ -563,11 +580,7 @@ async def article_detail_page(
         )
 
     # Fetch notes for this article
-    notes_query = (
-        select(Note)
-        .where(Note.article_id == article_id)
-        .order_by(Note.created_at.desc())
-    )
+    notes_query = select(Note).where(Note.article_id == article_id).order_by(Note.created_at.desc())
     notes_result = await db.execute(notes_query)
     notes = notes_result.scalars().all()
 
@@ -607,19 +620,23 @@ def article_to_detail_dict(article: Article) -> dict:
     """Convert Article model to a detailed dict for article detail template."""
     categories = []
     for ac in article.categories:
-        categories.append({
-            "id": str(ac.category.id),
-            "name": ac.category.name,
-            "is_primary": ac.is_primary,
-        })
+        categories.append(
+            {
+                "id": str(ac.category.id),
+                "name": ac.category.name,
+                "is_primary": ac.is_primary,
+            }
+        )
 
     tags = []
     for at in article.tags:
-        tags.append({
-            "id": str(at.tag.id),
-            "name": at.tag.name,
-            "color": at.tag.color,
-        })
+        tags.append(
+            {
+                "id": str(at.tag.id),
+                "name": at.tag.name,
+                "color": at.tag.color,
+            }
+        )
 
     color = None
     if article.color:
@@ -631,14 +648,14 @@ def article_to_detail_dict(article: Article) -> dict:
 
     # Handle source_type - might be enum or string
     source_type_val = article.source_type
-    if hasattr(source_type_val, 'value'):
+    if hasattr(source_type_val, "value"):
         source_type_str = source_type_val.value
     else:
         source_type_str = str(source_type_val) if source_type_val else "url"
 
     # Handle processing_status - might be enum or string
     proc_status = article.processing_status
-    if hasattr(proc_status, 'value'):
+    if hasattr(proc_status, "value"):
         proc_status_str = proc_status.value
     else:
         proc_status_str = str(proc_status) if proc_status else "pending"
@@ -646,14 +663,17 @@ def article_to_detail_dict(article: Article) -> dict:
     # Include notes if loaded (check if relationship is actually loaded to avoid lazy load in async)
     notes = []
     from sqlalchemy import inspect
+
     insp = inspect(article)
-    if 'notes' in insp.dict:  # Only access if already loaded
+    if "notes" in insp.dict:  # Only access if already loaded
         for note in sorted(article.notes, key=lambda n: n.created_at, reverse=True):
-            notes.append({
-                "id": str(note.id),
-                "content": note.content,
-                "created_at": note.created_at,
-            })
+            notes.append(
+                {
+                    "id": str(note.id),
+                    "content": note.content,
+                    "created_at": note.created_at,
+                }
+            )
 
     return {
         "id": str(article.id),
@@ -801,9 +821,7 @@ async def update_article_color(
     # Fetch updated color info
     color_info = None
     if color_id:
-        color_result = await db.execute(
-            select(Color).where(Color.id == color_id)
-        )
+        color_result = await db.execute(select(Color).where(Color.id == color_id))
         color = color_result.scalar_one_or_none()
         if color:
             color_info = {
@@ -847,9 +865,7 @@ async def update_article_categories(
         return HTMLResponse("<div>Article not found</div>", status_code=404)
 
     # Remove existing categories
-    await db.execute(
-        delete(ArticleCategory).where(ArticleCategory.article_id == article_id)
-    )
+    await db.execute(delete(ArticleCategory).where(ArticleCategory.article_id == article_id))
 
     # Add new categories
     for i, cat_id_str in enumerate(category_ids):
@@ -911,9 +927,7 @@ async def update_article_tags(
         return HTMLResponse("<div>Article not found</div>", status_code=404)
 
     # Remove existing tags
-    await db.execute(
-        delete(ArticleTag).where(ArticleTag.article_id == article_id)
-    )
+    await db.execute(delete(ArticleTag).where(ArticleTag.article_id == article_id))
 
     # Add new tags
     for tag_id_str in tag_ids:
@@ -935,8 +949,7 @@ async def update_article_tags(
     article = result.scalar_one()
 
     tags = [
-        {"id": str(at.tag.id), "name": at.tag.name, "color": at.tag.color}
-        for at in article.tags
+        {"id": str(at.tag.id), "name": at.tag.name, "color": at.tag.color} for at in article.tags
     ]
 
     # Fetch all tags for the picker
@@ -993,11 +1006,8 @@ async def create_article_note(
     existing_notes = notes_result.scalars().all()
 
     # Build list with new note first (it's newest)
-    notes_list = [
-        {"id": str(note.id), "content": note.content, "created_at": note.created_at}
-    ] + [
-        {"id": str(n.id), "content": n.content, "created_at": n.created_at}
-        for n in existing_notes
+    notes_list = [{"id": str(note.id), "content": note.content, "created_at": note.created_at}] + [
+        {"id": str(n.id), "content": n.content, "created_at": n.created_at} for n in existing_notes
     ]
 
     return templates.TemplateResponse(
@@ -1057,13 +1067,15 @@ async def reprocess_article(
     background_tasks.add_task(process_article_background, article_id, current_user.id)
 
     # Return toast + OOB swap for processing banner
-    toast_html = templates.get_template("components/toast.html").render({
-        "toast_type": "success",
-        "toast_message": f"Re-analyzing: {article.title[:40]}{'...' if len(article.title or '') > 40 else ''}",
-    })
+    toast_html = templates.get_template("components/toast.html").render(
+        {
+            "toast_type": "success",
+            "toast_message": f"Re-analyzing: {article.title[:40]}{'...' if len(article.title or '') > 40 else ''}",
+        }
+    )
 
     # Build processing banner HTML with polling to check status
-    processing_banner = f'''
+    processing_banner = f"""
     <div id="processing-status-banner" hx-swap-oob="outerHTML"
          hx-get="/app/article/{article_id}/status"
          hx-trigger="every 2s"
@@ -1079,7 +1091,7 @@ async def reprocess_article(
             </div>
         </div>
     </div>
-    '''
+    """
 
     return HTMLResponse(content=toast_html + processing_banner)
 
@@ -1103,11 +1115,15 @@ async def get_article_processing_status(
     if not article:
         return HTMLResponse("<div id='processing-status-banner'></div>")
 
-    status = article.processing_status.value if hasattr(article.processing_status, 'value') else str(article.processing_status)
+    status = (
+        article.processing_status.value
+        if hasattr(article.processing_status, "value")
+        else str(article.processing_status)
+    )
 
     # If still processing, return banner with polling
-    if status == 'processing':
-        return HTMLResponse(f'''
+    if status == "processing":
+        return HTMLResponse(f"""
         <div id="processing-status-banner"
              hx-get="/app/article/{article_id}/status"
              hx-trigger="every 2s"
@@ -1123,12 +1139,12 @@ async def get_article_processing_status(
                 </div>
             </div>
         </div>
-        ''')
+        """)
 
     # If failed, show error
-    if status == 'failed':
+    if status == "failed":
         error_msg = article.processing_error or "Unknown error"
-        return HTMLResponse(f'''
+        return HTMLResponse(f"""
         <div id="processing-status-banner">
             <div class="mb-6 p-4 rounded-lg border bg-article-red/10 border-article-red/30">
                 <div class="flex items-center gap-3">
@@ -1144,10 +1160,10 @@ async def get_article_processing_status(
                 </div>
             </div>
         </div>
-        ''')
+        """)
 
     # Completed - show success briefly then trigger page refresh
-    return HTMLResponse(f'''
+    return HTMLResponse(f"""
     <div id="processing-status-banner">
         <div class="mb-6 p-4 rounded-lg border bg-article-green/10 border-article-green/30">
             <div class="flex items-center gap-3">
@@ -1162,7 +1178,7 @@ async def get_article_processing_status(
         </div>
     </div>
     <script>setTimeout(function() {{ window.location.reload(); }}, 1000);</script>
-    ''')
+    """)
 
 
 @router.delete("/article/{article_id}/notes/{note_id}", response_class=HTMLResponse)
@@ -1178,9 +1194,7 @@ async def delete_article_note(
 
     # Verify note belongs to user's article
     result = await db.execute(
-        select(Note)
-        .join(Article)
-        .where(Note.id == note_id, Article.user_id == current_user.id)
+        select(Note).join(Article).where(Note.id == note_id, Article.user_id == current_user.id)
     )
     note = result.scalar_one_or_none()
 
@@ -1195,15 +1209,12 @@ async def delete_article_note(
 
     # Fetch remaining notes
     notes_result = await db.execute(
-        select(Note)
-        .where(Note.article_id == article_id)
-        .order_by(Note.created_at.desc())
+        select(Note).where(Note.article_id == article_id).order_by(Note.created_at.desc())
     )
     notes = notes_result.scalars().all()
 
     notes_list = [
-        {"id": str(n.id), "content": n.content, "created_at": n.created_at}
-        for n in notes
+        {"id": str(n.id), "content": n.content, "created_at": n.created_at} for n in notes
     ]
 
     return templates.TemplateResponse(
@@ -1252,15 +1263,19 @@ async def settings_page(
     providers = []
     for p in provider_models:
         api_key = decrypt_api_key(p.api_key_encrypted)
-        providers.append({
-            "id": str(p.id),
-            "provider_name": p.provider_name.value if hasattr(p.provider_name, 'value') else str(p.provider_name),
-            "display_name": p.display_name,
-            "model_id": p.model_id,
-            "api_key_masked": mask_api_key(api_key),
-            "is_default": p.is_default,
-            "is_active": p.is_active,
-        })
+        providers.append(
+            {
+                "id": str(p.id),
+                "provider_name": p.provider_name.value
+                if hasattr(p.provider_name, "value")
+                else str(p.provider_name),
+                "display_name": p.display_name,
+                "model_id": p.model_id,
+                "api_key_masked": mask_api_key(api_key),
+                "is_default": p.is_default,
+                "is_active": p.is_active,
+            }
+        )
 
     # Fetch colors
     colors = await fetch_colors(db, current_user.id)
@@ -1526,15 +1541,19 @@ async def _render_providers_list(request: Request, db: AsyncSession, user_id: UU
     providers = []
     for p in provider_models:
         api_key = decrypt_api_key(p.api_key_encrypted)
-        providers.append({
-            "id": str(p.id),
-            "provider_name": p.provider_name.value if hasattr(p.provider_name, 'value') else str(p.provider_name),
-            "display_name": p.display_name,
-            "model_id": p.model_id,
-            "api_key_masked": mask_api_key(api_key),
-            "is_default": p.is_default,
-            "is_active": p.is_active,
-        })
+        providers.append(
+            {
+                "id": str(p.id),
+                "provider_name": p.provider_name.value
+                if hasattr(p.provider_name, "value")
+                else str(p.provider_name),
+                "display_name": p.display_name,
+                "model_id": p.model_id,
+                "api_key_masked": mask_api_key(api_key),
+                "is_default": p.is_default,
+                "is_active": p.is_active,
+            }
+        )
 
     return templates.TemplateResponse(
         request=request,
@@ -1590,8 +1609,7 @@ async def create_color(
 
     # Get the max position for ordering
     result = await db.execute(
-        select(func.max(Color.position))
-        .where(Color.user_id == current_user.id)
+        select(func.max(Color.position)).where(Color.user_id == current_user.id)
     )
     max_position = result.scalar() or 0
 
@@ -1638,9 +1656,7 @@ async def delete_color(
 
     # Clear color from articles that use it
     await db.execute(
-        Article.__table__.update()
-        .where(Article.color_id == color_id)
-        .values(color_id=None)
+        Article.__table__.update().where(Article.color_id == color_id).values(color_id=None)
     )
 
     # Delete the color
@@ -2208,7 +2224,9 @@ async def bulk_reanalyze(
         name="components/toast.html",
         context={
             "toast_type": "success" if queued > 0 else "warning",
-            "toast_message": ". ".join(message_parts) if message_parts else "No articles to process",
+            "toast_message": ". ".join(message_parts)
+            if message_parts
+            else "No articles to process",
         },
     )
     response.headers["HX-Trigger"] = "articlesUpdated"
@@ -2331,7 +2349,7 @@ async def ask_query(
                 return
 
             # Show typing indicator while searching
-            yield f'''<div class="flex justify-start mb-4" id="message-{message_id}">
+            yield f"""<div class="flex justify-start mb-4" id="message-{message_id}">
                 <div class="max-w-[80%]">
                     <div class="flex items-start gap-3">
                         <div class="w-8 h-8 rounded-full bg-article-blue/10 flex items-center justify-center flex-shrink-0">
@@ -2352,7 +2370,7 @@ async def ask_query(
                         </div>
                     </div>
                 </div>
-            </div>'''
+            </div>"""
 
             # Perform hybrid search
             semantic_results = []
@@ -2419,7 +2437,9 @@ async def ask_query(
                 article_scores[article_id] = article_scores.get(article_id, 0) + keyword_score
 
             all_articles = {str(a.id): a for a, _ in semantic_results + keyword_results}
-            sorted_ids = sorted(article_scores.keys(), key=lambda x: article_scores[x], reverse=True)
+            sorted_ids = sorted(
+                article_scores.keys(), key=lambda x: article_scores[x], reverse=True
+            )
 
             merged_articles = []
             seen_ids = set()
@@ -2442,14 +2462,19 @@ async def ask_query(
 
             if not merged_articles:
                 # Replace typing indicator with error message
-                yield f'''<script>document.getElementById('message-{message_id}').outerHTML = `
-                    {templates.get_template("partials/chat_message_assistant.html").render(
+                yield f"""<script>document.getElementById('message-{message_id}').outerHTML = `
+                    {
+                    templates.get_template("partials/chat_message_assistant.html")
+                    .render(
                         message_id=message_id,
                         content="You don't have any processed articles yet. Add some articles and wait for them to be processed.",
                         sources=[],
                         is_streaming=False,
                         error=None,
-                    ).replace('`', '\\`').replace('${', '\\${')}`;</script>'''
+                    )
+                    .replace("`", "\\`")
+                    .replace("${", "\\${")
+                }`;</script>"""
                 return
 
             # Build context
@@ -2472,7 +2497,7 @@ async def ask_query(
             async for chunk in provider.answer_question_stream(question=question, context=context):
                 full_response += chunk
                 # Escape the chunk for safe HTML/JS insertion
-                escaped_chunk = html.escape(chunk).replace('\n', '\\n').replace('\r', '\\r')
+                escaped_chunk = html.escape(chunk).replace("\n", "\\n").replace("\r", "\\r")
                 # Update the content div with the accumulated response
                 yield f'''<script>
                     (function() {{
@@ -2488,18 +2513,20 @@ async def ask_query(
 
             # Convert final markdown to HTML
             html_answer = full_response
-            html_answer = re.sub(r'\*\*(.+?)\*\*', r'<strong>\1</strong>', html_answer)
-            html_answer = re.sub(r'\*(.+?)\*', r'<em>\1</em>', html_answer)
-            html_answer = re.sub(r'```(\w*)\n(.*?)```', r'<pre><code>\2</code></pre>', html_answer, flags=re.DOTALL)
-            html_answer = re.sub(r'`(.+?)`', r'<code>\1</code>', html_answer)
-            html_answer = re.sub(r'^### (.+)$', r'<h3>\1</h3>', html_answer, flags=re.MULTILINE)
-            html_answer = re.sub(r'^## (.+)$', r'<h2>\1</h2>', html_answer, flags=re.MULTILINE)
-            html_answer = re.sub(r'^# (.+)$', r'<h1>\1</h1>', html_answer, flags=re.MULTILINE)
-            html_answer = re.sub(r'^- (.+)$', r'<li>\1</li>', html_answer, flags=re.MULTILINE)
-            html_answer = re.sub(r'(<li>.*</li>\n?)+', r'<ul>\g<0></ul>', html_answer)
-            html_answer = re.sub(r'\n\n', '</p><p>', html_answer)
-            html_answer = f'<p>{html_answer}</p>'
-            html_answer = re.sub(r'<p>\s*</p>', '', html_answer)
+            html_answer = re.sub(r"\*\*(.+?)\*\*", r"<strong>\1</strong>", html_answer)
+            html_answer = re.sub(r"\*(.+?)\*", r"<em>\1</em>", html_answer)
+            html_answer = re.sub(
+                r"```(\w*)\n(.*?)```", r"<pre><code>\2</code></pre>", html_answer, flags=re.DOTALL
+            )
+            html_answer = re.sub(r"`(.+?)`", r"<code>\1</code>", html_answer)
+            html_answer = re.sub(r"^### (.+)$", r"<h3>\1</h3>", html_answer, flags=re.MULTILINE)
+            html_answer = re.sub(r"^## (.+)$", r"<h2>\1</h2>", html_answer, flags=re.MULTILINE)
+            html_answer = re.sub(r"^# (.+)$", r"<h1>\1</h1>", html_answer, flags=re.MULTILINE)
+            html_answer = re.sub(r"^- (.+)$", r"<li>\1</li>", html_answer, flags=re.MULTILINE)
+            html_answer = re.sub(r"(<li>.*</li>\n?)+", r"<ul>\g<0></ul>", html_answer)
+            html_answer = re.sub(r"\n\n", "</p><p>", html_answer)
+            html_answer = f"<p>{html_answer}</p>"
+            html_answer = re.sub(r"<p>\s*</p>", "", html_answer)
 
             # Replace entire message with final formatted version including sources
             final_html = templates.get_template("partials/chat_message_assistant.html").render(
@@ -2510,8 +2537,10 @@ async def ask_query(
                 error=None,
             )
             # Escape for JS string
-            final_html_escaped = final_html.replace('\\', '\\\\').replace('`', '\\`').replace('${', '\\${')
-            yield f'''<script>document.getElementById('message-{message_id}').outerHTML = `{final_html_escaped}`;</script>'''
+            final_html_escaped = (
+                final_html.replace("\\", "\\\\").replace("`", "\\`").replace("${", "\\${")
+            )
+            yield f"""<script>document.getElementById('message-{message_id}').outerHTML = `{final_html_escaped}`;</script>"""
 
         except Exception as e:
             logger.error(f"Ask query failed: {e}")
@@ -2522,8 +2551,10 @@ async def ask_query(
                 is_streaming=False,
                 error=f"Sorry, something went wrong: {str(e)[:100]}",
             )
-            error_html_escaped = error_html.replace('\\', '\\\\').replace('`', '\\`').replace('${', '\\${')
-            yield f'''<script>document.getElementById('message-{message_id}').outerHTML = `{error_html_escaped}`;</script>'''
+            error_html_escaped = (
+                error_html.replace("\\", "\\\\").replace("`", "\\`").replace("${", "\\${")
+            )
+            yield f"""<script>document.getElementById('message-{message_id}').outerHTML = `{error_html_escaped}`;</script>"""
 
     return StreamingResponse(
         generate_response(),
@@ -2774,6 +2805,7 @@ async def reader_article(
     if article.original_url:
         try:
             from urllib.parse import urlparse
+
             parsed = urlparse(article.original_url)
             source_domain = parsed.netloc.replace("www.", "")
         except Exception:
@@ -2913,9 +2945,7 @@ async def taxonomy_analyze(
         result = await db.execute(
             select(Article)
             .where(Article.user_id == current_user.id)
-            .options(
-                selectinload(Article.categories).selectinload(ArticleCategory.category)
-            )
+            .options(selectinload(Article.categories).selectinload(ArticleCategory.category))
             .order_by(Article.created_at.desc())
         )
         articles = result.scalars().all()
@@ -2952,13 +2982,15 @@ async def taxonomy_analyze(
                         else:
                             current_cat = ac.category.name
 
-            articles_for_ai.append({
-                "id": str(article.id),
-                "title": article.title or "Untitled",
-                "summary": article.summary or "",
-                "current_category": current_cat,
-                "current_subcategory": current_subcat,
-            })
+            articles_for_ai.append(
+                {
+                    "id": str(article.id),
+                    "title": article.title or "Untitled",
+                    "summary": article.summary or "",
+                    "current_category": current_cat,
+                    "current_subcategory": current_subcat,
+                }
+            )
 
         # Get current taxonomy structure
         async def get_category_tree(parent_id=None):
@@ -2974,11 +3006,13 @@ async def taxonomy_analyze(
             tree = []
             for cat in cats:
                 children = await get_category_tree(cat.id)
-                tree.append({
-                    "name": cat.name,
-                    "id": str(cat.id),
-                    "children": children,
-                })
+                tree.append(
+                    {
+                        "name": cat.name,
+                        "id": str(cat.id),
+                        "children": children,
+                    }
+                )
             return tree
 
         current_taxonomy = await get_category_tree()
@@ -3003,6 +3037,7 @@ async def taxonomy_analyze(
 
         # Convert taxonomy to JSON-serializable format for the hidden input
         import json
+
         taxonomy_for_json = [
             {
                 "category": cat.category,
@@ -3013,7 +3048,7 @@ async def taxonomy_analyze(
                         "description": sub.description,
                     }
                     for sub in cat.subcategories
-                ]
+                ],
             }
             for cat in optimization_result.taxonomy
         ]

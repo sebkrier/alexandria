@@ -35,16 +35,32 @@ class BaseExtractor(ABC):
         pass
 
     def _clean_text(self, text: str) -> str:
-        """Clean extracted text by removing excessive whitespace"""
+        """Clean extracted text by removing excessive whitespace and invalid characters"""
         if not text:
             return ""
-        # Replace multiple newlines with double newlines
         import re
 
+        # Remove null bytes and other control characters that PostgreSQL can't handle
+        # Keep newlines (\n), carriage returns (\r), and tabs (\t)
+        text = re.sub(r"[\x00-\x08\x0b\x0c\x0e-\x1f\x7f]", "", text)
+
+        # Replace multiple newlines with double newlines
         text = re.sub(r"\n{3,}", "\n\n", text)
         # Replace multiple spaces with single space
         text = re.sub(r" {2,}", " ", text)
         return text.strip()
+
+    def _clean_title(self, title: str) -> str:
+        """Clean title by removing invalid characters"""
+        if not title:
+            return ""
+        import re
+
+        # Remove null bytes and control characters
+        title = re.sub(r"[\x00-\x08\x0b\x0c\x0e-\x1f\x7f]", "", title)
+        # Normalize whitespace
+        title = " ".join(title.split())
+        return title.strip()
 
     def _truncate_text(self, text: str, max_length: int = 100000) -> str:
         """Truncate text to max length for very long documents"""

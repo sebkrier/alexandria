@@ -291,8 +291,8 @@ class URLExtractor(BaseExtractor):
         text = main_content.get_text(separator="\n", strip=True)
 
         # Clean up text - remove excessive whitespace
-        text = re.sub(r'\n\s*\n', '\n\n', text)
-        text = re.sub(r' +', ' ', text)
+        text = re.sub(r"\n\s*\n", "\n\n", text)
+        text = re.sub(r" +", " ", text)
 
         # Try to find authors
         authors = []
@@ -305,7 +305,7 @@ class URLExtractor(BaseExtractor):
             if author_el:
                 author_text = author_el.get_text(strip=True)
                 # Clean up "By John Smith" -> "John Smith"
-                author_text = re.sub(r'^[Bb]y\s+', '', author_text)
+                author_text = re.sub(r"^[Bb]y\s+", "", author_text)
                 if author_text:
                     authors = [author_text]
 
