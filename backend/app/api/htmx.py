@@ -306,7 +306,7 @@ async def index_page(
     search: str | None = None,
     view: str = "grid",
     page: int = Query(1, ge=1),
-    page_size: int = Query(20, ge=1, le=100),
+    page_size: int = Query(1000, ge=1, le=10000),  # Show all articles by default
     category_id: UUID | None = None,
     color_id: UUID | None = None,
     db: AsyncSession = Depends(get_db),
