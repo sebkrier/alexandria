@@ -126,8 +126,29 @@
                         document.getElementById('submit-btn').disabled = true;
                         document.getElementById('submit-icon').classList.add('hidden');
                         document.getElementById('submit-spinner').classList.remove('hidden');
+                        // Add loading indicator
+                        const loadingHtml = `
+                            <div id='loading-indicator' class='flex items-start gap-3 mb-4'>
+                                <div class='flex-shrink-0 w-8 h-8 rounded-full bg-article-blue/20 flex items-center justify-center'>
+                                    <svg class='w-4 h-4 text-article-blue' fill='none' viewBox='0 0 24 24' stroke='currentColor'>
+                                        <path stroke-linecap='round' stroke-linejoin='round' stroke-width='2' d='M9.663 17h4.673M12 3v1m6.364 1.636l-.707.707M21 12h-1M4 12H3m3.343-5.657l-.707-.707m2.828 9.9a5 5 0 117.072 0l-.548.547A3.374 3.374 0 0014 18.469V19a2 2 0 11-4 0v-.531c0-.895-.356-1.754-.988-2.386l-.548-.547z' />
+                                    </svg>
+                                </div>
+                                <div class='bg-dark-surface border border-dark-border rounded-lg px-4 py-3'>
+                                    <div class='flex items-center gap-1.5'>
+                                        <div class='w-2 h-2 bg-article-blue rounded-full typing-dot'></div>
+                                        <div class='w-2 h-2 bg-article-blue rounded-full typing-dot'></div>
+                                        <div class='w-2 h-2 bg-article-blue rounded-full typing-dot'></div>
+                                        <span class='ml-2 text-sm text-dark-muted'>Searching your library...</span>
+                                    </div>
+                                </div>
+                            </div>
+                        `;
+                        document.getElementById('chat-messages').insertAdjacentHTML('beforeend', loadingHtml);
+                        document.getElementById('chat-messages').scrollTop = document.getElementById('chat-messages').scrollHeight;
                     "
                     hx-on::after-request="
+                        document.getElementById('loading-indicator')?.remove();
                         document.getElementById('question-input').value = '';
                         document.getElementById('submit-btn').disabled = false;
                         document.getElementById('submit-icon').classList.remove('hidden');
