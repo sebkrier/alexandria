@@ -56,8 +56,8 @@ class PDFExtractor(BaseExtractor):
         # Try to extract title from metadata or first page
         title = self._extract_title(doc, full_text)
 
-        # Try to extract authors from metadata
-        authors = self._extract_authors(doc)
+        # Try to extract authors from metadata or content
+        authors = self._extract_authors(doc, full_text)
 
         # Get metadata
         metadata = doc.metadata or {}
@@ -134,36 +134,144 @@ class PDFExtractor(BaseExtractor):
 
     def _extract_title(self, doc, full_text: str) -> str:
         """Extract title from PDF metadata or content"""
-        # Try metadata first
+        # Try metadata first (but validate it's not just a filename or institution)
         if doc.metadata and doc.metadata.get("title"):
             title = doc.metadata["title"].strip()
-            if title and len(title) > 3:  # Sanity check
+            # Skip if it looks like a filename, institution, or generic text
+            skip_patterns = [
+                r"^Microsoft Word",
+                r"^Universidad",
+                r"^University",
+                r"^\d+$",  # Just numbers
+                r"^Document\d*$",
+                r"\.docx?$",
+                r"\.pdf$",
+            ]
+            is_valid = title and len(title) > 10
+            for pattern in skip_patterns:
+                if re.search(pattern, title, re.IGNORECASE):
+                    is_valid = False
+                    break
+            if is_valid:
                 return title
 
-        # Try to find title from first page content
-        # Usually the title is in the first few lines and is larger/bolder
-        lines = full_text.split("\n")[:20]
-        for line in lines:
+        # For academic PDFs: find the best title candidate from first page
+        lines = full_text.split("\n")[:40]
+        candidates = []
+
+        # Skip patterns for headers/footers/metadata
+        skip_line_patterns = [
+            r"^(Universidad|University|Institute|College|School)\s",
+            r"^(Working Paper|Discussion Paper|Technical Report|ISSN|ISBN|DOI)",
+            r"^(Serie|Series|Vol\.|Volume|No\.|Number|Issue)\s",
+            r"^\d{4}$",  # Just a year
+            r"^[\d\-\s]+$",  # Just numbers/dashes
+            r"^(www\.|http|@|email)",
+            r"^(January|February|March|April|May|June|July|August|September|October|November|December)\s+\d",
+            r"^\s*$",  # Empty
+            r"^(Abstract|Introduction|Keywords|JEL|Contents)(\s|:)",
+        ]
+
+        for i, line in enumerate(lines):
             line = line.strip()
-            # Heuristic: title is usually 10-200 chars, no periods at end
-            if 10 < len(line) < 200 and not line.endswith(".") and not line.startswith("http"):
-                return line
+            if not line:
+                continue
+
+            # Skip short lines and lines matching skip patterns
+            if len(line) < 15:
+                continue
+
+            should_skip = False
+            for pattern in skip_line_patterns:
+                if re.search(pattern, line, re.IGNORECASE):
+                    should_skip = True
+                    break
+            if should_skip:
+                continue
+
+            # Skip lines that end with period (usually not titles)
+            if line.endswith(".") and len(line) < 100:
+                continue
+
+            # Score the candidate
+            score = len(line)  # Longer is often better for titles
+
+            # Bonus for lines that look like titles
+            if line[0].isupper():
+                score += 20
+            if ":" in line:  # Academic titles often have colons
+                score += 15
+            # Penalty for all caps (usually headers)
+            if line.isupper() and len(line) < 50:
+                score -= 30
+            # Penalty for lines with too many special chars
+            special_count = len(re.findall(r"[^\w\s\-:,']", line))
+            score -= special_count * 5
+
+            candidates.append((score, line, i))
+
+        # Sort by score descending, take best
+        candidates.sort(reverse=True)
+        if candidates:
+            return candidates[0][1]
 
         # Fallback to filename
         return Path(doc.name).stem if doc.name else "Untitled PDF"
 
-    def _extract_authors(self, doc) -> list[str]:
-        """Extract authors from PDF metadata"""
-        if not doc.metadata:
-            return []
+    def _extract_authors(self, doc, full_text: str = None) -> list[str]:
+        """Extract authors from PDF metadata or content"""
+        authors = []
 
-        author_str = doc.metadata.get("author", "")
-        if not author_str:
-            return []
+        # Try metadata first
+        if doc.metadata:
+            author_str = doc.metadata.get("author", "")
+            if author_str:
+                # Split by common separators
+                meta_authors = re.split(r"[,;&]|\band\b", author_str)
+                authors = [a.strip() for a in meta_authors if a.strip()]
 
-        # Split by common separators
-        authors = re.split(r"[,;&]|\band\b", author_str)
-        return [a.strip() for a in authors if a.strip()]
+        # If we didn't get authors from metadata, try to extract from text
+        if not authors and full_text:
+            lines = full_text.split("\n")[:30]
+
+            # Look for lines that look like author names
+            # Authors usually appear after the title, often with email/affiliation nearby
+            for i, line in enumerate(lines):
+                line = line.strip()
+                if not line or len(line) < 5:
+                    continue
+
+                # Skip obvious non-author lines
+                if re.search(r"^(Abstract|Introduction|Universidad|University|http|www\.|@)", line, re.IGNORECASE):
+                    continue
+                if re.search(r"(Working Paper|ISSN|DOI|JEL|Keywords)", line, re.IGNORECASE):
+                    continue
+
+                # Author name patterns:
+                # - Two or more capitalized words
+                # - May have "and" between names
+                # - Usually 15-60 chars
+                if 10 < len(line) < 80:
+                    # Check if it looks like names (capitalized words)
+                    words = line.split()
+                    cap_words = sum(1 for w in words if w and w[0].isupper())
+
+                    # If most words are capitalized and it's 2-6 words, might be authors
+                    if 2 <= len(words) <= 8 and cap_words >= len(words) * 0.7:
+                        # Check it's not a title (titles are usually longer or have specific patterns)
+                        if not re.search(r"[:\?\!]", line):  # Titles often have colons
+                            # Split by "and" or commas to get individual names
+                            potential_authors = re.split(r"\s+and\s+|,\s*", line)
+                            for pa in potential_authors:
+                                pa = pa.strip()
+                                # Validate: should be 2+ words, proper capitalization
+                                pa_words = pa.split()
+                                if 2 <= len(pa_words) <= 4:
+                                    authors.append(pa)
+                            if authors:
+                                break  # Found author line, stop
+
+        return authors
 
     async def generate_thumbnail(self, file_path: str, output_path: str) -> str:
         """Generate a thumbnail from the first page of the PDF"""
