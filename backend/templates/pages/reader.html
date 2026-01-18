@@ -380,8 +380,11 @@
             articleUrl: {{ ("'" + article.original_url + "'")|safe if article.original_url else ("'https://www.google.com/search?q=' + encodeURIComponent('" + article.title|replace("'", "\\'") + "')")|safe }},
 
             handleKeydown(e) {
-                // Ignore if typing in an input
-                if (e.target.tagName === 'INPUT' || e.target.tagName === 'TEXTAREA') return;
+                // Ignore if typing in an input, textarea, or contenteditable (Quill editor)
+                if (e.target.tagName === 'INPUT' ||
+                    e.target.tagName === 'TEXTAREA' ||
+                    e.target.isContentEditable ||
+                    e.target.closest('.ql-editor')) return;
 
                 switch (e.key) {
                     case 'ArrowLeft':
