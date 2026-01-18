@@ -643,9 +643,11 @@ def article_to_detail_dict(article: Article) -> dict:
     else:
         proc_status_str = str(proc_status) if proc_status else "pending"
 
-    # Include notes if loaded
+    # Include notes if loaded (check if relationship is actually loaded to avoid lazy load in async)
     notes = []
-    if hasattr(article, 'notes') and article.notes:
+    from sqlalchemy import inspect
+    insp = inspect(article)
+    if 'notes' in insp.dict:  # Only access if already loaded
         for note in sorted(article.notes, key=lambda n: n.created_at, reverse=True):
             notes.append({
                 "id": str(note.id),
