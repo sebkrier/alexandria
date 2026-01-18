@@ -80,6 +80,7 @@ LESSWRONG_GRAPHQL_ENDPOINT = "https://www.lesswrong.com/graphql"
 # Error Messages
 # =============================================================================
 
+
 class ErrorMessages:
     """Standardized error messages for HTTP exceptions."""
 

@@ -205,6 +205,39 @@ Here is the actual data from their library:
 Please answer their question based on this data. Be conversational and helpful, but stick to what the data shows."""
 
 
+# Document metadata extraction prompts
+METADATA_EXTRACTION_SYSTEM_PROMPT = """You are extracting metadata from a document. Your task is to identify the actual title and all authors of the document.
+
+## Guidelines
+
+1. **Title**: Extract the real title of the document/paper/article - not headers, journal names, or institutional names. The title is what the work is actually called.
+
+2. **Authors**: Extract ALL author names as they appear. Academic papers often have many co-authors - include them all. Format each name as "FirstName LastName" or as they appear in the document.
+
+3. **Be accurate**: Only extract what's actually in the document. Don't guess or make up names.
+
+4. **Handle edge cases**:
+   - If the title spans multiple lines, combine them
+   - Remove footnote markers (*, †, 1, 2) from author names
+   - Ignore affiliations, emails, and institutional addresses
+   - If authors are numbered or have superscripts, just extract the names"""
+
+METADATA_EXTRACTION_USER_PROMPT = """Extract the title and authors from this document.
+
+Return a JSON object:
+{{
+  "title": "The actual title of the document",
+  "authors": ["Author One", "Author Two", "Author Three"]
+}}
+
+Document content (first part):
+---
+{content}
+---
+
+Extract the real title (not journal/institution names) and ALL authors listed."""
+
+
 # Taxonomy optimization prompts
 TAXONOMY_OPTIMIZATION_SYSTEM_PROMPT = """You are a research librarian analyzing a personal knowledge library to propose an optimal category structure.
 

@@ -3,6 +3,13 @@ from abc import ABC, abstractmethod
 from pydantic import BaseModel, Field
 
 
+class DocumentMetadata(BaseModel):
+    """Extracted document metadata from AI"""
+
+    title: str = Field(description="The actual title of the document")
+    authors: list[str] = Field(default_factory=list, description="List of author names")
+
+
 class Summary(BaseModel):
     """Summary output from AI - now stores raw markdown"""
 
@@ -93,7 +100,9 @@ class CategoryStructure(BaseModel):
     """Category with its subcategories"""
 
     category: str = Field(description="Top-level category name")
-    subcategories: list[SubcategoryAssignment] = Field(description="Subcategories with article assignments")
+    subcategories: list[SubcategoryAssignment] = Field(
+        description="Subcategories with article assignments"
+    )
 
 
 class TaxonomyChangesSummary(BaseModel):
@@ -103,7 +112,9 @@ class TaxonomyChangesSummary(BaseModel):
     new_subcategories: list[str] = Field(default_factory=list, description="New subcategories")
     merged: list[str] = Field(default_factory=list, description="Categories that were merged")
     split: list[str] = Field(default_factory=list, description="Categories that were split")
-    reorganized: list[str] = Field(default_factory=list, description="Articles that moved categories")
+    reorganized: list[str] = Field(
+        default_factory=list, description="Articles that moved categories"
+    )
 
 
 class TaxonomyOptimizationResult(BaseModel):

@@ -65,13 +65,39 @@ class AIService:
             if not provider:
                 raise ValueError("No AI provider configured. Please add one in Settings.")
 
-            # 1. Generate summary
-            logger.info(f"Generating summary for article {article_id}")
+            # 0. For PDFs or poor titles, extract metadata using AI
             source_type = (
                 article.source_type.value
                 if hasattr(article.source_type, "value")
                 else str(article.source_type)
             )
+
+            # Check if we should use AI for metadata extraction
+            should_extract_metadata = (
+                source_type == "pdf"
+                or not article.title
+                or len(article.title) < 10
+                or article.title == "Untitled PDF"
+                or article.title.lower().startswith("untitled")
+            )
+
+            if should_extract_metadata and hasattr(provider, "extract_metadata"):
+                logger.info(f"Extracting metadata using AI for article {article_id}")
+                try:
+                    metadata = await provider.extract_metadata(text=article.extracted_text)
+                    # Update title if we got a better one
+                    if metadata.title and len(metadata.title) > 5 and metadata.title != "Untitled":
+                        article.title = metadata.title
+                        logger.info(f"Updated title to: {metadata.title}")
+                    # Update authors if we got them
+                    if metadata.authors:
+                        article.authors = metadata.authors
+                        logger.info(f"Updated authors to: {metadata.authors}")
+                except Exception as e:
+                    logger.warning(f"Metadata extraction failed, continuing with original: {e}")
+
+            # 1. Generate summary
+            logger.info(f"Generating summary for article {article_id}")
             summary = await provider.summarize(
                 text=article.extracted_text,
                 title=article.title,

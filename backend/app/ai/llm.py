@@ -16,6 +16,7 @@ from app.ai.base import (
     CategoryInfo,
     CategorySuggestion,
     CategoryStructure,
+    DocumentMetadata,
     SubcategoryAssignment,
     Summary,
     TagSuggestion,
@@ -26,6 +27,8 @@ from app.ai.prompts import (
     CATEGORY_SYSTEM_PROMPT,
     CATEGORY_USER_PROMPT,
     EXTRACT_SUMMARY_PROMPT,
+    METADATA_EXTRACTION_SYSTEM_PROMPT,
+    METADATA_EXTRACTION_USER_PROMPT,
     QUESTION_SYSTEM_PROMPT,
     QUESTION_USER_PROMPT,
     SUMMARY_SYSTEM_PROMPT,
@@ -252,6 +255,36 @@ class LiteLLMProvider(AIProvider):
             logger.error(f"LiteLLM summarization failed: {e}")
             raise
 
+    async def extract_metadata(
+        self,
+        text: str,
+    ) -> DocumentMetadata:
+        """Extract document title and authors using AI."""
+        # Only send the first part of the document (title/authors are at the start)
+        content_for_extraction = text[:8000]
+
+        user_prompt = METADATA_EXTRACTION_USER_PROMPT.format(
+            content=content_for_extraction,
+        )
+
+        try:
+            content = await self._complete(
+                system=METADATA_EXTRACTION_SYSTEM_PROMPT,
+                user=user_prompt,
+                max_tokens=500,
+                temperature=0.1,  # Low temperature for factual extraction
+            )
+            json_data = _extract_json(content)
+
+            return DocumentMetadata(
+                title=json_data.get("title", "Untitled"),
+                authors=json_data.get("authors", []),
+            )
+        except Exception as e:
+            logger.error(f"LiteLLM metadata extraction failed: {e}")
+            # Return empty metadata on failure - don't block the pipeline
+            return DocumentMetadata(title="Untitled", authors=[])
+
     async def suggest_tags(
         self,
         text: str,
@@ -416,7 +449,7 @@ class LiteLLMProvider(AIProvider):
             if article.get("current_subcategory"):
                 current_cat = f"{current_cat} → {article['current_subcategory']}"
             articles_lines.append(
-                f"- [{article['id']}] \"{article['title']}\" (currently: {current_cat})\n"
+                f'- [{article["id"]}] "{article["title"]}" (currently: {current_cat})\n'
                 f"  Summary: {truncate_text(article.get('summary', 'No summary'), 300)}"
             )
 
@@ -448,15 +481,19 @@ class LiteLLMProvider(AIProvider):
             for cat_data in json_data.get("taxonomy", []):
                 subcategories = []
                 for sub_data in cat_data.get("subcategories", []):
-                    subcategories.append(SubcategoryAssignment(
-                        name=sub_data.get("name", ""),
-                        article_ids=sub_data.get("article_ids", []),
-                        description=sub_data.get("description", ""),
-                    ))
-                taxonomy.append(CategoryStructure(
-                    category=cat_data.get("category", ""),
-                    subcategories=subcategories,
-                ))
+                    subcategories.append(
+                        SubcategoryAssignment(
+                            name=sub_data.get("name", ""),
+                            article_ids=sub_data.get("article_ids", []),
+                            description=sub_data.get("description", ""),
+                        )
+                    )
+                taxonomy.append(
+                    CategoryStructure(
+                        category=cat_data.get("category", ""),
+                        subcategories=subcategories,
+                    )
+                )
 
             changes = json_data.get("changes_summary", {})
             changes_summary = TaxonomyChangesSummary(
