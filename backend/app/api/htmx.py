@@ -415,12 +415,26 @@ async def fetch_articles(
         )
     )
 
+    # Track if we need relevance ranking
+    ts_query = None
+
     # Apply filters
     if search:
+        # Create full-text search query for ranking
+        ts_query = func.plainto_tsquery("english", search)
+
+        # Subquery to find articles with matching tags (avoids JOIN issues with NULLs)
+        tag_match_subquery = (
+            select(ArticleTag.article_id)
+            .join(Tag, ArticleTag.tag_id == Tag.id)
+            .where(Tag.name.ilike(f"%{search}%"))
+        )
+
         query = query.where(
             or_(
                 Article.title.ilike(f"%{search}%"),
-                Article.search_vector.match(search),
+                Article.search_vector.op("@@")(ts_query),
+                Article.id.in_(tag_match_subquery),
             )
         )
 
@@ -445,12 +459,23 @@ async def fetch_articles(
     if is_read is not None:
         query = query.where(Article.is_read == is_read)
 
-    # Get total count
+    # Add distinct to prevent duplicates from JOINs (category/tag filtering)
+    if category_id or tag_id:
+        query = query.distinct()
+
+    # Get total count (after distinct to get accurate count)
     count_query = select(func.count()).select_from(query.subquery())
     total = (await db.execute(count_query)).scalar()
 
-    # Apply pagination and ordering
-    query = query.order_by(Article.created_at.desc())
+    # Apply ordering - use relevance ranking when searching, otherwise by date
+    if search and ts_query is not None:
+        # Order by relevance (ts_rank), then by date as tiebreaker
+        rank = func.ts_rank(Article.search_vector, ts_query)
+        query = query.order_by(rank.desc(), Article.created_at.desc())
+    else:
+        query = query.order_by(Article.created_at.desc())
+
+    # Apply pagination
     query = query.offset((page - 1) * page_size).limit(page_size)
 
     # Execute query

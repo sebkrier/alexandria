@@ -9,40 +9,40 @@
 
 {% from 'components/icons.html' import file_text, chevron_down, chevron_up, copy, check, terminal %}
 
-<section class="bg-dark-surface border border-dark-border rounded-lg p-6">
-    <div class="mb-4">
-        <div class="flex items-center gap-2">
-            {{ file_text('w-5 h-5 text-article-blue') }}
-            <h2 class="text-lg font-semibold text-white">AI Prompts</h2>
+<section class="bg-dark-surface border border-dark-border rounded-lg p-5">
+    <div class="mb-3">
+        <div class="flex items-center gap-1.5">
+            {{ file_text('w-4 h-4 text-article-blue') }}
+            <h2 class="text-base font-semibold text-white">AI Prompts</h2>
         </div>
-        <p class="text-sm text-dark-muted mt-1">
+        <p class="text-xs text-dark-muted mt-1">
             System and user prompts used for AI processing
         </p>
-        <p class="text-xs text-dark-muted mt-2">
-            Source: <code class="bg-dark-bg px-1.5 py-0.5 rounded text-article-blue">backend/app/ai/prompts.py</code>
+        <p class="text-[10px] text-dark-muted mt-1.5">
+            Source: <code class="bg-dark-bg px-1 py-0.5 rounded text-article-blue text-[10px]">backend/app/ai/prompts.py</code>
         </p>
     </div>
 
     {% if prompts %}
-    <div class="space-y-4">
+    <div class="space-y-3">
         {% for key, prompt_group in prompts.items() %}
         <div x-data="{ expanded: false }" class="border border-dark-border rounded-lg overflow-hidden">
             {# Header #}
             <button
                 @click="expanded = !expanded"
-                class="w-full flex items-center justify-between p-4 bg-dark-bg hover:bg-dark-hover transition-colors text-left"
+                class="w-full flex items-center justify-between p-3 bg-dark-bg hover:bg-dark-hover transition-colors text-left"
             >
                 <div>
-                    <span class="font-medium text-white">{{ prompt_group.name }}</span>
-                    <p class="text-xs text-dark-muted mt-0.5">{{ prompt_group.description }}</p>
+                    <span class="text-sm font-medium text-white">{{ prompt_group.name }}</span>
+                    <p class="text-[10px] text-dark-muted mt-0.5">{{ prompt_group.description }}</p>
                 </div>
                 <div class="flex items-center gap-2">
-                    <span class="text-xs text-dark-muted">2 prompts</span>
+                    <span class="text-[10px] text-dark-muted">2 prompts</span>
                     <template x-if="expanded">
-                        {{ chevron_up('w-5 h-5 text-dark-muted') }}
+                        {{ chevron_up('w-4 h-4 text-dark-muted') }}
                     </template>
                     <template x-if="!expanded">
-                        {{ chevron_down('w-5 h-5 text-dark-muted') }}
+                        {{ chevron_down('w-4 h-4 text-dark-muted') }}
                     </template>
                 </div>
             </button>
@@ -51,51 +51,51 @@
             <div x-show="expanded" x-cloak x-transition class="border-t border-dark-border">
                 {# System Prompt #}
                 <div x-data="{ copied: false }" class="border-b border-dark-border">
-                    <div class="flex items-center justify-between px-4 py-2 bg-[#1a1a2e]">
-                        <div class="flex items-center gap-2">
-                            <span class="text-[#00ff88] text-xs font-mono">$</span>
-                            <span class="text-xs font-mono text-dark-muted">SYSTEM_PROMPT</span>
+                    <div class="flex items-center justify-between px-3 py-1.5 bg-[#1a1a2e]">
+                        <div class="flex items-center gap-1.5">
+                            <span class="text-[#00ff88] text-[10px] font-mono">$</span>
+                            <span class="text-[10px] font-mono text-dark-muted">SYSTEM_PROMPT</span>
                         </div>
                         <button
                             @click="navigator.clipboard.writeText($refs.system_{{ key }}.textContent); copied = true; setTimeout(() => copied = false, 2000)"
-                            class="p-1 hover:bg-dark-border rounded"
+                            class="p-0.5 hover:bg-dark-border rounded"
                             title="Copy to clipboard"
                         >
                             <template x-if="copied">
-                                {{ check('w-4 h-4 text-article-green') }}
+                                {{ check('w-3.5 h-3.5 text-article-green') }}
                             </template>
                             <template x-if="!copied">
-                                {{ copy('w-4 h-4 text-dark-muted') }}
+                                {{ copy('w-3.5 h-3.5 text-dark-muted') }}
                             </template>
                         </button>
                     </div>
-                    <div class="bg-[#0d0d1a] p-4 max-h-80 overflow-y-auto">
-                        <pre x-ref="system_{{ key }}" class="text-sm text-[#e0e0e0] whitespace-pre-wrap font-mono leading-relaxed">{{ prompt_group.system }}</pre>
+                    <div class="bg-[#0d0d1a] p-3 max-h-60 overflow-y-auto">
+                        <pre x-ref="system_{{ key }}" class="text-xs text-[#e0e0e0] whitespace-pre-wrap font-mono leading-relaxed">{{ prompt_group.system }}</pre>
                     </div>
                 </div>
 
                 {# User Prompt #}
                 <div x-data="{ copied: false }">
-                    <div class="flex items-center justify-between px-4 py-2 bg-[#1a1a2e]">
-                        <div class="flex items-center gap-2">
-                            <span class="text-[#00ff88] text-xs font-mono">$</span>
-                            <span class="text-xs font-mono text-dark-muted">USER_PROMPT</span>
+                    <div class="flex items-center justify-between px-3 py-1.5 bg-[#1a1a2e]">
+                        <div class="flex items-center gap-1.5">
+                            <span class="text-[#00ff88] text-[10px] font-mono">$</span>
+                            <span class="text-[10px] font-mono text-dark-muted">USER_PROMPT</span>
                         </div>
                         <button
                             @click="navigator.clipboard.writeText($refs.user_{{ key }}.textContent); copied = true; setTimeout(() => copied = false, 2000)"
-                            class="p-1 hover:bg-dark-border rounded"
+                            class="p-0.5 hover:bg-dark-border rounded"
                             title="Copy to clipboard"
                         >
                             <template x-if="copied">
-                                {{ check('w-4 h-4 text-article-green') }}
+                                {{ check('w-3.5 h-3.5 text-article-green') }}
                             </template>
                             <template x-if="!copied">
-                                {{ copy('w-4 h-4 text-dark-muted') }}
+                                {{ copy('w-3.5 h-3.5 text-dark-muted') }}
                             </template>
                         </button>
                     </div>
-                    <div class="bg-[#0d0d1a] p-4 max-h-80 overflow-y-auto">
-                        <pre x-ref="user_{{ key }}" class="text-sm text-[#e0e0e0] whitespace-pre-wrap font-mono leading-relaxed">{{ prompt_group.user }}</pre>
+                    <div class="bg-[#0d0d1a] p-3 max-h-60 overflow-y-auto">
+                        <pre x-ref="user_{{ key }}" class="text-xs text-[#e0e0e0] whitespace-pre-wrap font-mono leading-relaxed">{{ prompt_group.user }}</pre>
                     </div>
                 </div>
             </div>
@@ -103,8 +103,8 @@
         {% endfor %}
     </div>
     {% else %}
-    <div class="py-4 text-center text-dark-muted">
-        <p>Unable to load prompt data</p>
+    <div class="py-3 text-center text-dark-muted">
+        <p class="text-xs">Unable to load prompt data</p>
     </div>
     {% endif %}
 </section>
