@@ -43,11 +43,14 @@ PGPASSWORD=localdev psql -h localhost -U postgres -d alexandria -c "SELECT COUNT
 
 | File | Purpose |
 |------|---------|
-| `backend/app/api/htmx.py` | All HTMX routes (~2800+ lines) |
-| `backend/app/ai/llm.py` | LiteLLM provider integration |
+| `backend/app/api/htmx.py` | All HTMX routes (~3000+ lines) |
+| `backend/app/ai/llm.py` | LiteLLM provider integration + metadata extraction |
+| `backend/app/ai/prompts.py` | All AI prompts (summary, tags, categories, metadata) |
 | `backend/app/ai/factory.py` | AI provider factory |
 | `backend/app/ai/service.py` | AI service for article processing |
-| `backend/app/extractors/` | Content extraction (URL, PDF, arXiv, YouTube) |
+| `backend/app/ai/base.py` | Pydantic models for AI responses |
+| `backend/app/extractors/` | Content extraction (URL, PDF, arXiv, YouTube, Google Drive) |
+| `backend/app/extractors/pdf.py` | PDF extraction with Google Drive support |
 | `backend/templates/` | Jinja2 templates for HTMX UI |
 | `backend/app/api/routes/` | JSON API routes (used by WhatsApp bot) |
 
@@ -77,6 +80,19 @@ The URL extractor (`backend/app/extractors/url.py`) handles article fetching:
 - Uses `readability-lxml` for content extraction
 - Falls back to BeautifulSoup for short content
 - **Important:** `Accept-Encoding` header must NOT include `br` (Brotli) unless the brotli package is installed
+
+### PDF Extraction (`backend/app/extractors/pdf.py`)
+
+- Supports direct PDF URLs and **Google Drive** links
+- Google Drive formats: `drive.google.com/file/d/`, `/open?id=`, `/uc?id=`
+- Handles Google Drive virus scan confirmation for large files
+- Uses PyMuPDF (fitz) for text extraction
+- **AI metadata extraction**: For PDFs, the AI extracts accurate titles and full author lists during processing (see `app/ai/service.py`)
+
+### Text Cleaning (`backend/app/extractors/base.py`)
+
+- `_clean_text()`: Removes null bytes and control characters that break PostgreSQL
+- `_clean_title()`: Sanitizes titles for database storage
 
 ---
 

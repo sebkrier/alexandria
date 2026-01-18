@@ -6,22 +6,24 @@ A personal research library for storing, organizing, and retrieving articles wit
 
 ## Features
 
-- **Multi-source ingestion**: Import from URLs, PDFs, arXiv, Substack, YouTube, and LessWrong/Alignment Forum
+- **Multi-source ingestion**: Import from URLs, PDFs, arXiv, Substack, YouTube, LessWrong/Alignment Forum, and Google Drive
 - **AI summarization**: Generate structured summaries with key contributions, findings, and relevance notes
+- **AI metadata extraction**: Automatically extracts accurate titles and full author lists from PDFs using AI
 - **Auto-tagging**: AI suggests relevant tags based on content
 - **Hierarchical categories**: Two-level category system (parent → subcategory) with automatic AI categorization
 - **Taxonomy Optimization**: AI-powered category restructuring that analyzes your entire library and proposes an optimal category structure
-- **Unread Reader**: Dedicated reading queue with keyboard navigation (J/K), progress tracking, and quick mark-as-read workflow
+- **Unread Reader**: Dedicated reading queue with keyboard navigation (J/K), progress tracking, notes, and quick mark-as-read workflow
 - **Semantic search**: Find conceptually related articles using local embeddings (all-mpnet-base-v2)
 - **Ask your library**: Hybrid RAG with intelligent query routing — content questions use semantic + keyword search, metadata questions query the database directly
 - **Remote add via WhatsApp**: Add articles from anywhere by sending links to a WhatsApp bot
 - **Bulk actions**: Select multiple articles for bulk delete, recolor, mark read/unread, or re-analyze
 - **Media type badges**: Visual indicators for article sources (URL, PDF, arXiv, Video)
 - **Rich notes**: WYSIWYG editor with formatting toolbar on each article
-- **Full-text search**: PostgreSQL full-text search across content, title, and metadata
+- **Full-text search**: PostgreSQL full-text search across content, title, tags, and metadata
 - **Color coding**: Visual organization with customizable color labels (editable in settings)
 - **Reading time**: Estimated reading time based on word count
 - **Dark mode UI**: Easy on the eyes, content-forward design
+- **Backup & Restore**: Export/import your entire library as JSON
 
 ## Tech Stack
 

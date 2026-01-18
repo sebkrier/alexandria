@@ -7,9 +7,9 @@ Thank you for your interest in contributing to Alexandria!
 ### Prerequisites
 
 - Python 3.11+
-- Node.js 20+
 - PostgreSQL 15+ with pgvector extension
 - pixi (Python environment manager)
+- Node.js 20+ (only for WhatsApp bot)
 
 ### Getting Started
 
@@ -18,6 +18,8 @@ Thank you for your interest in contributing to Alexandria!
 3. Create a branch for your feature or fix
 
 ### Backend Development
+
+The backend serves both the API and the HTMX-based frontend (Jinja2 templates).
 
 ```bash
 cd backend
@@ -35,27 +37,18 @@ pixi run dev
 # Run tests
 pixi run test
 
-# Lint code
-pixi run ruff check .
-pixi run ruff format .
+# Lint and format code
+pixi run lint        # Check for issues
+pixi run lint-fix    # Auto-fix issues
+pixi run format      # Format code
 ```
 
-### Frontend Development
+### WhatsApp Bot (Optional)
 
 ```bash
-cd frontend
-
-# Install dependencies
+cd whatsapp-bot
 npm install
-
-# Start development server
-npm run dev
-
-# Lint code
-npm run lint
-
-# Type check
-npx tsc --noEmit
+npm start
 ```
 
 ## Code Style
@@ -66,10 +59,11 @@ npx tsc --noEmit
 - Use type hints for function signatures
 - Follow existing patterns in the codebase
 
-### TypeScript/React
-- Follow ESLint configuration
-- Use TypeScript strict mode
-- Prefer functional components with hooks
+### Templates (Jinja2/HTMX)
+- Follow existing template structure in `backend/templates/`
+- Use Tailwind CSS classes for styling
+- Use Alpine.js for client-side interactivity
+- Prefer HTMX attributes over custom JavaScript
 
 ## Pull Request Guidelines
 
@@ -77,7 +71,7 @@ npx tsc --noEmit
 2. **Write clear commit messages** - describe what and why
 3. **Update documentation** if you change user-facing behavior
 4. **Add tests** for new functionality
-5. **Ensure CI passes** before requesting review
+5. **Run `pixi run lint` and `pixi run test`** before submitting
 
 ## Project Structure
 
@@ -85,20 +79,21 @@ npx tsc --noEmit
 alexandria/
 ├── backend/
 │   ├── app/
-│   │   ├── ai/          # AI provider integrations
-│   │   ├── api/         # FastAPI routes
+│   │   ├── ai/          # AI provider integrations (LiteLLM)
+│   │   ├── api/         # FastAPI routes (htmx.py for UI, routes/ for JSON API)
 │   │   ├── db/          # Database connections
-│   │   ├── extractors/  # Content extraction
+│   │   ├── extractors/  # Content extraction (URL, PDF, arXiv, YouTube, Google Drive)
 │   │   ├── models/      # SQLAlchemy models
 │   │   └── schemas/     # Pydantic schemas
+│   ├── templates/       # Jinja2 templates for HTMX UI
+│   │   ├── pages/       # Full page templates
+│   │   ├── partials/    # HTMX partial templates
+│   │   ├── components/  # Reusable UI components
+│   │   └── modals/      # Modal dialogs
+│   ├── static/          # Static assets
 │   └── tests/
-├── frontend/
-│   └── src/
-│       ├── app/         # Next.js pages
-│       ├── components/  # React components
-│       ├── hooks/       # React Query hooks
-│       └── lib/         # Utilities
-└── whatsapp-bot/        # WhatsApp integration
+├── whatsapp-bot/        # WhatsApp integration for remote article adding
+└── scripts/             # Utility scripts (backup, etc.)
 ```
 
 ## Questions?
