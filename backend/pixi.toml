@@ -19,6 +19,10 @@ migrate = "alembic upgrade head"
 lint = "ruff check ."
 format = "ruff format ."
 lint-fix = "ruff check --fix ."
+playwright-install = "playwright install chromium"
+e2e = "pytest tests/e2e -v --headed"
+e2e-headless = "pytest tests/e2e -v"
+e2e-debug = "pytest tests/e2e -v --headed --slowmo=500"
 
 [pypi-dependencies]
 alexandria = { path = ".", editable = true }

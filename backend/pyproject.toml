@@ -62,6 +62,8 @@ dependencies = [
     "pytest>=8.0.0",
     "pytest-asyncio>=0.23.0",
     "pytest-cov>=4.0.0",
+    "playwright>=1.48.0",
+    "pytest-playwright>=0.5.0",
 
     # Linting
     "ruff>=0.5.0",
