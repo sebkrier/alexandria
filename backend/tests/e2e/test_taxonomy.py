@@ -23,15 +23,15 @@ class TestTaxonomyModal:
         optimize_btn.click()
         page.wait_for_timeout(500)
 
-        # Verify modal opens
-        expect(page.locator("#taxonomy-modal, #optimize-modal, .modal")).to_be_attached()
+        # The confirmation modal should open (Alpine.js controlled)
+        expect(page.locator("#taxonomy-confirm-modal")).to_be_visible()
 
     def test_taxonomy_modal_cancel(self, page: Page, app_server: str):
         """Cancel button closes taxonomy modal."""
         page.goto(f"{app_server}/app/")
         wait_for_element(page, "text=Alexandria")
 
-        # Just verify page loads correctly
+        # Verify page loads correctly
         expect(page.get_by_role("banner").get_by_role("link", name="Alexandria")).to_be_visible()
 
 
