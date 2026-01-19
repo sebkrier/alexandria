@@ -32,10 +32,10 @@ async def test_article_count_with_articles(db):
     async with db.cursor() as cur:
         await cur.execute(
             """
-            INSERT INTO articles (id, user_id, title, source_type, processing_status)
-            VALUES (%s, %s, %s, %s, %s)
+            INSERT INTO articles (id, user_id, title, source_type, processing_status, extracted_text)
+            VALUES (%s, %s, %s, %s, %s, %s)
         """,
-            (uuid4(), db.test_user_id, "Test Article", "url", "completed"),
+            (uuid4(), db.test_user_id, "Test Article", "url", "completed", "Test content"),
         )
         await db.commit()
 
@@ -82,10 +82,10 @@ async def test_bulk_delete_actual_articles(db):
         async with db.cursor() as cur:
             await cur.execute(
                 """
-                INSERT INTO articles (id, user_id, title, source_type, processing_status)
-                VALUES (%s, %s, %s, %s, %s)
+                INSERT INTO articles (id, user_id, title, source_type, processing_status, extracted_text)
+                VALUES (%s, %s, %s, %s, %s, %s)
             """,
-                (article_id, db.test_user_id, f"Delete Test {i}", "url", "completed"),
+                (article_id, db.test_user_id, f"Delete Test {i}", "url", "completed", "Test content"),
             )
     await db.commit()
 
@@ -110,10 +110,10 @@ async def test_bulk_delete_wrong_user(db):
     async with db.cursor() as cur:
         await cur.execute(
             """
-            INSERT INTO articles (id, user_id, title, source_type, processing_status)
-            VALUES (%s, %s, %s, %s, %s)
+            INSERT INTO articles (id, user_id, title, source_type, processing_status, extracted_text)
+            VALUES (%s, %s, %s, %s, %s, %s)
         """,
-            (article_id, db.test_user_id, "User's Article", "url", "completed"),
+            (article_id, db.test_user_id, "User's Article", "url", "completed", "Test content"),
         )
         await db.commit()
 
