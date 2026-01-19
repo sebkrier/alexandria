@@ -8,7 +8,6 @@ Tests the unified LiteLLM interface for all AI providers:
 - Provider configuration
 """
 
-
 import pytest
 
 from app.ai.llm import (
@@ -174,7 +173,7 @@ def test_extract_json_simple_object():
 
 def test_extract_json_simple_array():
     """Test extracting JSON array from text."""
-    text = '[1, 2, 3]'
+    text = "[1, 2, 3]"
     result = _extract_json(text)
     assert result == [1, 2, 3]
 
@@ -373,9 +372,7 @@ async def test_provider_extract_metadata(mock_litellm):
         provider_name="anthropic",
     )
 
-    metadata = await provider.extract_metadata(
-        text="Attention Is All You Need by Vaswani et al."
-    )
+    metadata = await provider.extract_metadata(text="Attention Is All You Need by Vaswani et al.")
 
     assert metadata.title == "Attention Is All You Need"
     assert "Vaswani et al." in metadata.authors

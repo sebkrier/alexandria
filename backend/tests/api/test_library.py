@@ -94,9 +94,7 @@ class TestExportLibrary:
         assert data["articles"][0]["extracted_text"] is not None
 
     @pytest.mark.asyncio
-    async def test_export_includes_notes(
-        self, test_client, test_article, async_db_session
-    ):
+    async def test_export_includes_notes(self, test_client, test_article, async_db_session):
         """Test exporting includes article notes."""
         from app.models.note import Note
 

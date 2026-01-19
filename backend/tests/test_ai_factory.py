@@ -62,9 +62,7 @@ class TestGetAIProvider:
     """Tests for fetching AI provider by ID."""
 
     @pytest.mark.asyncio
-    async def test_get_provider_by_id(
-        self, async_db_session, test_user, test_ai_provider
-    ):
+    async def test_get_provider_by_id(self, async_db_session, test_user, test_ai_provider):
         """Test fetching an existing provider by ID."""
         with patch("app.ai.factory.decrypt_api_key", return_value="decrypted_key"):
             provider = await get_ai_provider(async_db_session, test_ai_provider.id)
@@ -80,9 +78,7 @@ class TestGetAIProvider:
             await get_ai_provider(async_db_session, non_existent_id)
 
     @pytest.mark.asyncio
-    async def test_get_inactive_provider_raises_error(
-        self, async_db_session, test_user
-    ):
+    async def test_get_inactive_provider_raises_error(self, async_db_session, test_user):
         """Test error when trying to use an inactive provider."""
         from app.models.ai_provider import AIProvider, ProviderName
         from app.utils.encryption import encrypt_api_key
@@ -114,9 +110,7 @@ class TestGetDefaultProvider:
     """Tests for fetching user's default AI provider."""
 
     @pytest.mark.asyncio
-    async def test_get_default_provider(
-        self, async_db_session, test_user, test_ai_provider
-    ):
+    async def test_get_default_provider(self, async_db_session, test_user, test_ai_provider):
         """Test fetching the default provider."""
         with patch("app.ai.factory.decrypt_api_key", return_value="decrypted_key"):
             provider = await get_default_provider(async_db_session, test_user.id)
@@ -124,9 +118,7 @@ class TestGetDefaultProvider:
             assert provider is not None
 
     @pytest.mark.asyncio
-    async def test_get_default_provider_falls_back_to_active(
-        self, async_db_session, test_user
-    ):
+    async def test_get_default_provider_falls_back_to_active(self, async_db_session, test_user):
         """Test fallback to any active provider when no default set."""
         from app.models.ai_provider import AIProvider, ProviderName
         from app.utils.encryption import encrypt_api_key
@@ -167,9 +159,7 @@ class TestGetAllProviders:
     """Tests for fetching all user providers."""
 
     @pytest.mark.asyncio
-    async def test_get_all_providers(
-        self, async_db_session, test_user, test_ai_provider
-    ):
+    async def test_get_all_providers(self, async_db_session, test_user, test_ai_provider):
         """Test fetching all providers for a user."""
         with patch("app.ai.factory.decrypt_api_key", return_value="decrypted_key"):
             providers = await get_all_providers(async_db_session, test_user.id)
@@ -179,9 +169,7 @@ class TestGetAllProviders:
             assert len(providers[0]) == 2
 
     @pytest.mark.asyncio
-    async def test_get_all_providers_active_only(
-        self, async_db_session, test_user
-    ):
+    async def test_get_all_providers_active_only(self, async_db_session, test_user):
         """Test filtering to only active providers."""
         from app.models.ai_provider import AIProvider, ProviderName
         from app.utils.encryption import encrypt_api_key
@@ -208,9 +196,7 @@ class TestGetAllProviders:
         await async_db_session.commit()
 
         with patch("app.ai.factory.decrypt_api_key", return_value="decrypted_key"):
-            providers = await get_all_providers(
-                async_db_session, test_user.id, active_only=True
-            )
+            providers = await get_all_providers(async_db_session, test_user.id, active_only=True)
 
             # Should only include active provider
             display_names = [config.display_name for config, _ in providers]

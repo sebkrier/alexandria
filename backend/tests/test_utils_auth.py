@@ -102,6 +102,7 @@ class TestGetCurrentUser:
     def test_get_current_user_is_dependency(self):
         """Test that get_current_user is a valid FastAPI dependency."""
         import inspect
+
         # get_current_user should be an async function
         assert inspect.iscoroutinefunction(get_current_user)
 
@@ -130,9 +131,7 @@ class TestDefaultDataBootstrap:
 
     def test_ai_category_has_subcategories(self):
         """Test AI category has subcategories."""
-        ai_cat = next(
-            cat for cat in DEFAULT_CATEGORIES if cat["name"] == "AI & Machine Learning"
-        )
+        ai_cat = next(cat for cat in DEFAULT_CATEGORIES if cat["name"] == "AI & Machine Learning")
         assert len(ai_cat["children"]) > 0
         assert "Safety" in ai_cat["children"]
 
@@ -161,9 +160,7 @@ class TestDefaultDataBootstrap:
         hex_pattern = re.compile(r"^#[0-9A-Fa-f]{6}$")
 
         for color in DEFAULT_COLORS:
-            assert hex_pattern.match(color["hex_value"]), (
-                f"Invalid hex: {color['hex_value']}"
-            )
+            assert hex_pattern.match(color["hex_value"]), f"Invalid hex: {color['hex_value']}"
 
 
 # =============================================================================
@@ -252,7 +249,9 @@ class TestBootstrapIntegration:
                     if article_ids:
                         await session.execute(delete(Note).where(Note.article_id.in_(article_ids)))
                         await session.execute(
-                            delete(ArticleCategory).where(ArticleCategory.article_id.in_(article_ids))
+                            delete(ArticleCategory).where(
+                                ArticleCategory.article_id.in_(article_ids)
+                            )
                         )
                         await session.execute(
                             delete(ArticleTag).where(ArticleTag.article_id.in_(article_ids))
@@ -301,9 +300,7 @@ class TestBootstrapIntegration:
         user = await get_current_user(db=clean_db_session)
 
         # Query categories for this user
-        result = await clean_db_session.execute(
-            select(Category).where(Category.user_id == user.id)
-        )
+        result = await clean_db_session.execute(select(Category).where(Category.user_id == user.id))
         categories = result.scalars().all()
 
         # Should have created all default categories (parents + children)
@@ -361,9 +358,7 @@ class TestBootstrapIntegration:
         user = await get_current_user(db=clean_db_session)
 
         # Query colors for this user
-        result = await clean_db_session.execute(
-            select(Color).where(Color.user_id == user.id)
-        )
+        result = await clean_db_session.execute(select(Color).where(Color.user_id == user.id))
         colors = result.scalars().all()
 
         assert len(colors) == len(DEFAULT_COLORS)

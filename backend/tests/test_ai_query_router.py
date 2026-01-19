@@ -8,7 +8,6 @@ Tests query classification and metadata operations:
 - Result formatting for LLM
 """
 
-
 import pytest
 
 from app.ai.query_router import (
@@ -39,9 +38,7 @@ class TestClassifyQuery:
 
     def test_classify_content_what_do_articles_say(self):
         """Test that 'what do articles say/mention' queries are CONTENT."""
-        assert (
-            classify_query("What do my articles say about neural networks?") == QueryType.CONTENT
-        )
+        assert classify_query("What do my articles say about neural networks?") == QueryType.CONTENT
         assert classify_query("What do the papers mention about attention?") == QueryType.CONTENT
 
     def test_classify_metadata_how_many(self):

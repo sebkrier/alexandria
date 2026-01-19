@@ -14,9 +14,7 @@ from tests.e2e.conftest import wait_for_element, wait_for_htmx
 class TestSearch:
     """Tests for article search functionality."""
 
-    def test_search_articles(
-        self, page: Page, app_server: str, multiple_test_articles: dict
-    ):
+    def test_search_articles(self, page: Page, app_server: str, multiple_test_articles: dict):
         """Search filters articles by keyword."""
         page.goto(f"{app_server}/app/")
         wait_for_element(page, "[data-article-id]")
@@ -78,7 +76,9 @@ class TestSearch:
 
         # More articles should be visible after clearing search (at least the 5 test articles)
         article_count = page.locator("[data-article-id]").count()
-        assert article_count >= 5, f"Expected at least 5 articles after clearing search, got {article_count}"
+        assert article_count >= 5, (
+            f"Expected at least 5 articles after clearing search, got {article_count}"
+        )
 
 
 class TestCategoryFilter:
@@ -153,9 +153,7 @@ class TestReadStatusFilter:
 class TestViewModes:
     """Tests for grid/list view toggle."""
 
-    def test_grid_view_toggle(
-        self, page: Page, app_server: str, multiple_test_articles: dict
-    ):
+    def test_grid_view_toggle(self, page: Page, app_server: str, multiple_test_articles: dict):
         """Grid view button switches to grid layout."""
         page.goto(f"{app_server}/app/")
         wait_for_element(page, "[data-article-id]")
@@ -168,9 +166,7 @@ class TestViewModes:
         # URL should include view=grid
         expect(page).to_have_url(re.compile(r"view=grid"))
 
-    def test_list_view_toggle(
-        self, page: Page, app_server: str, multiple_test_articles: dict
-    ):
+    def test_list_view_toggle(self, page: Page, app_server: str, multiple_test_articles: dict):
         """List view button switches to list layout."""
         page.goto(f"{app_server}/app/")
         wait_for_element(page, "[data-article-id]")
@@ -216,9 +212,7 @@ class TestCombinedFilters:
         # The URL may or may not update with view param depending on app behavior
         expect(page.locator("[data-article-id]").first).to_be_visible()
 
-    def test_url_state_persistence(
-        self, page: Page, app_server: str, multiple_test_articles: dict
-    ):
+    def test_url_state_persistence(self, page: Page, app_server: str, multiple_test_articles: dict):
         """Filter state persists in URL on page reload."""
         # Navigate with filters
         page.goto(f"{app_server}/app/?view=list&search=Article")

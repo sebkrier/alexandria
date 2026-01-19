@@ -174,9 +174,7 @@ async def delete_category(
         )
 
     # Move children to parent (or make them root)
-    children_result = await db.execute(
-        select(Category).where(Category.parent_id == category_id)
-    )
+    children_result = await db.execute(select(Category).where(Category.parent_id == category_id))
     for child in children_result.scalars().all():
         child.parent_id = category.parent_id
 

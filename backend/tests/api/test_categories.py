@@ -51,9 +51,7 @@ class TestListCategories:
         assert data[0]["article_count"] == 0
 
     @pytest.mark.asyncio
-    async def test_list_categories_nested(
-        self, test_client, test_category, test_child_category
-    ):
+    async def test_list_categories_nested(self, test_client, test_category, test_child_category):
         """Test listing categories with parent-child relationship."""
         response = await test_client.get("/api/categories")
 
@@ -157,9 +155,7 @@ class TestCreateCategory:
         assert data["parent_id"] == str(test_category.id)
 
     @pytest.mark.asyncio
-    async def test_create_category_position_auto_increment(
-        self, test_client, test_category
-    ):
+    async def test_create_category_position_auto_increment(self, test_client, test_category):
         """Test category position auto-increments at same level."""
         # Create first sibling
         response1 = await test_client.post(

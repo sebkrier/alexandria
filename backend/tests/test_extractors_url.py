@@ -262,7 +262,9 @@ class TestFallbackStrategies:
     """Tests for the fallback fetch strategies."""
 
     @pytest.mark.asyncio
-    async def test_tries_google_referer_after_403(self, extractor, sample_html_article, mock_httpx_response):
+    async def test_tries_google_referer_after_403(
+        self, extractor, sample_html_article, mock_httpx_response
+    ):
         """Test that Google referer strategy is tried after 403."""
         call_count = 0
 

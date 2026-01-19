@@ -114,9 +114,7 @@ class TestCanHandle:
 
     def test_handles_google_drive_uc_url(self):
         """Google Drive uc URLs should be handled."""
-        assert PDFExtractor.can_handle(
-            "https://drive.google.com/uc?export=download&id=1ABC123xyz"
-        )
+        assert PDFExtractor.can_handle("https://drive.google.com/uc?export=download&id=1ABC123xyz")
 
     def test_rejects_non_pdf_urls(self):
         """Non-PDF URLs should not be handled."""
@@ -206,7 +204,9 @@ class TestExtractSuccess:
             assert result.file_path == "/path/to/document.pdf"
 
     @pytest.mark.asyncio
-    async def test_extract_pdf_with_metadata(self, extractor, mock_pdf_document, mock_httpx_response):
+    async def test_extract_pdf_with_metadata(
+        self, extractor, mock_pdf_document, mock_httpx_response
+    ):
         """Test PDF metadata is captured."""
         with patch("httpx.AsyncClient") as mock_client, patch("fitz.open") as mock_fitz:
             mock_instance = AsyncMock()
@@ -301,7 +301,9 @@ class TestGoogleDriveDownload:
     """Tests for Google Drive PDF downloads."""
 
     @pytest.mark.asyncio
-    async def test_google_drive_url_conversion(self, extractor, mock_pdf_document, mock_httpx_response):
+    async def test_google_drive_url_conversion(
+        self, extractor, mock_pdf_document, mock_httpx_response
+    ):
         """Test Google Drive URL is converted before download."""
         with patch("httpx.AsyncClient") as mock_client, patch("fitz.open") as mock_fitz:
             mock_instance = AsyncMock()
@@ -312,9 +314,7 @@ class TestGoogleDriveDownload:
 
             mock_fitz.return_value = mock_pdf_document()
 
-            await extractor.extract(
-                url="https://drive.google.com/file/d/1ABC123/view"
-            )
+            await extractor.extract(url="https://drive.google.com/file/d/1ABC123/view")
 
             # Check the URL was converted for download
             call_args = mock_instance.get.call_args
@@ -364,9 +364,7 @@ class TestGoogleDriveDownload:
             mock_fitz.return_value = mock_pdf_document()
 
             # The virus scan page has confirm= in URL pattern
-            await extractor.extract(
-                url="https://drive.google.com/uc?export=download&id=1xyz"
-            )
+            await extractor.extract(url="https://drive.google.com/uc?export=download&id=1xyz")
 
             assert call_count == 2
 
@@ -410,9 +408,7 @@ class TestTitleExtraction:
     async def test_title_from_metadata(self, extractor, mock_pdf_document):
         """Test title extraction from PDF metadata."""
         with patch("fitz.open") as mock_fitz:
-            mock_fitz.return_value = mock_pdf_document(
-                metadata={"title": "Metadata Title"}
-            )
+            mock_fitz.return_value = mock_pdf_document(metadata={"title": "Metadata Title"})
 
             result = await extractor.extract(file_path="/path/to/doc.pdf")
 
@@ -420,7 +416,9 @@ class TestTitleExtraction:
             assert result.title is not None
 
     @pytest.mark.asyncio
-    async def test_title_fallback_to_url_filename(self, extractor, mock_pdf_document, mock_httpx_response):
+    async def test_title_fallback_to_url_filename(
+        self, extractor, mock_pdf_document, mock_httpx_response
+    ):
         """Test title falls back to URL filename when metadata is poor."""
         with patch("httpx.AsyncClient") as mock_client, patch("fitz.open") as mock_fitz:
             mock_instance = AsyncMock()
@@ -435,18 +433,14 @@ class TestTitleExtraction:
                 text_pages=["Some content without a clear title."],
             )
 
-            result = await extractor.extract(
-                url="https://example.com/Research_Paper_2024.pdf"
-            )
+            result = await extractor.extract(url="https://example.com/Research_Paper_2024.pdf")
 
             # Should extract title from URL
             assert "Research Paper 2024" in result.title or result.title is not None
 
     def test_title_from_url_cleans_filename(self, extractor):
         """Test URL filename cleaning for title."""
-        result = extractor._title_from_url(
-            "https://example.com/my_research-paper_final.pdf"
-        )
+        result = extractor._title_from_url("https://example.com/my_research-paper_final.pdf")
 
         assert result is not None
         assert "_" not in result
@@ -465,9 +459,7 @@ class TestAuthorExtraction:
     async def test_authors_from_metadata(self, extractor, mock_pdf_document):
         """Test author extraction from PDF metadata."""
         with patch("fitz.open") as mock_fitz:
-            mock_fitz.return_value = mock_pdf_document(
-                metadata={"author": "John Smith, Jane Doe"}
-            )
+            mock_fitz.return_value = mock_pdf_document(metadata={"author": "John Smith, Jane Doe"})
 
             result = await extractor.extract(file_path="/path/to/doc.pdf")
 
@@ -507,10 +499,11 @@ class TestEdgeCases:
             created_temp_files.append(tf.name)
             return tf
 
-        with patch("httpx.AsyncClient") as mock_client, \
-             patch("fitz.open") as mock_fitz, \
-             patch("tempfile.NamedTemporaryFile", side_effect=track_temp_file):
-
+        with (
+            patch("httpx.AsyncClient") as mock_client,
+            patch("fitz.open") as mock_fitz,
+            patch("tempfile.NamedTemporaryFile", side_effect=track_temp_file),
+        ):
             mock_instance = AsyncMock()
             mock_instance.get.return_value = mock_httpx_response()
             mock_instance.__aenter__.return_value = mock_instance
@@ -525,7 +518,9 @@ class TestEdgeCases:
             assert result.file_path is None
 
     @pytest.mark.asyncio
-    async def test_extract_handles_encoded_url(self, extractor, mock_pdf_document, mock_httpx_response):
+    async def test_extract_handles_encoded_url(
+        self, extractor, mock_pdf_document, mock_httpx_response
+    ):
         """Test handling of URL-encoded PDF filenames."""
         with patch("httpx.AsyncClient") as mock_client, patch("fitz.open") as mock_fitz:
             mock_instance = AsyncMock()
@@ -536,9 +531,7 @@ class TestEdgeCases:
 
             mock_fitz.return_value = mock_pdf_document(metadata={})
 
-            result = await extractor.extract(
-                url="https://example.com/my%20document%20(final).pdf"
-            )
+            result = await extractor.extract(url="https://example.com/my%20document%20(final).pdf")
 
             assert result.source_type == "pdf"
 
@@ -552,9 +545,7 @@ class TestEdgeCases:
             mock_instance.__aexit__.return_value = None
             mock_client.return_value = mock_instance
 
-            mock_fitz.return_value = mock_pdf_document(
-                text_pages=["", "Page 2 has content", ""]
-            )
+            mock_fitz.return_value = mock_pdf_document(text_pages=["", "Page 2 has content", ""])
 
             result = await extractor.extract(url="https://example.com/sparse.pdf")
 

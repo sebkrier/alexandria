@@ -94,8 +94,12 @@ class TestCanHandle:
 
     def test_handles_alignment_forum_post_url(self):
         """Alignment Forum post URLs should be handled."""
-        assert LessWrongExtractor.can_handle("https://www.alignmentforum.org/posts/abc123/post-title")
-        assert LessWrongExtractor.can_handle("https://alignmentforum.org/posts/def456/alignment-post")
+        assert LessWrongExtractor.can_handle(
+            "https://www.alignmentforum.org/posts/abc123/post-title"
+        )
+        assert LessWrongExtractor.can_handle(
+            "https://alignmentforum.org/posts/def456/alignment-post"
+        )
 
     def test_rejects_lesswrong_non_post_urls(self):
         """Non-post LessWrong URLs should not be handled."""

@@ -86,7 +86,14 @@ async def test_bulk_delete_actual_articles(db):
                 INSERT INTO articles (id, user_id, title, source_type, processing_status, extracted_text)
                 VALUES (%s, %s, %s, %s, %s, %s)
             """,
-                (article_id, db.test_user_id, f"Delete Test {i}", "url", "completed", "Test content"),
+                (
+                    article_id,
+                    db.test_user_id,
+                    f"Delete Test {i}",
+                    "url",
+                    "completed",
+                    "Test content",
+                ),
             )
     await db.commit()
 

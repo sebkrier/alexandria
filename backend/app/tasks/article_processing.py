@@ -49,9 +49,7 @@ async def process_article_background(article_id: UUID, user_id: UUID) -> None:
 
             # Update article status to failed
             try:
-                result = await db.execute(
-                    select(Article).where(Article.id == article_id)
-                )
+                result = await db.execute(select(Article).where(Article.id == article_id))
                 article = result.scalar_one_or_none()
                 if article:
                     article.processing_status = ProcessingStatus.FAILED

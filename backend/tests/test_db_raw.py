@@ -67,7 +67,9 @@ class TestPoolLifecycle:
             patch("app.db.raw.psycopg_pool.AsyncConnectionPool") as mock_pool_class,
         ):
             mock_settings = MagicMock()
-            mock_settings.database_url = "postgresql+asyncpg://postgres:localdev@localhost:5432/alexandria"
+            mock_settings.database_url = (
+                "postgresql+asyncpg://postgres:localdev@localhost:5432/alexandria"
+            )
             mock_get_settings.return_value = mock_settings
             mock_pool_class.return_value = mock_pool
 
@@ -201,7 +203,9 @@ class TestPoolIntegration:
             patch("app.db.raw.psycopg_pool.AsyncConnectionPool") as mock_pool_class,
         ):
             mock_settings = MagicMock()
-            mock_settings.database_url = "postgresql+asyncpg://postgres:localdev@localhost:5432/alexandria_test"
+            mock_settings.database_url = (
+                "postgresql+asyncpg://postgres:localdev@localhost:5432/alexandria_test"
+            )
             mock_get_settings.return_value = mock_settings
             mock_pool_class.return_value = mock_pool
 

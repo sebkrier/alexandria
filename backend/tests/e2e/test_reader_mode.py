@@ -51,10 +51,10 @@ class TestReaderNavigation:
         # Just verify page loaded
         assert "reader" in page.url or "app" in page.url
 
-    @pytest.mark.skip(reason="Flaky due to server stability - functionality covered by test_reader_mode_navigation")
-    def test_reader_next_previous(
-        self, page: Page, app_server: str, multiple_test_articles: dict
-    ):
+    @pytest.mark.skip(
+        reason="Flaky due to server stability - functionality covered by test_reader_mode_navigation"
+    )
+    def test_reader_next_previous(self, page: Page, app_server: str, multiple_test_articles: dict):
         """Next/Previous buttons navigate between articles."""
         # Navigation functionality is tested in other tests
         # This test validates basic page access
@@ -81,9 +81,7 @@ class TestReaderNavigation:
 class TestReaderActions:
     """Tests for actions within reader mode."""
 
-    def test_reader_mark_read(
-        self, page: Page, app_server: str, multiple_test_articles: dict
-    ):
+    def test_reader_mark_read(self, page: Page, app_server: str, multiple_test_articles: dict):
         """Mark as read in reader mode."""
         page.goto(f"{app_server}/app/reader")
         page.wait_for_timeout(500)
@@ -109,9 +107,7 @@ class TestReaderActions:
         # Just verify page loads without errors
         assert "reader" in page.url or "app" in page.url
 
-    def test_reader_add_note(
-        self, page: Page, app_server: str, multiple_test_articles: dict
-    ):
+    def test_reader_add_note(self, page: Page, app_server: str, multiple_test_articles: dict):
         """Add note in reader mode."""
         page.goto(f"{app_server}/app/reader")
         page.wait_for_timeout(500)

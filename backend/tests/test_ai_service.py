@@ -319,7 +319,7 @@ async def test_process_article_low_confidence_tags_skipped(
     mock_litellm.side_effect = [
         MockLiteLLMResponse("## One-Line Summary\nTest summary."),
         MockLiteLLMResponse(
-            '['
+            "["
             '{"name": "high-conf", "confidence": 0.9, "reasoning": "Good match"},'
             '{"name": "low-conf", "confidence": 0.5, "reasoning": "Weak match"}'
             "]"
@@ -424,9 +424,7 @@ async def test_apply_tags_creates_new_tags(async_db_session, test_user, test_art
 
 
 @pytest.mark.asyncio
-async def test_apply_tags_reuses_existing_tags(
-    async_db_session, test_user, test_article, test_tag
-):
+async def test_apply_tags_reuses_existing_tags(async_db_session, test_user, test_article, test_tag):
     """Test that _apply_tags reuses existing tags."""
     from sqlalchemy import func, select
 
@@ -475,9 +473,7 @@ async def test_apply_tags_max_seven_tags(async_db_session, test_user, test_artic
     from app.models.article_tag import ArticleTag
 
     result = await async_db_session.execute(
-        select(func.count())
-        .select_from(ArticleTag)
-        .where(ArticleTag.article_id == test_article.id)
+        select(func.count()).select_from(ArticleTag).where(ArticleTag.article_id == test_article.id)
     )
     assert result.scalar() == 7
 

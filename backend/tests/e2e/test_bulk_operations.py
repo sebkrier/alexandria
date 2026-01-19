@@ -12,9 +12,7 @@ from tests.e2e.conftest import wait_for_element
 class TestArticleSelection:
     """Tests for selecting articles for bulk operations."""
 
-    def test_select_single_article(
-        self, page: Page, app_server: str, multiple_test_articles: dict
-    ):
+    def test_select_single_article(self, page: Page, app_server: str, multiple_test_articles: dict):
         """Clicking checkbox selects a single article."""
         page.goto(f"{app_server}/app/")
         wait_for_element(page, "[data-article-id]")
@@ -42,9 +40,7 @@ class TestArticleSelection:
         # Should show 2 selected
         expect(page.locator("text=2 selected")).to_be_visible()
 
-    def test_select_all_articles(
-        self, page: Page, app_server: str, multiple_test_articles: dict
-    ):
+    def test_select_all_articles(self, page: Page, app_server: str, multiple_test_articles: dict):
         """Select all button selects all visible articles."""
         page.goto(f"{app_server}/app/")
         wait_for_element(page, "[data-article-id]")
@@ -133,9 +129,7 @@ class TestArticleSelection:
 class TestBulkMarkRead:
     """Tests for bulk mark as read."""
 
-    def test_bulk_mark_read(
-        self, page: Page, app_server: str, multiple_test_articles: dict
-    ):
+    def test_bulk_mark_read(self, page: Page, app_server: str, multiple_test_articles: dict):
         """Mark multiple articles as read."""
         page.goto(f"{app_server}/app/")
         wait_for_element(page, "[data-article-id]")
@@ -157,9 +151,7 @@ class TestBulkMarkRead:
 class TestBulkMarkUnread:
     """Tests for bulk mark as unread."""
 
-    def test_bulk_mark_unread(
-        self, page: Page, app_server: str, multiple_test_articles: dict
-    ):
+    def test_bulk_mark_unread(self, page: Page, app_server: str, multiple_test_articles: dict):
         """Mark multiple articles as unread."""
         page.goto(f"{app_server}/app/")
         wait_for_element(page, "[data-article-id]")
@@ -200,9 +192,7 @@ class TestBulkDelete:
         # Confirmation should appear
         expect(page.locator("text=Delete 2 articles?")).to_be_visible()
 
-    def test_bulk_delete_cancel(
-        self, page: Page, app_server: str, multiple_test_articles: dict
-    ):
+    def test_bulk_delete_cancel(self, page: Page, app_server: str, multiple_test_articles: dict):
         """Cancel bulk delete keeps articles."""
         page.goto(f"{app_server}/app/")
         wait_for_element(page, "[data-article-id]")
@@ -264,9 +254,7 @@ class TestBulkColorUpdate:
 class TestBulkReanalyze:
     """Tests for bulk reanalyze."""
 
-    def test_bulk_reanalyze(
-        self, page: Page, app_server: str, multiple_test_articles: dict
-    ):
+    def test_bulk_reanalyze(self, page: Page, app_server: str, multiple_test_articles: dict):
         """Reanalyze multiple articles."""
         page.goto(f"{app_server}/app/")
         wait_for_element(page, "[data-article-id]")
