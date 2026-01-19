@@ -47,8 +47,8 @@ class TestAIProviders:
         if add_btn.is_visible():
             add_btn.click()
             page.wait_for_timeout(500)
-            # Modal should open
-            expect(page.locator("#modal-container")).to_be_visible()
+            # Modal content should open (loaded into #modal-container via HTMX)
+            expect(page.locator("#add-provider-modal")).to_be_visible()
 
     def test_add_provider_model_dropdown(self, page: Page, app_server: str):
         """Model dropdown populates based on provider selection."""
