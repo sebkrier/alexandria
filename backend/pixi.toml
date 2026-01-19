@@ -11,7 +11,7 @@ uv = "*"
 
 [tasks]
 dev = "uvicorn app.main:app --reload --port 8000"
-test = "pytest -v"
+test = "pytest -v --cov=app --cov-report=term-missing"
 sync = "uv sync"
 migrate = "alembic upgrade head"
 lint = "ruff check ."
