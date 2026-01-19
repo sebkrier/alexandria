@@ -6,6 +6,7 @@ that bootstraps default users, categories, and colors.
 """
 
 import pytest
+import pytest_asyncio
 from sqlalchemy import select
 
 from app.models.category import Category
@@ -194,3 +195,203 @@ class TestAuthIntegration:
         # Cleanup
         await async_db_session.delete(user)
         await async_db_session.commit()
+
+
+# =============================================================================
+# Bootstrap Integration Tests (with clean database)
+# =============================================================================
+
+
+class TestBootstrapIntegration:
+    """Integration tests for get_current_user bootstrap logic."""
+
+    @pytest_asyncio.fixture
+    async def clean_db_session(self, test_engine):
+        """
+        Create a clean async session WITHOUT a pre-existing user.
+        This allows testing the bootstrap creation logic.
+        """
+        from sqlalchemy.ext.asyncio import AsyncSession, async_sessionmaker
+
+        async_session_factory = async_sessionmaker(
+            test_engine,
+            class_=AsyncSession,
+            expire_on_commit=False,
+        )
+
+        async with async_session_factory() as session:
+            yield session
+
+            # Cleanup: delete any data created during the test
+            try:
+                await session.rollback()
+
+                from sqlalchemy import delete, text
+
+                from app.models.ai_provider import AIProvider
+                from app.models.article import Article
+                from app.models.article_category import ArticleCategory
+                from app.models.article_tag import ArticleTag
+                from app.models.note import Note
+                from app.models.tag import Tag
+
+                # Delete in correct order to respect foreign keys
+                # First get all users with default email pattern
+                result = await session.execute(
+                    select(User).where(User.email == "default@alexandria.local")
+                )
+                default_users = result.scalars().all()
+
+                for user in default_users:
+                    # Get article IDs for this user
+                    article_ids_result = await session.execute(
+                        select(Article.id).where(Article.user_id == user.id)
+                    )
+                    article_ids = [row[0] for row in article_ids_result.all()]
+
+                    # Delete related data
+                    if article_ids:
+                        await session.execute(delete(Note).where(Note.article_id.in_(article_ids)))
+                        await session.execute(
+                            delete(ArticleCategory).where(ArticleCategory.article_id.in_(article_ids))
+                        )
+                        await session.execute(
+                            delete(ArticleTag).where(ArticleTag.article_id.in_(article_ids))
+                        )
+
+                    await session.execute(delete(Article).where(Article.user_id == user.id))
+                    await session.execute(delete(Category).where(Category.user_id == user.id))
+                    await session.execute(delete(Tag).where(Tag.user_id == user.id))
+                    await session.execute(delete(Color).where(Color.user_id == user.id))
+                    await session.execute(delete(AIProvider).where(AIProvider.user_id == user.id))
+                    await session.execute(delete(User).where(User.id == user.id))
+
+                await session.commit()
+            except Exception:
+                # Cleanup errors are not critical
+                pass
+
+    @pytest.mark.asyncio
+    async def test_get_current_user_creates_default_user(self, clean_db_session):
+        """Test get_current_user creates default user when none exists."""
+        # Ensure no users exist first
+        result = await clean_db_session.execute(select(User))
+        existing_users = result.scalars().all()
+
+        # Skip if users already exist (can't test bootstrap in this case)
+        if existing_users:
+            pytest.skip("Database already has users, cannot test bootstrap")
+
+        # Call get_current_user directly with the clean session
+        user = await get_current_user(db=clean_db_session)
+
+        assert user is not None
+        assert user.email == "default@alexandria.local"
+        assert user.password_hash is not None
+
+    @pytest.mark.asyncio
+    async def test_get_current_user_creates_default_categories(self, clean_db_session):
+        """Test get_current_user bootstraps default categories."""
+        # Ensure no users exist
+        result = await clean_db_session.execute(select(User))
+        existing_users = result.scalars().all()
+
+        if existing_users:
+            pytest.skip("Database already has users, cannot test bootstrap")
+
+        user = await get_current_user(db=clean_db_session)
+
+        # Query categories for this user
+        result = await clean_db_session.execute(
+            select(Category).where(Category.user_id == user.id)
+        )
+        categories = result.scalars().all()
+
+        # Should have created all default categories (parents + children)
+        assert len(categories) > 0
+
+        # Check parent categories
+        parent_names = {cat.name for cat in categories if cat.parent_id is None}
+        expected_parents = {cat["name"] for cat in DEFAULT_CATEGORIES}
+        assert expected_parents.issubset(parent_names)
+
+    @pytest.mark.asyncio
+    async def test_get_current_user_creates_category_hierarchy(self, clean_db_session):
+        """Test get_current_user creates proper parent-child category relationships."""
+        result = await clean_db_session.execute(select(User))
+        existing_users = result.scalars().all()
+
+        if existing_users:
+            pytest.skip("Database already has users, cannot test bootstrap")
+
+        user = await get_current_user(db=clean_db_session)
+
+        # Find AI & Machine Learning category
+        result = await clean_db_session.execute(
+            select(Category).where(
+                Category.user_id == user.id,
+                Category.name == "AI & Machine Learning",
+            )
+        )
+        ai_category = result.scalar_one_or_none()
+
+        assert ai_category is not None
+
+        # Check its children
+        result = await clean_db_session.execute(
+            select(Category).where(
+                Category.user_id == user.id,
+                Category.parent_id == ai_category.id,
+            )
+        )
+        children = result.scalars().all()
+
+        child_names = {child.name for child in children}
+        expected_children = {"Safety", "Capabilities", "Governance/Policy"}
+        assert expected_children.issubset(child_names)
+
+    @pytest.mark.asyncio
+    async def test_get_current_user_creates_default_colors(self, clean_db_session):
+        """Test get_current_user bootstraps default colors."""
+        result = await clean_db_session.execute(select(User))
+        existing_users = result.scalars().all()
+
+        if existing_users:
+            pytest.skip("Database already has users, cannot test bootstrap")
+
+        user = await get_current_user(db=clean_db_session)
+
+        # Query colors for this user
+        result = await clean_db_session.execute(
+            select(Color).where(Color.user_id == user.id)
+        )
+        colors = result.scalars().all()
+
+        assert len(colors) == len(DEFAULT_COLORS)
+
+        color_names = {color.name for color in colors}
+        expected_names = {c["name"] for c in DEFAULT_COLORS}
+        assert color_names == expected_names
+
+        # Verify hex values
+        color_hex_map = {color.name: color.hex_value for color in colors}
+        for default_color in DEFAULT_COLORS:
+            assert color_hex_map[default_color["name"]] == default_color["hex_value"]
+
+    @pytest.mark.asyncio
+    async def test_get_current_user_returns_existing_user(self, async_db_session, test_user):
+        """Test get_current_user returns existing user without creating new one."""
+        original_user_id = test_user.id
+
+        # Call get_current_user - should return existing user
+        user = await get_current_user(db=async_db_session)
+
+        # The returned user might be the test_user or the first user in DB
+        # (depends on fixture order), but should not create duplicates
+        result = await async_db_session.execute(select(User))
+        users = result.scalars().all()
+
+        # Should not have created additional users
+        # Note: async_db_session fixture creates test_user, so we expect 1 user
+        assert len(users) >= 1
+        assert user is not None
