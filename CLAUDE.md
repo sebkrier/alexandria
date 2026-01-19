@@ -141,3 +141,56 @@ pixi run test-full
 # Database migrations
 pixi run migrate
 ```
+
+---
+
+## E2E Testing with Playwright
+
+End-to-end tests cover the HTMX UI by automating browser interactions.
+
+### Setup (one-time)
+
+```bash
+cd backend
+pixi install
+pixi run playwright-install
+```
+
+### Run E2E Tests
+
+```bash
+# Headless (CI/fast)
+pixi run e2e-headless
+
+# With browser visible
+pixi run e2e
+
+# Debug mode (slow motion)
+pixi run e2e-debug
+
+# Specific test file
+pixi run e2e-headless tests/e2e/test_article_workflow.py
+
+# Specific test
+pixi run e2e-headless -k "test_add_article_via_url"
+```
+
+### E2E Test Structure
+
+| File | Purpose |
+|------|---------|
+| `tests/e2e/conftest.py` | Browser, server, and mock fixtures |
+| `tests/e2e/test_article_workflow.py` | Core article CRUD operations |
+| `tests/e2e/test_article_filtering.py` | Search, filters, view modes |
+| `tests/e2e/test_bulk_operations.py` | Multi-select, bulk actions |
+| `tests/e2e/test_settings.py` | AI providers, colors |
+| `tests/e2e/test_reader_mode.py` | Unread reader navigation |
+| `tests/e2e/test_ask_chat.py` | AI Q&A interface |
+| `tests/e2e/test_taxonomy.py` | Category optimization |
+
+### Key Points
+
+- Tests start a real uvicorn server on a random port
+- External services (AI, extraction) are mocked for speed and reliability
+- Uses real test database (`alexandria_test`)
+- `wait_for_htmx()` helper waits for HTMX requests to complete
