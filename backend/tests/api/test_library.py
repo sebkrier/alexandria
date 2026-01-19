@@ -5,8 +5,9 @@ Coverage target: 80%+ of app/api/routes/library.py
 """
 
 import json
-import pytest
 from io import BytesIO
+
+import pytest
 
 
 def make_valid_backup(

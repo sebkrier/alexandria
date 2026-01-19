@@ -4,11 +4,11 @@ Tests for the articles API endpoints.
 Coverage target: 75%+ of app/api/routes/articles.py
 """
 
-import pytest
 from io import BytesIO
-from unittest.mock import patch, AsyncMock, MagicMock
+from unittest.mock import AsyncMock, MagicMock, patch
 from uuid import uuid4
 
+import pytest
 import pytest_asyncio
 
 from app.models.article import ProcessingStatus, SourceType

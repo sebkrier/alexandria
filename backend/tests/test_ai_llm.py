@@ -8,8 +8,6 @@ Tests the unified LiteLLM interface for all AI providers:
 - Provider configuration
 """
 
-import json
-from unittest.mock import AsyncMock, patch
 
 import pytest
 
@@ -20,7 +18,6 @@ from app.ai.llm import (
     _extract_json,
     complete,
 )
-
 
 # =============================================================================
 # Provider Configuration Tests

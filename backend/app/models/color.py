@@ -1,11 +1,18 @@
+from __future__ import annotations
+
 import uuid
 from datetime import datetime
+from typing import TYPE_CHECKING
 
 from sqlalchemy import DateTime, ForeignKey, Integer, String
 from sqlalchemy.dialects.postgresql import UUID
 from sqlalchemy.orm import Mapped, mapped_column, relationship
 
 from app.database import Base
+
+if TYPE_CHECKING:
+    from app.models.article import Article
+    from app.models.user import User
 
 
 class Color(Base):
@@ -21,5 +28,5 @@ class Color(Base):
     created_at: Mapped[datetime] = mapped_column(DateTime, default=datetime.utcnow)
 
     # Relationships
-    user: Mapped["User"] = relationship(back_populates="colors")
-    articles: Mapped[list["Article"]] = relationship(back_populates="color")
+    user: Mapped[User] = relationship(back_populates="colors")
+    articles: Mapped[list[Article]] = relationship(back_populates="color")

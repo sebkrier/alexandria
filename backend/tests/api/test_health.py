@@ -4,8 +4,9 @@ Tests for the health check endpoint.
 Coverage target: 100% of app/api/routes/health.py
 """
 
+from unittest.mock import AsyncMock, patch
+
 import pytest
-from unittest.mock import patch, AsyncMock
 
 
 class TestHealthCheck:

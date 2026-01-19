@@ -6,14 +6,12 @@ text extraction with PyMuPDF, and title/author extraction.
 """
 
 import tempfile
-from pathlib import Path
 from unittest.mock import AsyncMock, MagicMock, patch
 
 import httpx
 import pytest
 
 from app.extractors.pdf import PDFExtractor
-
 
 # =============================================================================
 # Fixtures

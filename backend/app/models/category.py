@@ -1,11 +1,18 @@
+from __future__ import annotations
+
 import uuid
 from datetime import datetime
+from typing import TYPE_CHECKING
 
 from sqlalchemy import DateTime, ForeignKey, Integer, String, Text
 from sqlalchemy.dialects.postgresql import UUID
 from sqlalchemy.orm import Mapped, mapped_column, relationship
 
 from app.database import Base
+
+if TYPE_CHECKING:
+    from app.models.article_category import ArticleCategory
+    from app.models.user import User
 
 
 class Category(Base):
@@ -27,7 +34,7 @@ class Category(Base):
     )
 
     # Relationships
-    user: Mapped["User"] = relationship(back_populates="categories")
-    parent: Mapped["Category"] = relationship(back_populates="children", remote_side=[id])
-    children: Mapped[list["Category"]] = relationship(back_populates="parent")
-    articles: Mapped[list["ArticleCategory"]] = relationship(back_populates="category")
+    user: Mapped[User] = relationship(back_populates="categories")
+    parent: Mapped[Category] = relationship(back_populates="children", remote_side=[id])
+    children: Mapped[list[Category]] = relationship(back_populates="parent")
+    articles: Mapped[list[ArticleCategory]] = relationship(back_populates="category")

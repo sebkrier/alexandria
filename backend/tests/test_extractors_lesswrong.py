@@ -5,14 +5,12 @@ Tests LessWrong/Alignment Forum URL detection, GraphQL API integration,
 and content extraction from the API response.
 """
 
-from datetime import datetime
 from unittest.mock import AsyncMock, MagicMock, patch
 
 import httpx
 import pytest
 
 from app.extractors.lesswrong import LessWrongExtractor
-
 
 # =============================================================================
 # Fixtures

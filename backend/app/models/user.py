@@ -1,11 +1,21 @@
+from __future__ import annotations
+
 import uuid
 from datetime import datetime
+from typing import TYPE_CHECKING
 
 from sqlalchemy import DateTime, String
 from sqlalchemy.dialects.postgresql import UUID
 from sqlalchemy.orm import Mapped, mapped_column, relationship
 
 from app.database import Base
+
+if TYPE_CHECKING:
+    from app.models.ai_provider import AIProvider
+    from app.models.article import Article
+    from app.models.category import Category
+    from app.models.color import Color
+    from app.models.tag import Tag
 
 
 class User(Base):
@@ -20,8 +30,8 @@ class User(Base):
     )
 
     # Relationships
-    articles: Mapped[list["Article"]] = relationship(back_populates="user")
-    categories: Mapped[list["Category"]] = relationship(back_populates="user")
-    tags: Mapped[list["Tag"]] = relationship(back_populates="user")
-    ai_providers: Mapped[list["AIProvider"]] = relationship(back_populates="user")
-    colors: Mapped[list["Color"]] = relationship(back_populates="user")
+    articles: Mapped[list[Article]] = relationship(back_populates="user")
+    categories: Mapped[list[Category]] = relationship(back_populates="user")
+    tags: Mapped[list[Tag]] = relationship(back_populates="user")
+    ai_providers: Mapped[list[AIProvider]] = relationship(back_populates="user")
+    colors: Mapped[list[Color]] = relationship(back_populates="user")

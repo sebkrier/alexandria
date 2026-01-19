@@ -4,9 +4,9 @@ Tests for the categories API endpoints.
 Coverage target: 85%+ of app/api/routes/categories.py
 """
 
-import pytest
 from uuid import uuid4
 
+import pytest
 import pytest_asyncio
 
 

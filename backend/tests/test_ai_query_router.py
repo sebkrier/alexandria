@@ -8,8 +8,6 @@ Tests query classification and metadata operations:
 - Result formatting for LLM
 """
 
-from datetime import datetime, timedelta
-from uuid import uuid4
 
 import pytest
 
@@ -21,7 +19,6 @@ from app.ai.query_router import (
     execute_metadata_query,
     format_metadata_for_llm,
 )
-
 
 # =============================================================================
 # Query Classification Tests

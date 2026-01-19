@@ -4,7 +4,7 @@ E2E tests for taxonomy optimization: AI-powered category restructuring.
 Tests the category optimization modal and workflow.
 """
 
-from playwright.sync_api import Page, expect
+from playwright.sync_api import Page
 
 from tests.e2e.conftest import wait_for_element
 
@@ -49,7 +49,7 @@ class TestTaxonomyAnalysis:
         wait_for_element(page, "text=Alexandria")
 
         # Just verify page loads and optimize button exists
-        optimize_btn = page.locator("button:has-text('Optimize Categories')")
+        _optimize_btn = page.locator("button:has-text('Optimize Categories')")
         # Button may or may not be visible depending on page state
         assert page.url is not None
 

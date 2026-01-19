@@ -4,9 +4,9 @@ Tests for the notes API endpoints.
 Coverage target: 90%+ of app/api/routes/notes.py
 """
 
-import pytest
 from uuid import uuid4
 
+import pytest
 import pytest_asyncio
 
 

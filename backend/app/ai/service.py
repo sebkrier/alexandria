@@ -320,7 +320,7 @@ class AIService:
             select(Category).where(
                 Category.user_id == user_id,
                 Category.name == suggestion.category.name,
-                Category.parent_id == None,  # Must be a top-level category
+                Category.parent_id.is_(None),  # Must be a top-level category
             )
         )
         parent_category = parent_result.scalar_one_or_none()

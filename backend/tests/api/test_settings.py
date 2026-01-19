@@ -4,9 +4,10 @@ Tests for the settings API endpoints (providers, colors, prompts).
 Coverage target: 85%+ of app/api/routes/settings.py
 """
 
-import pytest
-from unittest.mock import patch, AsyncMock
+from unittest.mock import AsyncMock, patch
 from uuid import uuid4
+
+import pytest
 
 
 class TestAvailableProviders:
@@ -28,7 +29,7 @@ class TestAvailableProviders:
         assert "google" in providers
 
         # Each provider should have models
-        for provider_name, provider_info in providers.items():
+        for _provider_name, provider_info in providers.items():
             assert "models" in provider_info
             assert len(provider_info["models"]) > 0
 

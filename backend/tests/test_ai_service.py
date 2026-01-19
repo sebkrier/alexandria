@@ -9,15 +9,14 @@ Tests the core article processing pipeline including:
 - Error handling and status updates
 """
 
-from unittest.mock import AsyncMock, MagicMock, patch
+from unittest.mock import patch
 from uuid import uuid4
 
 import pytest
 
-from app.ai.base import CategoryInfo, CategorySuggestion, Summary, TagSuggestion
+from app.ai.base import CategoryInfo, CategorySuggestion, TagSuggestion
 from app.ai.service import AIService
 from app.models.article import Article, ProcessingStatus
-
 
 # =============================================================================
 # Happy Path Tests
@@ -182,7 +181,7 @@ async def test_process_article_creates_new_category(
         select(Category).where(
             Category.user_id == test_user.id,
             Category.name == new_category_name,
-            Category.parent_id == None,
+            Category.parent_id.is_(None),
         )
     )
     parent = parent_result.scalar_one_or_none()
@@ -512,7 +511,7 @@ async def test_apply_category_creates_hierarchy(async_db_session, test_user, tes
         select(Category).where(
             Category.user_id == test_user.id,
             Category.name == "Parent Cat",
-            Category.parent_id == None,
+            Category.parent_id.is_(None),
         )
     )
     parent_cat = parent.scalar_one()
@@ -589,7 +588,7 @@ async def test_generate_article_embedding_success(
 @pytest.mark.asyncio
 async def test_generate_article_embedding_empty_content(async_db_session, test_user):
     """Test embedding generation with no content returns None."""
-    from app.models.article import Article, ProcessingStatus, SourceType
+    from app.models.article import ProcessingStatus, SourceType
 
     # Create article with no content
     empty_article = Article(

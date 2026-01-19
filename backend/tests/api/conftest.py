@@ -7,14 +7,11 @@ AI services, and embedding generation to enable fast, isolated tests.
 
 from datetime import datetime
 from unittest.mock import AsyncMock, MagicMock, patch
-from uuid import uuid4
 
 import pytest
-import pytest_asyncio
 
 from app.ai.base import CategoryInfo, CategorySuggestion, Summary, TagSuggestion
 from app.extractors.base import ExtractedContent
-
 
 # =============================================================================
 # Mock Data Factories

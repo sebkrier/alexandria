@@ -62,9 +62,9 @@ def decrypt_api_key(encrypted_key: bytes) -> str:
     fernet = get_fernet()
     try:
         return fernet.decrypt(encrypted_key).decode()
-    except InvalidToken:
+    except InvalidToken as e:
         logger.error("Failed to decrypt API key - invalid token or wrong encryption key")
-        raise ValueError("Failed to decrypt API key. The encryption key may have changed.")
+        raise ValueError("Failed to decrypt API key. The encryption key may have changed.") from e
 
 
 def mask_api_key(api_key: str, visible_chars: int = 4) -> str:
