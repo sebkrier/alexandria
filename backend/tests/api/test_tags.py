@@ -121,9 +121,7 @@ class TestDeleteTag:
         assert "not found" in response.json()["detail"].lower()
 
     @pytest.mark.asyncio
-    async def test_delete_tag_wrong_user(
-        self, test_client, async_db_session
-    ):
+    async def test_delete_tag_wrong_user(self, test_client, async_db_session):
         """Test user cannot delete another user's tag."""
         from app.models.tag import Tag
         from app.models.user import User

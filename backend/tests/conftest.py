@@ -208,8 +208,12 @@ async def async_db_session(test_engine) -> AsyncGenerator[AsyncSession, None]:
             # Delete related data
             if article_ids:
                 await session.execute(delete(Note).where(Note.article_id.in_(article_ids)))
-                await session.execute(delete(ArticleCategory).where(ArticleCategory.article_id.in_(article_ids)))
-                await session.execute(delete(ArticleTag).where(ArticleTag.article_id.in_(article_ids)))
+                await session.execute(
+                    delete(ArticleCategory).where(ArticleCategory.article_id.in_(article_ids))
+                )
+                await session.execute(
+                    delete(ArticleTag).where(ArticleTag.article_id.in_(article_ids))
+                )
 
             await session.execute(delete(Article).where(Article.user_id == test_user.id))
             await session.execute(delete(Category).where(Category.user_id == test_user.id))
@@ -230,7 +234,9 @@ async def test_user(async_db_session: AsyncSession):
 
 
 @pytest_asyncio.fixture
-async def test_client(async_db_session: AsyncSession, test_user) -> AsyncGenerator[AsyncClient, None]:
+async def test_client(
+    async_db_session: AsyncSession, test_user
+) -> AsyncGenerator[AsyncClient, None]:
     """
     Create an httpx AsyncClient for testing API routes.
 

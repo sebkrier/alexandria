@@ -4,7 +4,6 @@ E2E tests for settings page: AI providers and colors.
 Tests provider management and color customization.
 """
 
-
 from playwright.sync_api import Page, expect
 
 from tests.e2e.conftest import wait_for_element
@@ -68,9 +67,7 @@ class TestAIProviders:
                 provider_select.select_option("anthropic")
                 page.wait_for_timeout(200)
 
-    def test_test_ai_provider(
-        self, page: Page, app_server: str, test_ai_provider_in_db: dict
-    ):
+    def test_test_ai_provider(self, page: Page, app_server: str, test_ai_provider_in_db: dict):
         """Test connection button sends test request."""
         page.goto(f"{app_server}/app/settings")
         page.wait_for_timeout(1000)
@@ -81,9 +78,7 @@ class TestAIProviders:
             test_btn.click()
             page.wait_for_timeout(500)
 
-    def test_set_default_provider(
-        self, page: Page, app_server: str, test_ai_provider_in_db: dict
-    ):
+    def test_set_default_provider(self, page: Page, app_server: str, test_ai_provider_in_db: dict):
         """Clicking provider card sets it as default."""
         page.goto(f"{app_server}/app/settings")
         page.wait_for_timeout(1000)
@@ -94,9 +89,7 @@ class TestAIProviders:
             # Provider should exist on page
             expect(provider_card).to_be_visible()
 
-    def test_delete_ai_provider(
-        self, page: Page, app_server: str, test_ai_provider_in_db: dict
-    ):
+    def test_delete_ai_provider(self, page: Page, app_server: str, test_ai_provider_in_db: dict):
         """Delete button removes provider."""
         page.goto(f"{app_server}/app/settings")
         page.wait_for_timeout(1000)

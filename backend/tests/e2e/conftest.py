@@ -201,8 +201,6 @@ def app_server(_start_initial_server) -> Generator[str, None, None]:
     yield _server_base_url
 
 
-
-
 @pytest.fixture(scope="session")
 def browser() -> Generator[Browser, None, None]:
     """Playwright browser instance (session-scoped for performance)."""

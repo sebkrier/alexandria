@@ -152,8 +152,14 @@ class TestExtractorSelection:
 
     def test_lesswrong_can_handle(self):
         """Test LessWrongExtractor can_handle detection."""
-        assert LessWrongExtractor.can_handle("https://www.lesswrong.com/posts/abc123/post-slug") is True
-        assert LessWrongExtractor.can_handle("https://www.alignmentforum.org/posts/abc123/post-slug") is True
+        assert (
+            LessWrongExtractor.can_handle("https://www.lesswrong.com/posts/abc123/post-slug")
+            is True
+        )
+        assert (
+            LessWrongExtractor.can_handle("https://www.alignmentforum.org/posts/abc123/post-slug")
+            is True
+        )
         assert LessWrongExtractor.can_handle("https://example.com/post") is False
 
 
@@ -250,10 +256,15 @@ class TestExtractContent:
 
         with (
             patch.object(
-                ArxivExtractor, "extract", new_callable=AsyncMock, side_effect=Exception("Extraction failed")
+                ArxivExtractor,
+                "extract",
+                new_callable=AsyncMock,
+                side_effect=Exception("Extraction failed"),
             ),
             patch(
-                "app.extractors._detect_content_type", new_callable=AsyncMock, return_value="text/html"
+                "app.extractors._detect_content_type",
+                new_callable=AsyncMock,
+                return_value="text/html",
             ) as mock_detect,
             patch.object(URLExtractor, "extract", new_callable=AsyncMock) as mock_url_extract,
         ):

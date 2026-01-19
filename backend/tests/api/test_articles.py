@@ -194,9 +194,7 @@ class TestListArticles:
         async_db_session.add(ac)
         await async_db_session.commit()
 
-        response = await test_client.get(
-            f"/api/articles?category_id={test_category.id}"
-        )
+        response = await test_client.get(f"/api/articles?category_id={test_category.id}")
 
         assert response.status_code == 200
         data = response.json()
@@ -222,9 +220,7 @@ class TestListArticles:
         assert len(data["items"]) == 1
 
     @pytest.mark.asyncio
-    async def test_list_articles_filter_by_status(
-        self, test_client, async_db_session, test_user
-    ):
+    async def test_list_articles_filter_by_status(self, test_client, async_db_session, test_user):
         """Test filtering articles by processing status."""
         from app.models.article import Article
 
@@ -247,9 +243,7 @@ class TestListArticles:
         assert data["items"][0]["processing_status"] == "pending"
 
     @pytest.mark.asyncio
-    async def test_list_articles_filter_by_is_read(
-        self, test_client, multiple_articles
-    ):
+    async def test_list_articles_filter_by_is_read(self, test_client, multiple_articles):
         """Test filtering articles by read status."""
         response = await test_client.get("/api/articles?is_read=false")
 
@@ -369,9 +363,7 @@ class TestUnreadReader:
         assert data["total"] == 0
 
     @pytest.mark.asyncio
-    async def test_get_unread_navigation(
-        self, test_client, async_db_session, test_user
-    ):
+    async def test_get_unread_navigation(self, test_client, async_db_session, test_user):
         """Test getting navigation for unread reader."""
         from app.models.article import Article
 
@@ -394,9 +386,7 @@ class TestUnreadReader:
             await async_db_session.refresh(a)
 
         # Get navigation for middle article
-        response = await test_client.get(
-            f"/api/articles/unread/navigation/{articles[1].id}"
-        )
+        response = await test_client.get(f"/api/articles/unread/navigation/{articles[1].id}")
 
         assert response.status_code == 200
         data = response.json()
@@ -432,9 +422,7 @@ class TestUpdateArticle:
         assert response.json()["is_read"] is True
 
     @pytest.mark.asyncio
-    async def test_update_article_color(
-        self, test_client, test_article, test_color
-    ):
+    async def test_update_article_color(self, test_client, test_article, test_color):
         """Test updating article color."""
         response = await test_client.patch(
             f"/api/articles/{test_article.id}",
@@ -445,9 +433,7 @@ class TestUpdateArticle:
         assert response.json()["color_id"] == str(test_color.id)
 
     @pytest.mark.asyncio
-    async def test_update_article_categories(
-        self, test_client, test_article, test_category
-    ):
+    async def test_update_article_categories(self, test_client, test_article, test_category):
         """Test updating article categories."""
         response = await test_client.patch(
             f"/api/articles/{test_article.id}",
@@ -518,9 +504,7 @@ class TestProcessArticle:
             mock_service.process_article = AsyncMock(return_value=test_article)
             mock_service_class.return_value = mock_service
 
-            response = await test_client.post(
-                f"/api/articles/{test_article.id}/process"
-            )
+            response = await test_client.post(f"/api/articles/{test_article.id}/process")
 
         assert response.status_code == 200
 
@@ -565,9 +549,7 @@ class TestBulkOperations:
         assert len(data["failed"]) == 1
 
     @pytest.mark.asyncio
-    async def test_bulk_update_color(
-        self, test_client, multiple_articles, test_color
-    ):
+    async def test_bulk_update_color(self, test_client, multiple_articles, test_color):
         """Test bulk updating article colors."""
         ids = [str(a.id) for a in multiple_articles[:3]]
 
@@ -632,9 +614,7 @@ class TestAskQuestion:
                 from app.ai.query_router import QueryType
 
                 mock_classify.return_value = QueryType.CONTENT
-                with patch(
-                    "app.api.routes.articles.generate_query_embedding"
-                ) as mock_embed:
+                with patch("app.api.routes.articles.generate_query_embedding") as mock_embed:
                     mock_embed.return_value = [0.1] * 768
 
                     response = await test_client.post(
@@ -661,15 +641,11 @@ class TestAskQuestion:
                 from app.ai.query_router import QueryType
 
                 mock_classify.return_value = QueryType.METADATA
-                with patch(
-                    "app.api.routes.articles.detect_metadata_operation"
-                ) as mock_detect:
+                with patch("app.api.routes.articles.detect_metadata_operation") as mock_detect:
                     from app.ai.query_router import MetadataOperation
 
                     mock_detect.return_value = (MetadataOperation.TOTAL_COUNT, {})
-                    with patch(
-                        "app.api.routes.articles.execute_metadata_query"
-                    ) as mock_exec:
+                    with patch("app.api.routes.articles.execute_metadata_query") as mock_exec:
                         mock_exec.return_value = {"count": 1}
                         with patch(
                             "app.api.routes.articles.format_metadata_for_llm"
@@ -727,9 +703,7 @@ class TestHelperFunctions:
         from app.api.routes.articles import determine_media_type
         from app.schemas.article import MediaType
 
-        result = determine_media_type(
-            SourceType.URL, "https://example.substack.com/p/my-post"
-        )
+        result = determine_media_type(SourceType.URL, "https://example.substack.com/p/my-post")
         assert result == MediaType.NEWSLETTER
 
     def test_determine_media_type_blog(self):

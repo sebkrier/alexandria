@@ -87,9 +87,7 @@ class TestCreateProvider:
         assert data["is_active"] is True
 
     @pytest.mark.asyncio
-    async def test_create_provider_second_not_default(
-        self, test_client, test_ai_provider
-    ):
+    async def test_create_provider_second_not_default(self, test_client, test_ai_provider):
         """Test second provider is not automatically default."""
         response = await test_client.post(
             "/api/settings/providers",
@@ -112,9 +110,7 @@ class TestGetProvider:
     @pytest.mark.asyncio
     async def test_get_provider_success(self, test_client, test_ai_provider):
         """Test getting a single provider."""
-        response = await test_client.get(
-            f"/api/settings/providers/{test_ai_provider.id}"
-        )
+        response = await test_client.get(f"/api/settings/providers/{test_ai_provider.id}")
 
         assert response.status_code == 200
         data = response.json()
@@ -198,9 +194,7 @@ class TestUpdateProvider:
         assert response.json()["is_default"] is True
 
         # Verify first is no longer default
-        first_response = await test_client.get(
-            f"/api/settings/providers/{test_ai_provider.id}"
-        )
+        first_response = await test_client.get(f"/api/settings/providers/{test_ai_provider.id}")
         assert first_response.json()["is_default"] is False
 
     @pytest.mark.asyncio
@@ -221,9 +215,7 @@ class TestDeleteProvider:
     @pytest.mark.asyncio
     async def test_delete_provider_success(self, test_client, test_ai_provider):
         """Test deleting a provider."""
-        response = await test_client.delete(
-            f"/api/settings/providers/{test_ai_provider.id}"
-        )
+        response = await test_client.delete(f"/api/settings/providers/{test_ai_provider.id}")
 
         assert response.status_code == 204
 
@@ -261,9 +253,7 @@ class TestDeleteProvider:
         await async_db_session.commit()
 
         # Delete the default provider
-        response = await test_client.delete(
-            f"/api/settings/providers/{test_ai_provider.id}"
-        )
+        response = await test_client.delete(f"/api/settings/providers/{test_ai_provider.id}")
         assert response.status_code == 204
 
         # Check second is now default
@@ -284,9 +274,7 @@ class TestTestProvider:
             mock_provider.health_check = AsyncMock(return_value=True)
             mock_get.return_value = mock_provider
 
-            response = await test_client.post(
-                f"/api/settings/providers/{test_ai_provider.id}/test"
-            )
+            response = await test_client.post(f"/api/settings/providers/{test_ai_provider.id}/test")
 
             assert response.status_code == 200
             data = response.json()
@@ -301,9 +289,7 @@ class TestTestProvider:
             mock_provider.health_check = AsyncMock(return_value=False)
             mock_get.return_value = mock_provider
 
-            response = await test_client.post(
-                f"/api/settings/providers/{test_ai_provider.id}/test"
-            )
+            response = await test_client.post(f"/api/settings/providers/{test_ai_provider.id}/test")
 
             assert response.status_code == 200
             data = response.json()

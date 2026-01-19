@@ -81,8 +81,6 @@ class Article(Base):
     tags: Mapped[list[ArticleTag]] = relationship(
         back_populates="article", cascade="all, delete-orphan"
     )
-    notes: Mapped[list[Note]] = relationship(
-        back_populates="article", cascade="all, delete-orphan"
-    )
+    notes: Mapped[list[Note]] = relationship(back_populates="article", cascade="all, delete-orphan")
 
     __table_args__ = (Index("ix_articles_search_vector", "search_vector", postgresql_using="gin"),)
