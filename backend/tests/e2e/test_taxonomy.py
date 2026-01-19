@@ -4,7 +4,7 @@ E2E tests for taxonomy optimization: AI-powered category restructuring.
 Tests the category optimization modal and workflow.
 """
 
-from playwright.sync_api import Page
+from playwright.sync_api import Page, expect
 
 from tests.e2e.conftest import wait_for_element
 
@@ -19,11 +19,12 @@ class TestTaxonomyModal:
 
         # Click Optimize Categories button
         optimize_btn = page.locator("button:has-text('Optimize Categories')")
-        if optimize_btn.is_visible():
-            optimize_btn.click()
-            page.wait_for_timeout(500)
-            # Just verify the button was clickable - modal behavior may vary
-            assert page.url is not None
+        expect(optimize_btn).to_be_visible()
+        optimize_btn.click()
+        page.wait_for_timeout(500)
+
+        # Verify modal opens
+        expect(page.locator("#taxonomy-modal, #optimize-modal, .modal")).to_be_attached()
 
     def test_taxonomy_modal_cancel(self, page: Page, app_server: str):
         """Cancel button closes taxonomy modal."""
@@ -31,7 +32,7 @@ class TestTaxonomyModal:
         wait_for_element(page, "text=Alexandria")
 
         # Just verify page loads correctly
-        assert page.url is not None
+        expect(page.get_by_role("banner").get_by_role("link", name="Alexandria")).to_be_visible()
 
 
 class TestTaxonomyAnalysis:
@@ -48,10 +49,9 @@ class TestTaxonomyAnalysis:
         page.goto(f"{app_server}/app/")
         wait_for_element(page, "text=Alexandria")
 
-        # Just verify page loads and optimize button exists
-        _optimize_btn = page.locator("button:has-text('Optimize Categories')")
-        # Button may or may not be visible depending on page state
-        assert page.url is not None
+        # Verify optimize button exists
+        optimize_btn = page.locator("button:has-text('Optimize Categories')")
+        expect(optimize_btn).to_be_visible()
 
     def test_taxonomy_apply_changes(
         self,
@@ -66,5 +66,5 @@ class TestTaxonomyAnalysis:
         page.goto(f"{app_server}/app/")
         wait_for_element(page, "text=Alexandria")
 
-        # Just verify page loads
-        assert page.url is not None
+        # Verify page loads with optimize button
+        expect(page.locator("button:has-text('Optimize Categories')")).to_be_visible()

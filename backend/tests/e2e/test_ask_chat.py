@@ -18,19 +18,20 @@ class TestAskPage:
         wait_for_element(page, "text=Alexandria")
 
         # Should show input area
-        # The ask page may have a text input or textarea
-        page.wait_for_timeout(500)
+        question_input = page.locator("textarea, input[type='text']")
+        expect(question_input.first).to_be_visible()
 
     def test_ask_sidebar_link(self, page: Page, app_server: str):
         """Clicking Ask in sidebar navigates to ask page."""
         page.goto(f"{app_server}/app/")
         wait_for_element(page, "text=Alexandria")
 
-        # Look for Ask link
+        # Click Ask link
         ask_link = page.locator("a[href='/app/ask']")
-        if ask_link.is_visible():
-            ask_link.click()
-            page.wait_for_url("**/ask", timeout=5000)
+        expect(ask_link).to_be_visible()
+        ask_link.click()
+        page.wait_for_url("**/ask", timeout=5000)
+        assert "ask" in page.url
 
 
 class TestAskExampleQuestions:
@@ -41,10 +42,13 @@ class TestAskExampleQuestions:
         page.goto(f"{app_server}/app/ask")
         page.wait_for_timeout(500)
 
-        # Look for example questions
+        # Verify page loaded with question input
+        question_input = page.locator("textarea, input[type='text']")
+        expect(question_input.first).to_be_visible()
+
+        # Look for example questions - they may or may not exist
         examples = page.locator("button:has-text('What')")
         if examples.count() > 0:
-            # Click an example
             examples.first.click()
             page.wait_for_timeout(300)
 
@@ -59,17 +63,18 @@ class TestAskQuery:
         page.goto(f"{app_server}/app/ask")
         page.wait_for_timeout(500)
 
-        # Find input
+        # Find and fill input
         question_input = page.locator("textarea, input[type='text']")
-        if question_input.is_visible():
-            question_input.fill("What are the main topics in my library?")
+        expect(question_input.first).to_be_visible()
+        question_input.first.fill("What are the main topics in my library?")
 
-            # Submit
-            submit_btn = page.locator("button[type='submit']")
-            if submit_btn.is_visible():
-                submit_btn.click()
-                # Wait for response or loading
-                page.wait_for_timeout(1000)
+        # Submit
+        submit_btn = page.locator("button[type='submit']")
+        expect(submit_btn.first).to_be_visible()
+        submit_btn.first.click()
+
+        # Wait for response or loading
+        page.wait_for_timeout(1000)
 
     def test_ask_loading_state(
         self, page: Page, app_server: str, test_article_in_db: dict, test_ai_provider_in_db: dict
@@ -78,15 +83,18 @@ class TestAskQuery:
         page.goto(f"{app_server}/app/ask")
         page.wait_for_timeout(500)
 
+        # Fill question
         question_input = page.locator("textarea, input[type='text']")
-        if question_input.is_visible():
-            question_input.fill("Test question")
+        expect(question_input.first).to_be_visible()
+        question_input.first.fill("Test question")
 
-            submit_btn = page.locator("button[type='submit']")
-            if submit_btn.is_visible():
-                submit_btn.click()
-                # Should show loading indicator
-                page.wait_for_timeout(200)
+        # Submit
+        submit_btn = page.locator("button[type='submit']")
+        expect(submit_btn.first).to_be_visible()
+        submit_btn.first.click()
+
+        # Should show loading indicator or process
+        page.wait_for_timeout(200)
 
 
 class TestAskResponse:
@@ -119,13 +127,15 @@ class TestAskErrors:
         page.goto(f"{app_server}/app/ask")
         page.wait_for_timeout(500)
 
-        # Without a provider, submitting should show an error
+        # Fill question
         question_input = page.locator("textarea, input[type='text']")
-        if question_input.is_visible():
-            question_input.fill("Test question without provider")
+        expect(question_input.first).to_be_visible()
+        question_input.first.fill("Test question without provider")
 
-            submit_btn = page.locator("button[type='submit']")
-            if submit_btn.is_visible():
-                submit_btn.click()
-                # Should show error message eventually
-                page.wait_for_timeout(1000)
+        # Submit
+        submit_btn = page.locator("button[type='submit']")
+        expect(submit_btn.first).to_be_visible()
+        submit_btn.first.click()
+
+        # Should show error message eventually
+        page.wait_for_timeout(1000)
