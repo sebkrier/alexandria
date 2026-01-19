@@ -6,12 +6,11 @@ and content extraction from Substack's HTML structure.
 """
 
 from datetime import datetime
-from unittest.mock import AsyncMock, MagicMock, patch
+from unittest.mock import AsyncMock, patch
 
 import pytest
 
 from app.extractors.substack import SubstackExtractor
-
 
 # =============================================================================
 # Fixtures
@@ -201,7 +200,7 @@ class TestFetchHtml:
         mock_process.communicate = AsyncMock(return_value=(long_content, b""))
 
         with patch("asyncio.create_subprocess_exec", return_value=mock_process) as mock_exec:
-            result = await extractor._fetch_html("https://example.substack.com/p/post")
+            await extractor._fetch_html("https://example.substack.com/p/post")
 
             # Verify curl was called
             mock_exec.assert_called_once()

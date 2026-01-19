@@ -27,7 +27,7 @@ sys.path.insert(0, str(Path(__file__).parent.parent))
 
 # Check pgvector availability
 try:
-    from pgvector.sqlalchemy import Vector
+    from pgvector.sqlalchemy import Vector  # noqa: F401
 
     PGVECTOR_AVAILABLE = True
 except ImportError:

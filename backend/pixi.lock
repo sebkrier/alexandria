@@ -453,7 +453,7 @@ packages:
 - pypi: ./
   name: alexandria
   version: 2.0.0
-  sha256: 766de12ab725496de40b2de0830dffcd0eb679a1ad62d362a86661e8ff201d2c
+  sha256: 0c231f57bc5d4c64aa1a63135bb48178e7d04aca427689068b0683eb64a76df9
   requires_dist:
   - fastapi>=0.109.0
   - uvicorn[standard]>=0.27.0

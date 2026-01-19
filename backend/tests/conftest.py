@@ -7,7 +7,7 @@ This module provides two sets of fixtures:
 """
 
 import os
-from typing import AsyncGenerator
+from collections.abc import AsyncGenerator
 from uuid import uuid4
 
 import psycopg_pool
@@ -187,6 +187,9 @@ async def async_db_session(test_engine) -> AsyncGenerator[AsyncSession, None]:
         try:
             await session.rollback()  # Rollback any uncommitted changes
 
+            # Delete in correct order to respect foreign keys
+            from sqlalchemy import delete, select
+
             from app.models.ai_provider import AIProvider
             from app.models.article import Article
             from app.models.article_category import ArticleCategory
@@ -195,9 +198,6 @@ async def async_db_session(test_engine) -> AsyncGenerator[AsyncSession, None]:
             from app.models.color import Color
             from app.models.note import Note
             from app.models.tag import Tag
-
-            # Delete in correct order to respect foreign keys
-            from sqlalchemy import delete, select
 
             # Get article IDs for this user
             article_ids_result = await session.execute(
@@ -583,7 +583,7 @@ def mock_fitz():
             mock_fitz.return_value = mock_doc
             # Your test code...
     """
-    from unittest.mock import MagicMock, patch
+    from unittest.mock import patch
 
     with patch("fitz.open") as mock:
         yield mock

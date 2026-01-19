@@ -5,7 +5,7 @@ Tests the sequential reading flow through unread articles.
 """
 
 import pytest
-from playwright.sync_api import Page, expect
+from playwright.sync_api import Page
 
 from tests.e2e.conftest import wait_for_element
 

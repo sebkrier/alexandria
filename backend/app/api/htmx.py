@@ -5,6 +5,7 @@ These routes return HTML instead of JSON, and are used by the HTMX frontend.
 The JSON API routes in /api/* remain unchanged for backwards compatibility.
 """
 
+import logging
 from pathlib import Path
 from uuid import UUID
 
@@ -15,7 +16,7 @@ from sqlalchemy import delete, func, or_, select
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy.orm import selectinload
 
-from app.database import async_session_maker, get_db
+from app.database import get_db
 from app.models.article import Article, ProcessingStatus, SourceType
 from app.models.article_category import ArticleCategory
 from app.models.article_tag import ArticleTag
@@ -23,8 +24,11 @@ from app.models.category import Category
 from app.models.color import Color
 from app.models.tag import Tag
 from app.models.user import User
-from app.schemas.article import MediaType
+from app.tasks import process_article_background
+from app.utils.article_helpers import calculate_reading_time, determine_media_type_str
 from app.utils.auth import get_current_user
+
+logger = logging.getLogger(__name__)
 
 router = APIRouter()
 
@@ -32,106 +36,10 @@ router = APIRouter()
 TEMPLATES_DIR = Path(__file__).parent.parent.parent / "templates"
 templates = Jinja2Templates(directory=str(TEMPLATES_DIR))
 
-# Configure logging
-import logging
-
-logging.basicConfig(level=logging.INFO)
-logger = logging.getLogger(__name__)
-
-
-# =============================================================================
-# Background Processing Function (module-level for proper BackgroundTasks support)
-# =============================================================================
-
-
-async def process_article_background(article_id: UUID, user_id: UUID) -> None:
-    """
-    Process an article in the background.
-    This is a module-level function to work properly with FastAPI BackgroundTasks.
-    """
-    logger.info(f"Background task started for article {article_id}")
-    async with async_session_maker() as db:
-        try:
-            from app.ai.service import AIService
-
-            ai_service = AIService(db)
-            await ai_service.process_article(article_id=article_id, user_id=user_id)
-            logger.info(f"Background processing completed for article {article_id}")
-        except Exception as e:
-            logger.error(
-                f"Background processing failed for article {article_id}: {e}", exc_info=True
-            )
-            # Update article status to failed
-            try:
-                result = await db.execute(select(Article).where(Article.id == article_id))
-                article = result.scalar_one_or_none()
-                if article:
-                    article.processing_status = ProcessingStatus.FAILED
-                    article.processing_error = str(e)
-                    await db.commit()
-            except Exception as update_err:
-                logger.error(f"Failed to update article status: {update_err}")
-
 
 # =============================================================================
 # Helper functions for converting models to template-friendly dicts
 # =============================================================================
-
-
-def calculate_reading_time(word_count: int | None) -> int | None:
-    """Calculate reading time in minutes (200 words per minute)"""
-    if word_count is None:
-        return None
-    return max(1, round(word_count / 200))
-
-
-def determine_media_type(source_type: SourceType, original_url: str | None) -> str:
-    """Determine user-friendly media type from source_type and URL"""
-    if source_type == SourceType.ARXIV:
-        return "paper"
-    if source_type == SourceType.VIDEO:
-        return "video"
-    if source_type == SourceType.PDF:
-        return "pdf"
-
-    if source_type == SourceType.URL and original_url:
-        url_lower = original_url.lower()
-
-        if "substack.com" in url_lower or "/p/" in url_lower:
-            return "newsletter"
-
-        blog_indicators = [
-            "medium.com",
-            "dev.to",
-            "hashnode.",
-            "wordpress.com",
-            "/blog/",
-            ".blog.",
-            "blogger.com",
-            "ghost.io",
-        ]
-        if any(indicator in url_lower for indicator in blog_indicators):
-            return "blog"
-
-        paper_indicators = [
-            "arxiv.org",
-            "doi.org",
-            "nature.com",
-            "science.org",
-            "ieee.org",
-            "acm.org",
-            "springer.com",
-            "wiley.com",
-            "researchgate.net",
-            "semanticscholar.org",
-            ".edu/",
-            "pubmed",
-            "ncbi.nlm.nih.gov",
-        ]
-        if any(indicator in url_lower for indicator in paper_indicators):
-            return "paper"
-
-    return "article"
 
 
 def article_to_dict(article: Article) -> dict:
@@ -181,7 +89,7 @@ def article_to_dict(article: Article) -> dict:
     return {
         "id": str(article.id),
         "source_type": source_type_str,
-        "media_type": determine_media_type(article.source_type, article.original_url),
+        "media_type": determine_media_type_str(article.source_type, article.original_url),
         "original_url": article.original_url,
         "title": article.title or "Untitled",
         "authors": article.authors or [],
@@ -290,7 +198,7 @@ async def fetch_tags(db: AsyncSession, user_id: UUID) -> list[dict]:
 async def fetch_unread_count(db: AsyncSession, user_id: UUID) -> int:
     """Count unread articles (is_read == False)."""
     result = await db.execute(
-        select(func.count(Article.id)).where(Article.user_id == user_id, Article.is_read == False)
+        select(func.count(Article.id)).where(Article.user_id == user_id, Article.is_read.is_(False))
     )
     return result.scalar() or 0
 
@@ -678,7 +586,7 @@ def article_to_detail_dict(article: Article) -> dict:
     return {
         "id": str(article.id),
         "source_type": source_type_str,
-        "media_type": determine_media_type(article.source_type, article.original_url),
+        "media_type": determine_media_type_str(article.source_type, article.original_url),
         "original_url": article.original_url,
         "title": article.title or "Untitled",
         "authors": article.authors or [],
@@ -1163,7 +1071,7 @@ async def get_article_processing_status(
         """)
 
     # Completed - show success briefly then trigger page refresh
-    return HTMLResponse(f"""
+    return HTMLResponse("""
     <div id="processing-status-banner">
         <div class="mb-6 p-4 rounded-lg border bg-article-green/10 border-article-green/30">
             <div class="flex items-center gap-3">
@@ -1177,7 +1085,7 @@ async def get_article_processing_status(
             </div>
         </div>
     </div>
-    <script>setTimeout(function() {{ window.location.reload(); }}, 1000);</script>
+    <script>setTimeout(function() { window.location.reload(); }, 1000);</script>
     """)
 
 
@@ -1240,14 +1148,14 @@ async def settings_page(
     """Settings page with AI providers and colors."""
     from app.ai.factory import get_available_providers
     from app.ai.prompts import (
-        SUMMARY_SYSTEM_PROMPT,
-        EXTRACT_SUMMARY_PROMPT,
-        TAGS_SYSTEM_PROMPT,
-        TAGS_USER_PROMPT,
         CATEGORY_SYSTEM_PROMPT,
         CATEGORY_USER_PROMPT,
+        EXTRACT_SUMMARY_PROMPT,
         QUESTION_SYSTEM_PROMPT,
         QUESTION_USER_PROMPT,
+        SUMMARY_SYSTEM_PROMPT,
+        TAGS_SYSTEM_PROMPT,
+        TAGS_USER_PROMPT,
     )
     from app.models.ai_provider import AIProvider as AIProviderModel
     from app.utils.encryption import decrypt_api_key, mask_api_key
@@ -1356,7 +1264,7 @@ async def create_provider(
     """Create a new AI provider."""
     from app.models.ai_provider import AIProvider as AIProviderModel
     from app.models.ai_provider import ProviderName
-    from app.utils.encryption import decrypt_api_key, encrypt_api_key, mask_api_key
+    from app.utils.encryption import encrypt_api_key
 
     form = await request.form()
     provider_name = form.get("provider_name")
@@ -1466,7 +1374,7 @@ async def set_default_provider(
     result = await db.execute(
         select(AIProviderModel).where(
             AIProviderModel.user_id == current_user.id,
-            AIProviderModel.is_default == True,  # noqa: E712
+            AIProviderModel.is_default.is_(True),
         )
     )
     for p in result.scalars().all():
@@ -1912,7 +1820,8 @@ async def bulk_mark_read(
                 if color_id:
                     article.color_id = color_id
                 count += 1
-        except Exception:
+        except Exception as e:
+            logger.warning(f"Failed to mark article {article_id} as read: {e}")
             continue
 
     await db.commit()
@@ -1971,7 +1880,8 @@ async def bulk_mark_unread(
             if article:
                 article.is_read = False
                 count += 1
-        except Exception:
+        except Exception as e:
+            logger.warning(f"Failed to mark article {article_id} as unread: {e}")
             continue
 
     await db.commit()
@@ -2000,7 +1910,7 @@ async def sidebar_unread_count(
     result = await db.execute(
         select(func.count(Article.id)).where(
             Article.user_id == current_user.id,
-            Article.is_read == False,
+            Article.is_read.is_(False),
         )
     )
     unread_count = result.scalar() or 0
@@ -2072,7 +1982,8 @@ async def bulk_delete(
             if article:
                 await db.delete(article)
                 count += 1
-        except Exception:
+        except Exception as e:
+            logger.warning(f"Failed to delete article {article_id}: {e}")
             continue
 
     await db.commit()
@@ -2132,7 +2043,8 @@ async def bulk_update_color(
             if article:
                 article.color_id = UUID(color_id) if color_id else None
                 count += 1
-        except Exception:
+        except Exception as e:
+            logger.warning(f"Failed to update color for article {article_id}: {e}")
             continue
 
     await db.commit()
@@ -2200,7 +2112,8 @@ async def bulk_reanalyze(
                 article.processing_status = ProcessingStatus.PENDING
                 article.processing_error = None
                 queued += 1
-        except Exception:
+        except Exception as e:
+            logger.warning(f"Failed to queue article {article_id} for reanalysis: {e}")
             continue
 
     await db.commit()
@@ -2209,7 +2122,8 @@ async def bulk_reanalyze(
     for article_id in article_ids:
         try:
             background_tasks.add_task(process_article_background, UUID(article_id), current_user.id)
-        except Exception:
+        except Exception as e:
+            logger.warning(f"Failed to schedule background task for article {article_id}: {e}")
             continue
 
     # Build response message
@@ -2462,8 +2376,8 @@ async def ask_query(
 
             if not merged_articles:
                 # Replace typing indicator with error message
-                yield f"""<script>document.getElementById('message-{message_id}').outerHTML = `
-                    {
+                # Note: escape backticks and template literals for JS template string
+                error_html = (
                     templates.get_template("partials/chat_message_assistant.html")
                     .render(
                         message_id=message_id,
@@ -2474,7 +2388,8 @@ async def ask_query(
                     )
                     .replace("`", "\\`")
                     .replace("${", "\\${")
-                }`;</script>"""
+                )
+                yield f"""<script>document.getElementById('message-{message_id}').outerHTML = `{error_html}`;</script>"""
                 return
 
             # Build context
@@ -2705,7 +2620,7 @@ async def get_unread_articles_ordered(db: AsyncSession, user_id: UUID) -> list[A
     """Get all unread articles (is_read == False), ordered by created_at."""
     result = await db.execute(
         select(Article)
-        .where(Article.user_id == user_id, Article.is_read == False)
+        .where(Article.user_id == user_id, Article.is_read.is_(False))
         .options(
             selectinload(Article.categories).selectinload(ArticleCategory.category),
             selectinload(Article.tags).selectinload(ArticleTag.tag),
@@ -2747,7 +2662,6 @@ async def reader_article(
     current_user: User = Depends(get_current_user),
 ):
     """Show a specific article in reader mode."""
-    from app.models.note import Note
 
     # Fetch the article with notes
     result = await db.execute(
@@ -2808,8 +2722,8 @@ async def reader_article(
 
             parsed = urlparse(article.original_url)
             source_domain = parsed.netloc.replace("www.", "")
-        except Exception:
-            pass
+        except Exception as e:
+            logger.debug(f"Failed to extract domain from URL {article.original_url}: {e}")
 
     return templates.TemplateResponse(
         request=request,
@@ -3118,7 +3032,7 @@ async def taxonomy_apply(
         await db.execute(
             delete(Category).where(
                 Category.user_id == current_user.id,
-                Category.parent_id != None,
+                Category.parent_id.is_not(None),
             )
         )
         # Then delete parent categories
@@ -3142,7 +3056,7 @@ async def taxonomy_apply(
                 select(Category).where(
                     Category.user_id == current_user.id,
                     Category.name == category_name,
-                    Category.parent_id == None,
+                    Category.parent_id.is_(None),
                 )
             )
             category = cat_result.scalar_one_or_none()

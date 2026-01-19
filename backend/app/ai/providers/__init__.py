@@ -1,9 +1,9 @@
-from app.ai.providers.anthropic import AnthropicProvider
-from app.ai.providers.google import GoogleProvider
-from app.ai.providers.openai import OpenAIProvider
+"""
+AI Providers package.
 
-__all__ = [
-    "AnthropicProvider",
-    "OpenAIProvider",
-    "GoogleProvider",
-]
+Note: Individual provider implementations (anthropic.py, openai.py, google.py)
+have been replaced by the unified LiteLLM-based provider in app/ai/llm.py.
+See LiteLLMProvider for the current implementation.
+"""
+
+__all__: list[str] = []

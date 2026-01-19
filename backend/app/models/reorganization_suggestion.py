@@ -1,12 +1,18 @@
+from __future__ import annotations
+
 import uuid
 from datetime import datetime
 from enum import Enum
+from typing import TYPE_CHECKING
 
 from sqlalchemy import DateTime, ForeignKey, String, Text
 from sqlalchemy.dialects.postgresql import JSONB, UUID
 from sqlalchemy.orm import Mapped, mapped_column, relationship
 
 from app.database import Base
+
+if TYPE_CHECKING:
+    from app.models.user import User
 
 
 class SuggestionType(str, Enum):
@@ -38,4 +44,4 @@ class ReorganizationSuggestion(Base):
     resolved_at: Mapped[datetime | None] = mapped_column(DateTime)
 
     # Relationships
-    user: Mapped["User"] = relationship()
+    user: Mapped[User] = relationship()

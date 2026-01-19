@@ -20,7 +20,6 @@ from app.utils.auth import (
     pwd_context,
 )
 
-
 # =============================================================================
 # Password Hashing Tests
 # =============================================================================
@@ -226,7 +225,7 @@ class TestBootstrapIntegration:
             try:
                 await session.rollback()
 
-                from sqlalchemy import delete, text
+                from sqlalchemy import delete
 
                 from app.models.ai_provider import AIProvider
                 from app.models.article import Article
@@ -381,7 +380,7 @@ class TestBootstrapIntegration:
     @pytest.mark.asyncio
     async def test_get_current_user_returns_existing_user(self, async_db_session, test_user):
         """Test get_current_user returns existing user without creating new one."""
-        original_user_id = test_user.id
+        _original_user_id = test_user.id  # Keep reference to prevent GC
 
         # Call get_current_user - should return existing user
         user = await get_current_user(db=async_db_session)

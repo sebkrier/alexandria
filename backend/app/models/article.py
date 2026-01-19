@@ -1,6 +1,9 @@
+from __future__ import annotations
+
 import uuid
 from datetime import datetime
 from enum import Enum
+from typing import TYPE_CHECKING
 
 from pgvector.sqlalchemy import Vector
 from sqlalchemy import Boolean, DateTime, ForeignKey, Index, Integer, String, Text
@@ -8,6 +11,13 @@ from sqlalchemy.dialects.postgresql import JSONB, TSVECTOR, UUID
 from sqlalchemy.orm import Mapped, mapped_column, relationship
 
 from app.database import Base
+
+if TYPE_CHECKING:
+    from app.models.article_category import ArticleCategory
+    from app.models.article_tag import ArticleTag
+    from app.models.color import Color
+    from app.models.note import Note
+    from app.models.user import User
 
 
 class SourceType(str, Enum):
@@ -63,15 +73,15 @@ class Article(Base):
     )
 
     # Relationships
-    user: Mapped["User"] = relationship(back_populates="articles")
-    color: Mapped["Color"] = relationship(back_populates="articles")
-    categories: Mapped[list["ArticleCategory"]] = relationship(
+    user: Mapped[User] = relationship(back_populates="articles")
+    color: Mapped[Color] = relationship(back_populates="articles")
+    categories: Mapped[list[ArticleCategory]] = relationship(
         back_populates="article", cascade="all, delete-orphan"
     )
-    tags: Mapped[list["ArticleTag"]] = relationship(
+    tags: Mapped[list[ArticleTag]] = relationship(
         back_populates="article", cascade="all, delete-orphan"
     )
-    notes: Mapped[list["Note"]] = relationship(
+    notes: Mapped[list[Note]] = relationship(
         back_populates="article", cascade="all, delete-orphan"
     )
 

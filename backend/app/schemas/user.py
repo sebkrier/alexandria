@@ -33,4 +33,4 @@ class Token(BaseModel):
     """Schema for JWT token response"""
 
     access_token: str
-    token_type: str = "bearer"
+    token_type: str = "bearer"  # noqa: S105 - not a password, standard OAuth terminology

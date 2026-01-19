@@ -4,8 +4,9 @@ Tests for the tags API endpoints.
 Coverage target: 90%+ of app/api/routes/tags.py
 """
 
-import pytest
 from uuid import uuid4
+
+import pytest
 
 
 class TestListTags:

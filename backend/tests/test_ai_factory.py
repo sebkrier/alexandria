@@ -20,7 +20,6 @@ from app.ai.factory import (
     get_default_provider,
 )
 
-
 # =============================================================================
 # Fixtures
 # =============================================================================
@@ -296,7 +295,7 @@ class TestGetAvailableProviders:
         """Test each provider has a display name."""
         providers = get_available_providers()
 
-        for provider_name, info in providers.items():
+        for _provider_name, info in providers.items():
             assert "display_name" in info
             assert len(info["display_name"]) > 0
 
@@ -304,7 +303,7 @@ class TestGetAvailableProviders:
         """Test each provider has available models."""
         providers = get_available_providers()
 
-        for provider_name, info in providers.items():
+        for _provider_name, info in providers.items():
             assert "models" in info
             assert len(info["models"]) > 0
 
@@ -312,7 +311,7 @@ class TestGetAvailableProviders:
         """Test each provider has a default model."""
         providers = get_available_providers()
 
-        for provider_name, info in providers.items():
+        for _provider_name, info in providers.items():
             assert "default_model" in info
             assert info["default_model"] in info["models"]
 

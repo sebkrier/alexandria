@@ -5,6 +5,7 @@ These tests verify SQL injection protection and query correctness.
 
 from uuid import uuid4
 
+import psycopg.errors
 import pytest
 
 from app.db.queries import (
@@ -51,8 +52,8 @@ async def test_sql_injection_prevention_count(db):
     malicious_input = "'; DROP TABLE articles; --"
 
     # Should raise an error due to invalid UUID format, not execute SQL
-    with pytest.raises(Exception):
-        # UUID validation will fail, which is the correct behavior
+    # psycopg3 properly parameterizes the query, PostgreSQL rejects invalid UUID
+    with pytest.raises(psycopg.errors.InvalidTextRepresentation):
         await get_article_count(db, malicious_input)
 
 

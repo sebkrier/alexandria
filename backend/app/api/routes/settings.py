@@ -166,13 +166,13 @@ async def update_provider(
         await db.execute(
             select(AIProviderModel).where(
                 AIProviderModel.user_id == current_user.id,
-                AIProviderModel.is_default == True,
+                AIProviderModel.is_default.is_(True),
             )
         )
         result = await db.execute(
             select(AIProviderModel).where(
                 AIProviderModel.user_id == current_user.id,
-                AIProviderModel.is_default == True,
+                AIProviderModel.is_default.is_(True),
             )
         )
         for p in result.scalars().all():

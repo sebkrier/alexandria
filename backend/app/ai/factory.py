@@ -66,8 +66,8 @@ async def get_default_provider(
     result = await db.execute(
         select(AIProviderModel).where(
             AIProviderModel.user_id == user_id,
-            AIProviderModel.is_default == True,
-            AIProviderModel.is_active == True,
+            AIProviderModel.is_default.is_(True),
+            AIProviderModel.is_active.is_(True),
         )
     )
     provider_config = result.scalar_one_or_none()
@@ -78,7 +78,7 @@ async def get_default_provider(
             select(AIProviderModel)
             .where(
                 AIProviderModel.user_id == user_id,
-                AIProviderModel.is_active == True,
+                AIProviderModel.is_active.is_(True),
             )
             .limit(1)
         )
@@ -102,7 +102,7 @@ async def get_all_providers(
     """
     query = select(AIProviderModel).where(AIProviderModel.user_id == user_id)
     if active_only:
-        query = query.where(AIProviderModel.is_active == True)
+        query = query.where(AIProviderModel.is_active.is_(True))
 
     result = await db.execute(query)
     configs = result.scalars().all()

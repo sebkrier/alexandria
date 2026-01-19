@@ -11,7 +11,6 @@ import pytest
 import app.db.raw as raw_module
 from app.db.raw import close_pool, get_conn, init_pool
 
-
 # =============================================================================
 # Pool Lifecycle Tests
 # =============================================================================
@@ -164,7 +163,7 @@ class TestGetConnection:
 
         raw_module.pool = mock_pool
 
-        async with get_conn() as conn:
+        async with get_conn() as _conn:
             pass
 
         # __aexit__ should be called to return connection

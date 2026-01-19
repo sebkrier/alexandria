@@ -4,11 +4,10 @@ E2E tests for settings page: AI providers and colors.
 Tests provider management and color customization.
 """
 
-import re
 
 from playwright.sync_api import Page, expect
 
-from tests.e2e.conftest import wait_for_element, wait_for_htmx
+from tests.e2e.conftest import wait_for_element
 
 
 class TestSettingsPage:

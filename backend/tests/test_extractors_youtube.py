@@ -12,7 +12,6 @@ import pytest
 
 from app.extractors.youtube import YouTubeExtractor
 
-
 # =============================================================================
 # Fixtures
 # =============================================================================
@@ -209,7 +208,7 @@ class TestExtractInfo:
         with patch("yt_dlp.YoutubeDL") as mock_class:
             mock_class.return_value.__enter__.return_value = mock_ydl
 
-            result = extractor._extract_info("https://www.youtube.com/watch?v=abc")
+            extractor._extract_info("https://www.youtube.com/watch?v=abc")
 
             mock_ydl.extract_info.assert_called_once_with(
                 "https://www.youtube.com/watch?v=abc",
