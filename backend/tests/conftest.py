@@ -354,3 +354,162 @@ async def test_ai_provider(async_db_session: AsyncSession, test_user):
     await async_db_session.commit()
     await async_db_session.refresh(provider)
     return provider
+
+
+# =============================================================================
+# AI Mocking Fixtures
+# =============================================================================
+
+
+class MockLiteLLMResponse:
+    """Mock response object for LiteLLM completion."""
+
+    def __init__(self, content: str):
+        self.choices = [MockChoice(content)]
+
+
+class MockChoice:
+    """Mock choice in LiteLLM response."""
+
+    def __init__(self, content: str):
+        self.message = MockMessage(content)
+
+
+class MockMessage:
+    """Mock message in LiteLLM choice."""
+
+    def __init__(self, content: str):
+        self.content = content
+
+
+@pytest.fixture
+def mock_litellm():
+    """
+    Mock LiteLLM acompletion for testing without actual API calls.
+
+    Usage:
+        def test_something(mock_litellm):
+            mock_litellm.return_value = MockLiteLLMResponse('{"key": "value"}')
+            # Your test code...
+    """
+    from unittest.mock import AsyncMock, patch
+
+    with patch("app.ai.llm.litellm.acompletion", new_callable=AsyncMock) as mock:
+        # Default response
+        mock.return_value = MockLiteLLMResponse("Mock AI response")
+        yield mock
+
+
+@pytest.fixture
+def mock_sentence_transformer():
+    """
+    Mock SentenceTransformer to avoid downloading the model in tests.
+
+    Returns a fixture that provides a mock model producing 768-dim vectors.
+    The import happens inside get_embedding_model(), so we patch sentence_transformers module.
+    """
+    from unittest.mock import MagicMock, patch
+
+    import numpy as np
+
+    # Patch where SentenceTransformer is imported from (sentence_transformers module)
+    with patch("sentence_transformers.SentenceTransformer") as mock_cls:
+        mock_model = MagicMock()
+        # Return a normalized 768-dim vector
+        mock_model.encode.return_value = np.array([0.1] * 768, dtype=np.float32)
+        # Delete encode_query so hasattr returns False (simulates all-mpnet model)
+        del mock_model.encode_query
+        mock_cls.return_value = mock_model
+        yield mock_model
+
+
+@pytest.fixture
+def mock_embedding_model(mock_sentence_transformer):
+    """
+    Reset the global embedding model cache and provide the mock.
+
+    This ensures each test gets a fresh mock and clears the global state.
+    """
+    import app.ai.embeddings as embeddings_module
+
+    # Reset the global model cache
+    embeddings_module._embedding_model = None
+
+    yield mock_sentence_transformer
+
+    # Clean up after test
+    embeddings_module._embedding_model = None
+
+
+@pytest.fixture
+def sample_summary_json():
+    """Sample JSON response for summary generation."""
+    return """{
+        "title_suggestion": "Test Article",
+        "abstract": "This is a test abstract.",
+        "key_contributions": ["Point 1", "Point 2"],
+        "findings": ["Finding 1"],
+        "relevance_note": "Relevant to testing."
+    }"""
+
+
+@pytest.fixture
+def sample_summary_markdown():
+    """Sample markdown response for summary generation."""
+    return """## One-Line Summary
+A test article about machine learning transformers.
+
+## Key Points
+- Introduces the Transformer architecture
+- Uses self-attention mechanisms
+- Achieves state-of-the-art results
+
+## Technical Details
+The model uses multi-head attention."""
+
+
+@pytest.fixture
+def sample_tags_json():
+    """Sample JSON response for tag suggestions."""
+    return """[
+        {"name": "machine-learning", "confidence": 0.95, "reasoning": "Core topic"},
+        {"name": "transformers", "confidence": 0.90, "reasoning": "Main architecture"},
+        {"name": "nlp", "confidence": 0.85, "reasoning": "Application domain"}
+    ]"""
+
+
+@pytest.fixture
+def sample_category_json():
+    """Sample JSON response for category suggestion."""
+    return """{
+        "category": {"name": "AI & Machine Learning", "is_new": false},
+        "subcategory": {"name": "Deep Learning", "is_new": true},
+        "confidence": 0.88,
+        "reasoning": "Article focuses on neural network architecture."
+    }"""
+
+
+@pytest_asyncio.fixture
+async def test_article_for_processing(async_db_session: AsyncSession, test_user):
+    """Create a test article ready for AI processing (PENDING status)."""
+    from app.models.article import Article, ProcessingStatus, SourceType
+
+    article = Article(
+        user_id=test_user.id,
+        source_type=SourceType.URL,
+        original_url="https://example.com/test-article",
+        title="Test Article for Processing",
+        extracted_text="""
+        The Transformer architecture has revolutionized natural language processing.
+        Introduced in 2017, it uses self-attention mechanisms to process sequences
+        in parallel rather than sequentially. This enables much faster training
+        and has led to models like BERT, GPT, and their successors.
+        Key contributions include multi-head attention and positional encoding.
+        """,
+        word_count=50,
+        processing_status=ProcessingStatus.PENDING,
+    )
+    async_db_session.add(article)
+    await async_db_session.commit()
+    await async_db_session.refresh(article)
+    return article
