@@ -129,8 +129,14 @@ pixi run lint
 pixi run lint-fix
 pixi run format
 
-# Run tests
+# Run tests (requires test database)
 pixi run test
+
+# Set up test database (one-time, or after schema changes)
+pixi run test-db-setup
+
+# Run setup + tests together
+pixi run test-full
 
 # Database migrations
 pixi run migrate

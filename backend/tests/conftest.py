@@ -71,7 +71,7 @@ async def db(db_pool: psycopg_pool.AsyncConnectionPool):
         async with conn.cursor() as cur:
             await cur.execute(
                 """
-                INSERT INTO users (id, email, hashed_password)
+                INSERT INTO users (id, email, password_hash)
                 VALUES (%s, %s, %s)
                 ON CONFLICT (email) DO UPDATE SET id = EXCLUDED.id
                 RETURNING id
@@ -85,6 +85,8 @@ async def db(db_pool: psycopg_pool.AsyncConnectionPool):
         yield conn
 
         # Cleanup - delete test data
+        # Rollback any aborted transaction before cleanup (e.g., from expected test failures)
+        await conn.rollback()
         async with conn.cursor() as cur:
             await cur.execute("DELETE FROM articles WHERE user_id = %s", (conn.test_user_id,))
             await cur.execute("DELETE FROM categories WHERE user_id = %s", (conn.test_user_id,))
