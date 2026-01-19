@@ -23,6 +23,7 @@ class Settings(BaseSettings):
     class Config:
         env_file = ".env"
         env_file_encoding = "utf-8"
+        extra = "ignore"  # Ignore extra env vars like TEST_DATABASE_URL in CI
 
 
 @lru_cache
