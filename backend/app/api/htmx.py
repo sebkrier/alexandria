@@ -1170,7 +1170,12 @@ async def settings_page(
 
     providers = []
     for p in provider_models:
-        api_key = decrypt_api_key(p.api_key_encrypted)
+        try:
+            api_key = decrypt_api_key(p.api_key_encrypted)
+            api_key_masked = mask_api_key(api_key)
+        except ValueError:
+            # API key can't be decrypted (encryption key changed) - show placeholder
+            api_key_masked = "***...*** (re-enter key)"
         providers.append(
             {
                 "id": str(p.id),
@@ -1179,7 +1184,7 @@ async def settings_page(
                 else str(p.provider_name),
                 "display_name": p.display_name,
                 "model_id": p.model_id,
-                "api_key_masked": mask_api_key(api_key),
+                "api_key_masked": api_key_masked,
                 "is_default": p.is_default,
                 "is_active": p.is_active,
             }
@@ -1448,7 +1453,12 @@ async def _render_providers_list(request: Request, db: AsyncSession, user_id: UU
 
     providers = []
     for p in provider_models:
-        api_key = decrypt_api_key(p.api_key_encrypted)
+        try:
+            api_key = decrypt_api_key(p.api_key_encrypted)
+            api_key_masked = mask_api_key(api_key)
+        except ValueError:
+            # API key can't be decrypted (encryption key changed) - show placeholder
+            api_key_masked = "***...*** (re-enter key)"
         providers.append(
             {
                 "id": str(p.id),
@@ -1457,7 +1467,7 @@ async def _render_providers_list(request: Request, db: AsyncSession, user_id: UU
                 else str(p.provider_name),
                 "display_name": p.display_name,
                 "model_id": p.model_id,
-                "api_key_masked": mask_api_key(api_key),
+                "api_key_masked": api_key_masked,
                 "is_default": p.is_default,
                 "is_active": p.is_active,
             }
