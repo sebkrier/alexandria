@@ -45,9 +45,6 @@ class TestArticleSelection:
         page.goto(f"{app_server}/app/")
         wait_for_element(page, "[data-article-id]")
 
-        # Count visible articles
-        article_count = page.locator("[data-article-id]").count()
-
         # Select one article first to show the bulk bar
         first_checkbox = page.locator(".article-checkbox").first
         first_checkbox.click()
@@ -55,15 +52,12 @@ class TestArticleSelection:
 
         # Click the select all toggle (checkbox icon in bulk bar)
         select_all_btn = page.locator("[x-data*='bulkActionBar'] button").first
-        if select_all_btn.is_visible():
-            select_all_btn.click()
-            page.wait_for_timeout(300)
+        expect(select_all_btn).to_be_visible()
+        select_all_btn.click()
+        page.wait_for_timeout(300)
 
-            # Should show all articles selected (at least 5)
-            selected_text = page.locator(f"text={article_count} selected")
-            if not selected_text.is_visible():
-                # Alternative: just verify selection count increased
-                expect(page.get_by_text("selected").first).to_be_visible()
+        # Should show articles selected
+        expect(page.get_by_text("selected").first).to_be_visible()
 
     def test_deselect_all(self, page: Page, app_server: str, multiple_test_articles: dict):
         """Can deselect all articles."""
@@ -282,20 +276,18 @@ class TestSidebarUnreadCount:
         page.goto(f"{app_server}/app/")
         wait_for_element(page, "[data-article-id]")
 
-        # Check if unread reader link exists
-        unread_link = page.locator("text=Unread Reader")
-        if unread_link.is_visible():
-            # Select all and mark as read
-            checkboxes = page.locator(".article-checkbox")
-            checkboxes.first.click()
-            wait_for_element(page, "text=selected")
+        # Select an article and mark as read
+        checkboxes = page.locator(".article-checkbox")
+        checkboxes.first.click()
+        wait_for_element(page, "text=selected")
 
-            # Mark read
-            mark_read_btn = page.locator("button:has-text('Mark Read')")
-            mark_read_btn.click()
+        # Mark read
+        mark_read_btn = page.locator("button:has-text('Mark Read')")
+        expect(mark_read_btn).to_be_visible()
+        mark_read_btn.click()
 
-            # Wait for update
-            page.wait_for_timeout(1000)
+        # Wait for update
+        page.wait_for_timeout(1000)
 
         # Page should still be functional
         expect(page.get_by_role("banner").get_by_role("link", name="Alexandria")).to_be_visible()

@@ -126,11 +126,11 @@ class TestEditArticle:
         # Find and click the read status toggle
         # Look for the Mark as Read / Mark as Unread button
         toggle_button = page.locator("button:has-text('Mark as')")
-        if toggle_button.is_visible():
-            toggle_button.click()
-            wait_for_htmx(page)
-            # After toggle, the button should still be present
-            expect(page.locator("button:has-text('Mark as')")).to_be_visible()
+        expect(toggle_button).to_be_visible()
+        toggle_button.click()
+        wait_for_htmx(page)
+        # After toggle, the button should still be present
+        expect(page.locator("button:has-text('Mark as')")).to_be_visible()
 
     def test_edit_article_color(
         self, page: Page, app_server: str, test_article_in_db: dict, test_color_in_db: dict
@@ -139,10 +139,11 @@ class TestEditArticle:
         page.goto(f"{app_server}/app/article/{test_article_in_db['id']}")
         wait_for_element(page, "text=E2E Test Article")
 
-        # Look for color section/picker
+        # Look for color section/picker - may or may not be visible depending on UI state
         color_button = page.locator(f"[style*='background-color: {test_color_in_db['hex_value']}']")
-        if color_button.is_visible():
-            color_button.click()
+        if color_button.count() > 0:
+            expect(color_button.first).to_be_visible()
+            color_button.first.click()
             wait_for_htmx(page)
 
     @pytest.mark.skip(reason="Server becomes unresponsive after multiple tests")
@@ -151,11 +152,11 @@ class TestEditArticle:
         page.goto(f"{app_server}/app/article/{test_article_in_db['id']}")
         wait_for_element(page, "text=E2E Test Article")
 
-        # Look for reprocess button
+        # Click reprocess button
         reprocess_btn = page.locator("button:has-text('Reprocess')")
-        if reprocess_btn.is_visible():
-            reprocess_btn.click()
-            wait_for_htmx(page)
+        expect(reprocess_btn).to_be_visible()
+        reprocess_btn.click()
+        wait_for_htmx(page)
 
 
 class TestDeleteArticle:

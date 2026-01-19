@@ -95,14 +95,14 @@ class TestCategoryFilter:
         page.goto(f"{app_server}/app/")
         wait_for_element(page, "text=Alexandria")
 
-        # Look for category in sidebar
+        # Click category in sidebar
         category_link = page.locator(f"text={test_category_in_db['name']}")
-        if category_link.is_visible():
-            category_link.click()
-            wait_for_htmx(page)
+        expect(category_link).to_be_visible()
+        category_link.click()
+        wait_for_htmx(page)
 
-            # URL should reflect filter
-            expect(page).to_have_url(re.compile(rf"category_id={test_category_in_db['id']}"))
+        # URL should reflect filter
+        expect(page).to_have_url(re.compile(rf"category_id={test_category_in_db['id']}"))
 
 
 class TestColorFilter:
@@ -119,14 +119,14 @@ class TestColorFilter:
         page.goto(f"{app_server}/app/")
         wait_for_element(page, "text=Alexandria")
 
-        # Look for color filter in sidebar
+        # Click color filter in sidebar
         color_link = page.locator(f"a:has-text('{test_color_in_db['name']}')")
-        if color_link.is_visible():
-            color_link.click()
-            wait_for_htmx(page)
+        expect(color_link).to_be_visible()
+        color_link.click()
+        wait_for_htmx(page)
 
-            # URL should reflect filter
-            expect(page).to_have_url(re.compile(rf"color_id={test_color_in_db['id']}"))
+        # URL should reflect filter
+        expect(page).to_have_url(re.compile(rf"color_id={test_color_in_db['id']}"))
 
 
 class TestReadStatusFilter:
