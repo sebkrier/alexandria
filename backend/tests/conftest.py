@@ -513,3 +513,116 @@ async def test_article_for_processing(async_db_session: AsyncSession, test_user)
     await async_db_session.commit()
     await async_db_session.refresh(article)
     return article
+
+
+# =============================================================================
+# Extractor Test Fixtures
+# =============================================================================
+
+
+@pytest.fixture
+def sample_html_page():
+    """Sample HTML for extraction tests."""
+    return """
+    <!DOCTYPE html>
+    <html>
+    <head>
+        <title>Test Article - Example Site</title>
+        <meta property="og:title" content="Test Article Title" />
+        <meta name="author" content="John Doe" />
+        <meta property="article:published_time" content="2024-01-15T10:30:00Z" />
+        <meta property="og:image" content="https://example.com/image.jpg" />
+    </head>
+    <body>
+        <nav>Navigation here</nav>
+        <article>
+            <h1>Test Article Title</h1>
+            <p class="byline">By John Doe</p>
+            <div class="article-content">
+                <p>This is the main article content. It contains multiple paragraphs
+                of text that would be extracted by the content extraction algorithms.</p>
+                <p>The article continues with more detailed information about the topic
+                at hand. This helps ensure we have enough content for the extraction
+                to work properly.</p>
+            </div>
+        </article>
+        <footer>Footer content</footer>
+    </body>
+    </html>
+    """
+
+
+@pytest.fixture
+def mock_httpx_client():
+    """
+    Mock httpx.AsyncClient for HTTP tests.
+
+    Usage:
+        def test_something(mock_httpx_client):
+            mock_httpx_client.get.return_value = mock_response
+            # Your test code...
+    """
+    from unittest.mock import AsyncMock, patch
+
+    with patch("httpx.AsyncClient") as mock_class:
+        mock_instance = AsyncMock()
+        mock_instance.__aenter__.return_value = mock_instance
+        mock_instance.__aexit__.return_value = None
+        mock_class.return_value = mock_instance
+        yield mock_instance
+
+
+@pytest.fixture
+def mock_fitz():
+    """
+    Mock PyMuPDF (fitz) for PDF tests.
+
+    Usage:
+        def test_pdf_extraction(mock_fitz):
+            mock_doc = MagicMock()
+            mock_fitz.return_value = mock_doc
+            # Your test code...
+    """
+    from unittest.mock import MagicMock, patch
+
+    with patch("fitz.open") as mock:
+        yield mock
+
+
+@pytest.fixture
+def mock_yt_dlp():
+    """
+    Mock yt-dlp for YouTube tests.
+
+    Usage:
+        def test_youtube_extraction(mock_yt_dlp):
+            mock_yt_dlp.extract_info.return_value = video_info
+            # Your test code...
+    """
+    from unittest.mock import MagicMock, patch
+
+    with patch("yt_dlp.YoutubeDL") as mock_class:
+        mock_instance = MagicMock()
+        mock_class.return_value.__enter__.return_value = mock_instance
+        mock_class.return_value.__exit__.return_value = None
+        yield mock_instance
+
+
+@pytest.fixture
+def mock_curl_subprocess():
+    """
+    Mock asyncio.create_subprocess_exec for curl-based extractors.
+
+    Usage:
+        def test_substack(mock_curl_subprocess):
+            mock_curl_subprocess.return_value.communicate.return_value = (html, b"")
+            # Your test code...
+    """
+    from unittest.mock import AsyncMock, patch
+
+    with patch("asyncio.create_subprocess_exec") as mock:
+        mock_process = AsyncMock()
+        mock_process.returncode = 0
+        mock_process.communicate = AsyncMock(return_value=(b"", b""))
+        mock.return_value = mock_process
+        yield mock
