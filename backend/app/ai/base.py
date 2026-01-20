@@ -136,6 +136,7 @@ class AIProvider(ABC):
         text: str,
         title: str | None = None,
         source_type: str | None = None,
+        authors: list[str] | None = None,
     ) -> Summary:
         """
         Generate a structured summary of the article.
@@ -144,6 +145,7 @@ class AIProvider(ABC):
             text: The full text of the article
             title: Optional existing title
             source_type: Type of source (url, pdf, arxiv)
+            authors: List of author names
 
         Returns:
             Structured Summary object

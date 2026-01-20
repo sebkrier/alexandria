@@ -131,23 +131,27 @@ class URLExtractor(BaseExtractor):
                 f"Attempted strategies: {error_details}"
             )
 
-        # Try newspaper3k-style extraction first
+        # Extract title reliably from HTML metadata (og:title, <title>, <h1>)
+        # This is more reliable than readability's title extraction
+        title, authors, pub_date, top_image = self._extract_metadata_from_html(html)
+
+        # Try readability for body text extraction (it's good at finding article content)
         content = self._extract_with_readability(html, url)
 
         if not content or len(content.get("text", "")) < 100:
-            # Fallback to basic BeautifulSoup extraction
+            # Fallback to basic BeautifulSoup extraction for body text
             content = self._extract_with_beautifulsoup(html, url)
 
         return ExtractedContent(
-            title=content.get("title", "Untitled"),
+            title=title or content.get("title", "Untitled"),
             text=self._clean_text(content.get("text", "")),
-            authors=content.get("authors", []),
-            publication_date=content.get("publication_date"),
+            authors=authors or content.get("authors", []),
+            publication_date=pub_date or content.get("publication_date"),
             source_type="url",
             original_url=url,
             metadata={
                 "domain": urlparse(url).netloc,
-                "top_image": content.get("top_image"),
+                "top_image": top_image or content.get("top_image"),
             },
         )
 
@@ -215,6 +219,85 @@ class URLExtractor(BaseExtractor):
                 logger.debug(f"12ft.io fetch failed: {e}")
 
         return None
+
+    def _extract_metadata_from_html(self, html: str) -> tuple[str | None, list[str], datetime | None, str | None]:
+        """
+        Extract metadata (title, authors, date, image) from HTML meta tags.
+
+        This is more reliable than readability's extraction because HTML meta tags
+        (og:title, <title>, etc.) are explicitly set by the page author.
+
+        Returns: (title, authors, publication_date, top_image)
+        """
+        soup = BeautifulSoup(html, "lxml")
+
+        # Extract title - priority: og:title > twitter:title > <title> > <h1>
+        title = None
+        og_title = soup.find("meta", {"property": "og:title"})
+        if og_title and og_title.get("content"):
+            title = og_title["content"].strip()
+
+        if not title:
+            twitter_title = soup.find("meta", {"name": "twitter:title"})
+            if twitter_title and twitter_title.get("content"):
+                title = twitter_title["content"].strip()
+
+        if not title and soup.title and soup.title.string:
+            title = soup.title.string.strip()
+            # Clean common suffixes like " | Site Name" or " - Blog Name"
+            for sep in [" | ", " - ", " – ", " — "]:
+                if sep in title:
+                    # Keep the first part (usually the article title)
+                    parts = title.split(sep)
+                    if len(parts[0]) > 10:  # Make sure first part is substantial
+                        title = parts[0].strip()
+                    break
+
+        if not title:
+            h1 = soup.find("h1")
+            if h1:
+                title = h1.get_text(strip=True)
+
+        # Extract authors
+        authors = []
+        author_meta = soup.find("meta", {"name": "author"})
+        if author_meta and author_meta.get("content"):
+            author_text = author_meta["content"].strip()
+            # Handle "By John Smith" format
+            author_text = re.sub(r"^[Bb]y\s+", "", author_text)
+            if author_text:
+                authors = [author_text]
+
+        if not authors:
+            # Try article:author (used by some sites)
+            article_author = soup.find("meta", {"property": "article:author"})
+            if article_author and article_author.get("content"):
+                authors = [article_author["content"].strip()]
+
+        # Extract publication date
+        pub_date = None
+        date_meta = soup.find("meta", {"property": "article:published_time"})
+        if date_meta and date_meta.get("content"):
+            try:
+                pub_date = datetime.fromisoformat(date_meta["content"].replace("Z", "+00:00"))
+            except ValueError:
+                pass
+
+        if not pub_date:
+            date_meta = soup.find("meta", {"name": "date"})
+            if date_meta and date_meta.get("content"):
+                try:
+                    pub_date = datetime.fromisoformat(date_meta["content"].replace("Z", "+00:00"))
+                except ValueError:
+                    pass
+
+        # Extract top image
+        top_image = None
+        og_image = soup.find("meta", {"property": "og:image"})
+        if og_image and og_image.get("content"):
+            top_image = og_image["content"]
+
+        return title, authors, pub_date, top_image
 
     def _extract_with_readability(self, html: str, url: str) -> dict:
         """Extract using readability-lxml algorithm"""

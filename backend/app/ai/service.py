@@ -72,36 +72,49 @@ class AIService:
                 else str(article.source_type)
             )
 
-            # Check if we should use AI for metadata extraction
-            should_extract_metadata = (
-                source_type == "pdf"
-                or not article.title
-                or len(article.title) < 10
-                or article.title == "Untitled PDF"
-                or article.title.lower().startswith("untitled")
-            )
-
-            if should_extract_metadata and hasattr(provider, "extract_metadata"):
+            # Extract metadata using AI
+            # Strategy:
+            # - For PDFs: AI extracts BOTH title and authors (title is in document text)
+            # - For URLs/other: AI extracts ONLY authors (title from HTML is reliable)
+            #
+            # Why? URL body text doesn't contain the HTML title - AI would hallucinate.
+            # PDF text contains the title at the top - AI extraction works well.
+            if hasattr(provider, "extract_metadata"):
                 logger.info(f"Extracting metadata using AI for article {article_id}")
                 try:
                     metadata = await provider.extract_metadata(text=article.extracted_text)
-                    # Update title if we got a better one
-                    if metadata.title and len(metadata.title) > 5 and metadata.title != "Untitled":
-                        article.title = metadata.title
-                        logger.info(f"Updated title to: {metadata.title}")
-                    # Update authors if we got them
+
+                    # Only use AI title for PDFs - URL titles come from HTML which is reliable
+                    if source_type == "pdf" and metadata.title:
+                        ai_title = metadata.title.strip()
+                        # Filter out garbage AI responses
+                        garbage_indicators = [
+                            "untitled", "unknown", "not visible", "not found",
+                            "excerpt", "document", "n/a", "none", "no title"
+                        ]
+                        is_garbage = (
+                            len(ai_title) < 5
+                            or len(ai_title) > 300
+                            or any(g in ai_title.lower() for g in garbage_indicators)
+                        )
+                        if not is_garbage:
+                            article.title = ai_title
+                            logger.info(f"Updated PDF title to: {ai_title}")
+
+                    # Always extract authors with AI (HTML rarely has good author info)
                     if metadata.authors:
                         article.authors = metadata.authors
                         logger.info(f"Updated authors to: {metadata.authors}")
                 except Exception as e:
                     logger.warning(f"Metadata extraction failed, continuing with original: {e}")
 
-            # 1. Generate summary
+            # 1. Generate summary (with extracted authors for accuracy)
             logger.info(f"Generating summary for article {article_id}")
             summary = await provider.summarize(
                 text=article.extracted_text,
                 title=article.title,
                 source_type=source_type,
+                authors=article.authors,
             )
 
             # Store summary as markdown
@@ -193,6 +206,7 @@ class AIService:
             text=article.extracted_text,
             title=article.title,
             source_type=source_type,
+            authors=article.authors,
         )
 
         article.summary = summary.to_markdown()

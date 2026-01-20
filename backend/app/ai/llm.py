@@ -236,10 +236,13 @@ class LiteLLMProvider(AIProvider):
         text: str,
         title: str | None = None,
         source_type: str | None = None,
+        authors: list[str] | None = None,
     ) -> Summary:
         """Generate a structured summary."""
+        authors_str = ", ".join(authors) if authors else "Unknown"
         user_prompt = EXTRACT_SUMMARY_PROMPT.format(
             title=title or "Untitled",
+            authors=authors_str,
             source_type=source_type or "article",
             content=truncate_text(text),
         )
