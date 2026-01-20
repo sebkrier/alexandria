@@ -41,6 +41,7 @@ SUMMARY_SYSTEM_PROMPT = """Summarize this article for a personal research librar
 EXTRACT_SUMMARY_PROMPT = """Summarize this content following the system instructions.
 
 Title: {title}
+Author(s): {authors}
 Source type: {source_type}
 
 Content:
@@ -206,15 +207,22 @@ Please answer their question based on this data. Be conversational and helpful, 
 
 
 # Document metadata extraction prompts
-METADATA_EXTRACTION_SYSTEM_PROMPT = """You are extracting metadata from a document. Your task is to identify the actual title and all authors of the document.
+METADATA_EXTRACTION_SYSTEM_PROMPT = """You are extracting metadata from a document. Your task is to identify the title and all authors of the document.
 
 ## Guidelines
 
-1. **Title**: Extract the real title of the document/paper/article - not headers, journal names, or institutional names. The title is what the work is actually called.
+1. **Title**: Extract the title ONLY if it's clearly stated in the document (usually at the very beginning).
+   - For academic papers: The title is typically the first prominent text before the author list
+   - For articles/essays: The title may be a headline at the start
+   - If no clear title is visible in the text, return "Untitled" - do NOT guess or infer a title from the content
 
-2. **Authors**: Extract ALL author names as they appear. Academic papers often have many co-authors - include them all. Format each name as "FirstName LastName" or as they appear in the document.
+2. **Authors**: Extract ALL author names as they appear.
+   - Academic papers often list authors right after the title
+   - Blog posts/essays may have a byline like "By John Smith" or "Written by Jane Doe"
+   - Format each name as "FirstName LastName" or as they appear
+   - If no authors are clearly stated, return an empty array
 
-3. **Be accurate**: Only extract what's actually in the document. Don't guess or make up names.
+3. **Be accurate**: ONLY extract what's explicitly written. Never guess, infer, or make up information.
 
 4. **Handle edge cases**:
    - If the title spans multiple lines, combine them
@@ -222,12 +230,14 @@ METADATA_EXTRACTION_SYSTEM_PROMPT = """You are extracting metadata from a docume
    - Ignore affiliations, emails, and institutional addresses
    - If authors are numbered or have superscripts, just extract the names"""
 
-METADATA_EXTRACTION_USER_PROMPT = """Extract the title and authors from this document.
+METADATA_EXTRACTION_USER_PROMPT = """Extract the title and authors from this document text.
+
+IMPORTANT: Only extract information that is EXPLICITLY stated in the text. If the title is not clearly visible at the start of the document, return "Untitled". Do not guess or infer.
 
 Return a JSON object:
 {{
-  "title": "The actual title of the document",
-  "authors": ["Author One", "Author Two", "Author Three"]
+  "title": "The actual title if clearly stated, or 'Untitled' if not found",
+  "authors": ["Author One", "Author Two"]
 }}
 
 Document content (first part):
@@ -235,7 +245,7 @@ Document content (first part):
 {content}
 ---
 
-Extract the real title (not journal/institution names) and ALL authors listed."""
+Extract only what's clearly written. Return "Untitled" if no clear title is present."""
 
 
 # Taxonomy optimization prompts
