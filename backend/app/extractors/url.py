@@ -198,7 +198,9 @@ class URLExtractor(BaseExtractor):
 
         return None
 
-    def _extract_metadata_from_html(self, html: str) -> tuple[str | None, list[str], datetime | None, str | None]:
+    def _extract_metadata_from_html(
+        self, html: str
+    ) -> tuple[str | None, list[str], datetime | None, str | None]:
         """
         Extract metadata (title, authors, date, image) from HTML meta tags.
 

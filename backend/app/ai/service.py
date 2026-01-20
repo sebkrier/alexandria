@@ -89,8 +89,15 @@ class AIService:
                         ai_title = metadata.title.strip()
                         # Filter out garbage AI responses
                         garbage_indicators = [
-                            "untitled", "unknown", "not visible", "not found",
-                            "excerpt", "document", "n/a", "none", "no title"
+                            "untitled",
+                            "unknown",
+                            "not visible",
+                            "not found",
+                            "excerpt",
+                            "document",
+                            "n/a",
+                            "none",
+                            "no title",
                         ]
                         is_garbage = (
                             len(ai_title) < 5
