@@ -57,20 +57,9 @@ from app.schemas.article import (
     UnreadNavigationResponse,
 )
 from app.utils.auth import get_current_user
+from app.services.article_service import ArticleService, process_article_background_task
 
 router = APIRouter()
-
-
-async def process_article_background(article_id: UUID, user_id: UUID):
-    """Background task to process article with AI after creation"""
-    async with async_session_maker() as db:
-        try:
-            ai_service = AIService(db)
-            await ai_service.process_article(article_id=article_id, user_id=user_id)
-            logger.info(f"Background processing completed for article {article_id}")
-        except Exception as e:
-            logger.error(f"Background processing failed for article {article_id}: {e}")
-
 
 def calculate_reading_time(word_count: int | None) -> int | None:
     """Calculate reading time in minutes (200 words per minute)"""
@@ -156,6 +145,10 @@ def article_to_response(article: Article) -> ArticleResponse:
             )
         )
 
+    note_count = 0
+    if 'notes' in article.__dict__:
+        note_count = len(article.notes)
+
     return ArticleResponse(
         id=article.id,
         source_type=article.source_type,
@@ -178,7 +171,7 @@ def article_to_response(article: Article) -> ArticleResponse:
         updated_at=article.updated_at,
         categories=categories,
         tags=tags,
-        note_count=len(article.notes) if article.notes else 0,
+        note_count=note_count,
     )
 
 
@@ -189,76 +182,20 @@ async def create_article_from_url(
     db: AsyncSession = Depends(get_db),
     current_user: User = Depends(get_current_user),
 ) -> ArticleResponse:
-    """Create a new article from a URL.
-
-    Extracts content from the provided URL, creates an article record,
-    and schedules background AI processing for summarization and tagging.
-
-    Args:
-        data: Request body containing the URL to process.
-        background_tasks: FastAPI background task manager.
-        db: Database session (injected).
-        current_user: Authenticated user (injected).
-
-    Returns:
-        The created article with metadata.
-
-    Raises:
-        HTTPException: 400 if content extraction fails.
-    """
-    url = str(data.url)
-
+    service = ArticleService(db)
     try:
-        # Extract content from URL
-        content = await extract_content(url=url)
-
-        # Determine source type
-        source_type = SourceType(content.source_type)
-
-        # Create article
-        article = Article(
+        article = await service.create_article_from_url(
+            url=str(data.url),
             user_id=current_user.id,
-            source_type=source_type,
-            original_url=content.original_url or url,
-            title=content.title,
-            authors=content.authors,
-            publication_date=content.publication_date,
-            extracted_text=content.text,
-            word_count=len(content.text.split()) if content.text else None,
-            article_metadata=content.metadata,
-            processing_status=ProcessingStatus.PENDING,
+            background_tasks=background_tasks
         )
-
-        db.add(article)
-        await db.commit()
-        await db.refresh(article)
-
-        # Schedule AI processing in background
-        background_tasks.add_task(process_article_background, article.id, current_user.id)
-        logger.info(f"Scheduled background processing for article {article.id}")
-
-        # Load relationships
-        result = await db.execute(
-            select(Article)
-            .where(Article.id == article.id)
-            .options(
-                selectinload(Article.categories).selectinload(ArticleCategory.category),
-                selectinload(Article.tags).selectinload(ArticleTag.tag),
-                selectinload(Article.notes),
-            )
-        )
-        article = result.scalar_one()
-
         return article_to_response(article)
-
     except Exception as e:
         import traceback
-
-        print(f"ERROR extracting URL {url}:")
-        print(traceback.format_exc())
+        logger.error(f"ERROR creating article from URL {data.url}: {traceback.format_exc()}")
         raise HTTPException(
             status_code=status.HTTP_400_BAD_REQUEST,
-            detail=f"Failed to extract content from URL: {str(e)}",
+            detail=f"Failed to create article: {str(e)}",
         )
 
 
@@ -269,7 +206,6 @@ async def create_article_from_upload(
     db: AsyncSession = Depends(get_db),
     current_user: User = Depends(get_current_user),
 ):
-    """Create a new article from an uploaded PDF"""
     if not file.filename.lower().endswith(".pdf"):
         raise HTTPException(
             status_code=status.HTTP_400_BAD_REQUEST,
@@ -277,55 +213,22 @@ async def create_article_from_upload(
         )
 
     try:
-        # Save uploaded file to temporary location
+        import tempfile
+        from pathlib import Path
         with tempfile.NamedTemporaryFile(delete=False, suffix=".pdf") as temp_file:
             content = await file.read()
             temp_file.write(content)
             temp_path = temp_file.name
 
-        # Extract content from PDF
-        extracted = await extract_content(file_path=temp_path)
-
-        # TODO: Upload to R2 storage and get permanent path
-        # For now, we'll store the file path as a placeholder
-        file_path = f"uploads/{current_user.id}/{file.filename}"
-
-        # Create article
-        article = Article(
+        service = ArticleService(db)
+        article = await service.create_article_from_upload(
+            file_path=temp_path,
+            filename=file.filename,
             user_id=current_user.id,
-            source_type=SourceType.PDF,
-            title=extracted.title,
-            authors=extracted.authors,
-            extracted_text=extracted.text,
-            word_count=len(extracted.text.split()) if extracted.text else None,
-            file_path=file_path,
-            article_metadata=extracted.metadata,
-            processing_status=ProcessingStatus.PENDING,
+            background_tasks=background_tasks
         )
 
-        db.add(article)
-        await db.commit()
-        await db.refresh(article)
-
-        # Clean up temp file
         Path(temp_path).unlink(missing_ok=True)
-
-        # Schedule AI processing in background
-        background_tasks.add_task(process_article_background, article.id, current_user.id)
-        logger.info(f"Scheduled background processing for uploaded PDF {article.id}")
-
-        # Load relationships
-        result = await db.execute(
-            select(Article)
-            .where(Article.id == article.id)
-            .options(
-                selectinload(Article.categories).selectinload(ArticleCategory.category),
-                selectinload(Article.tags).selectinload(ArticleTag.tag),
-                selectinload(Article.notes),
-            )
-        )
-        article = result.scalar_one()
-
         return article_to_response(article)
 
     except Exception as e:
@@ -348,86 +251,18 @@ async def list_articles(
     db: AsyncSession = Depends(get_db),
     current_user: User = Depends(get_current_user),
 ) -> ArticleListResponse:
-    """List articles with filtering and pagination.
-
-    Supports filtering by category (including subcategories), tags, color,
-    processing status, and read status. Full-text search is supported
-    via the search parameter.
-
-    Args:
-        page: Page number (1-indexed).
-        page_size: Number of items per page (max 100).
-        search: Optional full-text search query.
-        category_id: Filter by category (includes subcategories).
-        tag_id: Filter by tag.
-        color_id: Filter by color label.
-        status: Filter by processing status.
-        is_read: Filter by read/unread status.
-
-    Returns:
-        Paginated list of articles with total count.
-    """
-    # Base query
-    query = (
-        select(Article)
-        .where(Article.user_id == current_user.id)
-        .options(
-            selectinload(Article.categories).selectinload(ArticleCategory.category),
-            selectinload(Article.tags).selectinload(ArticleTag.tag),
-            selectinload(Article.notes),
-        )
+    service = ArticleService(db)
+    articles, total = await service.list_articles(
+        user_id=current_user.id,
+        page=page,
+        page_size=page_size,
+        search=search,
+        category_id=category_id,
+        tag_id=tag_id,
+        color_id=color_id,
+        status=status,
+        is_read=is_read
     )
-
-    # Apply filters
-    if search:
-        # Full-text search
-        query = query.where(
-            or_(
-                Article.title.ilike(f"%{search}%"),
-                Article.search_vector.match(search),
-            )
-        )
-
-    if category_id:
-        # Get the category and all its subcategories
-        from app.models.category import Category
-
-        # Get all descendant category IDs (for hierarchical filtering)
-        async def get_descendant_ids(cat_id: UUID) -> list[UUID]:
-            result = await db.execute(select(Category.id).where(Category.parent_id == cat_id))
-            child_ids = [row[0] for row in result.all()]
-            descendants = list(child_ids)
-            for child_id in child_ids:
-                descendants.extend(await get_descendant_ids(child_id))
-            return descendants
-
-        # Include the category itself plus all descendants
-        category_ids = [category_id] + await get_descendant_ids(category_id)
-        query = query.join(ArticleCategory).where(ArticleCategory.category_id.in_(category_ids))
-
-    if tag_id:
-        query = query.join(ArticleTag).where(ArticleTag.tag_id == tag_id)
-
-    if color_id:
-        query = query.where(Article.color_id == color_id)
-
-    if status:
-        query = query.where(Article.processing_status == status)
-
-    if is_read is not None:
-        query = query.where(Article.is_read == is_read)
-
-    # Get total count
-    count_query = select(func.count()).select_from(query.subquery())
-    total = (await db.execute(count_query)).scalar()
-
-    # Apply pagination and ordering
-    query = query.order_by(Article.created_at.desc())
-    query = query.offset((page - 1) * page_size).limit(page_size)
-
-    # Execute query
-    result = await db.execute(query)
-    articles = result.scalars().all()
 
     return ArticleListResponse(
         items=[article_to_response(a) for a in articles],
@@ -444,17 +279,8 @@ async def get_article(
     db: AsyncSession = Depends(get_db),
     current_user: User = Depends(get_current_user),
 ):
-    """Get a single article by ID"""
-    result = await db.execute(
-        select(Article)
-        .where(Article.id == article_id, Article.user_id == current_user.id)
-        .options(
-            selectinload(Article.categories).selectinload(ArticleCategory.category),
-            selectinload(Article.tags).selectinload(ArticleTag.tag),
-            selectinload(Article.notes),
-        )
-    )
-    article = result.scalar_one_or_none()
+    service = ArticleService(db)
+    article = await service.get_article(article_id, current_user.id)
 
     if not article:
         raise HTTPException(
@@ -471,7 +297,6 @@ async def get_article_text(
     db: AsyncSession = Depends(get_db),
     current_user: User = Depends(get_current_user),
 ):
-    """Get the extracted text of an article"""
     result = await db.execute(
         select(Article).where(Article.id == article_id, Article.user_id == current_user.id)
     )
@@ -486,17 +311,11 @@ async def get_article_text(
     return {"text": article.extracted_text}
 
 
-# =============================================================================
-# Unread Reader Endpoints
-# =============================================================================
-
-
 @router.get("/unread/list", response_model=UnreadListResponse)
 async def get_unread_list(
     db: AsyncSession = Depends(get_db),
     current_user: User = Depends(get_current_user),
 ):
-    """Get list of unread article IDs in order (oldest first)"""
     result = await db.execute(
         select(Article.id)
         .where(Article.user_id == current_user.id)
@@ -517,8 +336,6 @@ async def get_unread_navigation(
     db: AsyncSession = Depends(get_db),
     current_user: User = Depends(get_current_user),
 ):
-    """Get navigation info for unread reader (prev/next article)"""
-    # Get all unread article IDs in order
     result = await db.execute(
         select(Article.id)
         .where(Article.user_id == current_user.id)
@@ -527,14 +344,12 @@ async def get_unread_navigation(
     )
     unread_ids = [row[0] for row in result.all()]
 
-    # Find current position
     current_index = -1
     for i, uid in enumerate(unread_ids):
         if uid == article_id:
             current_index = i
             break
 
-    # If article not in unread list, return position 0
     if current_index == -1:
         return UnreadNavigationResponse(
             current_position=0,
@@ -558,66 +373,22 @@ async def update_article(
     db: AsyncSession = Depends(get_db),
     current_user: User = Depends(get_current_user),
 ):
-    """Update an article"""
-    result = await db.execute(
-        select(Article).where(Article.id == article_id, Article.user_id == current_user.id)
+    service = ArticleService(db)
+    article = await service.update_article(
+        article_id=article_id,
+        user_id=current_user.id,
+        title=data.title,
+        color_id=data.color_id,
+        is_read=data.is_read,
+        category_ids=data.category_ids,
+        tag_ids=data.tag_ids
     )
-    article = result.scalar_one_or_none()
 
     if not article:
         raise HTTPException(
             status_code=status.HTTP_404_NOT_FOUND,
             detail="Article not found",
         )
-
-    # Update fields
-    if data.title is not None:
-        article.title = data.title
-    if data.color_id is not None:
-        article.color_id = data.color_id
-    if data.is_read is not None:
-        article.is_read = data.is_read
-
-    # Update categories if provided
-    if data.category_ids is not None:
-        # Remove existing categories using DELETE statement
-        await db.execute(delete(ArticleCategory).where(ArticleCategory.article_id == article_id))
-
-        # Add new categories
-        for i, cat_id in enumerate(data.category_ids):
-            ac = ArticleCategory(
-                article_id=article_id,
-                category_id=cat_id,
-                is_primary=(i == 0),
-            )
-            db.add(ac)
-
-    # Update tags if provided
-    if data.tag_ids is not None:
-        # Remove existing tags using DELETE statement
-        await db.execute(delete(ArticleTag).where(ArticleTag.article_id == article_id))
-
-        # Add new tags
-        for tag_id in data.tag_ids:
-            at = ArticleTag(
-                article_id=article_id,
-                tag_id=tag_id,
-            )
-            db.add(at)
-
-    await db.commit()
-
-    # Reload with relationships
-    result = await db.execute(
-        select(Article)
-        .where(Article.id == article_id)
-        .options(
-            selectinload(Article.categories).selectinload(ArticleCategory.category),
-            selectinload(Article.tags).selectinload(ArticleTag.tag),
-            selectinload(Article.notes),
-        )
-    )
-    article = result.scalar_one()
 
     return article_to_response(article)
 
@@ -628,22 +399,14 @@ async def delete_article(
     db: AsyncSession = Depends(get_db),
     current_user: User = Depends(get_current_user),
 ):
-    """Delete an article"""
-    result = await db.execute(
-        select(Article).where(Article.id == article_id, Article.user_id == current_user.id)
-    )
-    article = result.scalar_one_or_none()
+    service = ArticleService(db)
+    success = await service.delete_article(article_id, current_user.id)
 
-    if not article:
+    if not success:
         raise HTTPException(
             status_code=status.HTTP_404_NOT_FOUND,
             detail="Article not found",
         )
-
-    # TODO: Delete file from R2 storage if exists
-
-    await db.delete(article)
-    await db.commit()
 
 
 @router.post("/{article_id}/process", response_model=ArticleResponse)
@@ -653,11 +416,6 @@ async def process_article(
     db: AsyncSession = Depends(get_db),
     current_user: User = Depends(get_current_user),
 ):
-    """
-    Process an article with AI: generate summary, suggest tags, and categorize.
-    This can be called manually or happens automatically after ingestion.
-    """
-    # Verify article belongs to user
     result = await db.execute(
         select(Article).where(
             Article.id == article_id,
@@ -680,7 +438,6 @@ async def process_article(
             provider_id=provider_id,
         )
 
-        # Reload with relationships
         result = await db.execute(
             select(Article)
             .where(Article.id == article_id)
@@ -705,7 +462,6 @@ async def process_article(
             detail=f"Processing failed: {str(e)}",
         )
 
-
 @router.post("/{article_id}/reprocess", response_model=ArticleResponse)
 async def reprocess_article(
     article_id: UUID,
@@ -713,12 +469,7 @@ async def reprocess_article(
     db: AsyncSession = Depends(get_db),
     current_user: User = Depends(get_current_user),
 ):
-    """
-    Re-run AI processing on an article.
-    Useful if you want to regenerate the summary with a different model.
-    """
     return await process_article(article_id, provider_id, db, current_user)
-
 
 @router.post("/reorganize")
 async def reorganize_articles(
@@ -726,11 +477,6 @@ async def reorganize_articles(
     db: AsyncSession = Depends(get_db),
     current_user: User = Depends(get_current_user),
 ):
-    """
-    Reorganize articles by running AI categorization on them.
-    This will create new categories as needed and assign articles.
-    """
-    # Build query for articles to process
     query = (
         select(Article)
         .where(Article.user_id == current_user.id)
@@ -738,7 +484,6 @@ async def reorganize_articles(
     )
 
     if uncategorized_only:
-        # Find articles with no category assignments
         has_category = (
             select(ArticleCategory.article_id)
             .where(ArticleCategory.article_id == Article.id)
@@ -775,7 +520,7 @@ async def reorganize_articles(
             "message": "Reorganization complete",
             "processed": processed,
             "total_articles": len(articles),
-            "errors": errors[:5] if errors else [],  # Return first 5 errors
+            "errors": errors[:5] if errors else [],
         }
 
     except ValueError as e:
@@ -789,19 +534,12 @@ async def reorganize_articles(
             detail=f"Reorganization failed: {str(e)}",
         )
 
-
-# =============================================================================
-# Bulk Operations
-# =============================================================================
-
-
 @router.post("/bulk/delete", response_model=BulkDeleteResponse)
 async def bulk_delete_articles(
     data: BulkDeleteRequest,
     db: AsyncSession = Depends(get_db),
     current_user: User = Depends(get_current_user),
 ):
-    """Delete multiple articles at once"""
     deleted = 0
     failed = []
 
@@ -833,7 +571,6 @@ async def bulk_update_color(
     db: AsyncSession = Depends(get_db),
     current_user: User = Depends(get_current_user),
 ):
-    """Update color for multiple articles at once"""
     updated = 0
     failed = []
 
@@ -865,7 +602,6 @@ async def bulk_reanalyze_articles(
     db: AsyncSession = Depends(get_db),
     current_user: User = Depends(get_current_user),
 ):
-    """Re-analyze multiple articles (regenerate summary, tags, categories)"""
     queued = 0
     skipped = 0
     failed = []
@@ -883,12 +619,10 @@ async def bulk_reanalyze_articles(
                 failed.append(f"{article_id}: Not found")
                 continue
 
-            # Skip if already processing
             if article.processing_status == ProcessingStatus.PROCESSING:
                 skipped += 1
                 continue
 
-            # Process the article (this runs synchronously for simplicity)
             try:
                 await ai_service.process_article(
                     article_id=article_id,
@@ -910,13 +644,6 @@ async def ask_question(
     db: AsyncSession = Depends(get_db),
     current_user: User = Depends(get_current_user),
 ):
-    """
-    Ask a question about your saved articles.
-    Automatically routes between:
-    - Content queries (RAG): "What do my articles say about X?"
-    - Metadata queries (database): "How many articles do I have?"
-    """
-    # Get the user's default AI provider
     provider = await get_default_provider(db, current_user.id)
     if not provider:
         raise HTTPException(
@@ -924,11 +651,9 @@ async def ask_question(
             detail="No AI provider configured. Please add one in Settings.",
         )
 
-    # Classify the query type
     query_type = classify_query(data.question)
     logger.info(f"Query classified as: {query_type.value}")
 
-    # Route based on query type
     if query_type == QueryType.METADATA:
         return await _handle_metadata_query(db, current_user.id, data.question, provider)
     else:
@@ -941,23 +666,14 @@ async def _handle_metadata_query(
     question: str,
     provider,
 ) -> AskResponse:
-    """Handle metadata queries by running database queries and formatting with LLM."""
     try:
-        # Detect which operation and parameters
         operation, params = detect_metadata_operation(question)
         logger.info(f"Metadata operation: {operation.value}, params: {params}")
 
-        # Execute the database query
         data = await execute_metadata_query(db, user_id, operation, params)
-
-        # Format for LLM
         formatted_data = format_metadata_for_llm(operation, data)
-
-        # Build context for the LLM (metadata as "article context")
         metadata_context = f"{METADATA_SYSTEM_PROMPT}\n\n---\n\n{formatted_data}"
 
-        # Use LLM to create a natural language response
-        # Reuse answer_question since it's designed for Q&A with context
         answer = await provider.answer_question(
             question=question,
             context=metadata_context,
@@ -965,7 +681,7 @@ async def _handle_metadata_query(
 
         return AskResponse(
             answer=answer,
-            articles=[],  # Metadata queries don't reference specific articles
+            articles=[],
         )
 
     except Exception as e:
@@ -982,41 +698,21 @@ async def _handle_content_query(
     question: str,
     provider,
 ) -> AskResponse:
-    """
-    Handle content queries using hybrid search (semantic + keyword).
-
-    Combines:
-    1. Semantic search: Find conceptually related articles via embeddings
-    2. Keyword search: Find articles with literal term matches
-
-    This ensures we find both articles that discuss related concepts AND
-    articles with exact keyword matches.
-    """
     from sqlalchemy import func as sqla_func
-
     from app.models.category import Category
     from app.models.tag import Tag
 
     logger.info(f"Content query: '{question[:80]}'")
 
-    # =========================================================================
-    # STEP 1: Semantic Search (using local EmbeddingGemma model)
-    # =========================================================================
     semantic_results: list[tuple[Article, float]] = []
-
-    # Check if pgvector/embeddings are available
     has_embeddings = hasattr(Article, "embedding")
 
     if has_embeddings:
         try:
-            # Generate embedding for the user's question using local model
             query_embedding = generate_query_embedding(question)
 
             if query_embedding:
-                # Semantic search using pgvector cosine distance
-                # Lower distance = more similar
                 distance = Article.embedding.cosine_distance(query_embedding)
-
                 semantic_query = (
                     select(Article, distance.label("distance"))
                     .where(Article.user_id == user_id)
@@ -1028,36 +724,22 @@ async def _handle_content_query(
 
                 result = await db.execute(semantic_query)
                 semantic_results = [(row[0], row[1]) for row in result.all()]
-
-                logger.info(f"Semantic search found {len(semantic_results)} articles:")
-                for article, dist in semantic_results:
-                    logger.info(f"  - [dist={dist:.4f}] {article.title[:60]}")
-
         except Exception as e:
             logger.warning(f"Semantic search failed, falling back to keyword-only: {e}")
 
-    # =========================================================================
-    # STEP 2: Keyword Search (full-text + title + category/tag matching)
-    # =========================================================================
     keyword_results: list[tuple[Article, float]] = []
 
     try:
-        # Build search terms
         search_words = question.lower().split()[:10]
         valid_words = [w for w in search_words if len(w) >= 3]
 
-        # Build conditions for keyword matching
         conditions = []
-
-        # Title substring match
         for word in valid_words[:5]:
             conditions.append(Article.title.ilike(f"%{word}%"))
 
-        # Full-text search
         ts_query = sqla_func.plainto_tsquery("english", question)
         conditions.append(Article.search_vector.op("@@")(ts_query))
 
-        # Category name match
         if valid_words:
             category_subq = (
                 select(ArticleCategory.article_id)
@@ -1067,7 +749,6 @@ async def _handle_content_query(
             )
             conditions.append(Article.id.in_(category_subq))
 
-            # Tag name match
             tag_subq = (
                 select(ArticleTag.article_id)
                 .join(Tag, Tag.id == ArticleTag.tag_id)
@@ -1077,7 +758,6 @@ async def _handle_content_query(
             conditions.append(Article.id.in_(tag_subq))
 
         if conditions:
-            # ts_rank for relevance scoring
             ts_rank = sqla_func.ts_rank(Article.search_vector, ts_query)
 
             keyword_query = (
@@ -1092,57 +772,33 @@ async def _handle_content_query(
             result = await db.execute(keyword_query)
             keyword_results = [(row[0], row[1]) for row in result.all()]
 
-            logger.info(f"Keyword search found {len(keyword_results)} articles:")
-            for article, rank in keyword_results:
-                logger.info(f"  - [rank={rank:.4f}] {article.title[:60]}")
-
     except Exception as e:
         logger.warning(f"Keyword search failed: {e}")
 
-    # =========================================================================
-    # STEP 3: Merge Results (Hybrid Ranking)
-    # =========================================================================
-    # Combine semantic and keyword results, deduplicate by article ID
-    # Prioritize articles that appear in both result sets
-
     seen_ids = set()
     merged_articles: list[Article] = []
-
-    # Score articles: appearing in both sets gets priority
     article_scores: dict[str, float] = {}
 
-    # Add semantic results (convert distance to score: lower distance = higher score)
     for article, distance in semantic_results:
         article_id = str(article.id)
-        # Convert distance (0-2 for cosine) to score (1-0)
         semantic_score = max(0, 1 - distance)
         article_scores[article_id] = article_scores.get(article_id, 0) + semantic_score
 
-    # Add keyword results (rank is already a score, normalize)
     max_rank = max((r for _, r in keyword_results), default=1) or 1
     for article, rank in keyword_results:
         article_id = str(article.id)
         keyword_score = rank / max_rank if max_rank > 0 else 0
         article_scores[article_id] = article_scores.get(article_id, 0) + keyword_score
 
-    # Create lookup for articles
     all_articles = {str(a.id): a for a, _ in semantic_results + keyword_results}
-
-    # Sort by combined score
     sorted_ids = sorted(article_scores.keys(), key=lambda x: article_scores[x], reverse=True)
 
-    for article_id in sorted_ids[:15]:  # Top 15 results
+    for article_id in sorted_ids[:15]:
         if article_id not in seen_ids:
             seen_ids.add(article_id)
             merged_articles.append(all_articles[article_id])
 
-    logger.info(f"Hybrid search merged to {len(merged_articles)} unique articles")
-
-    # =========================================================================
-    # STEP 4: Fallback if no results
-    # =========================================================================
     if not merged_articles:
-        logger.info("No matches found, falling back to recent articles")
         query = (
             select(Article)
             .where(Article.user_id == user_id)
@@ -1159,11 +815,9 @@ async def _handle_content_query(
             articles=[],
         )
 
-    # Build context from articles
     context_parts = []
     article_refs = []
     for article in merged_articles:
-        # Include title, summary, and excerpt of extracted text
         article_context = f"### {article.title}\n\n"
         if article.summary:
             article_context += f"**Summary:**\n{article.summary}\n\n"
@@ -1176,7 +830,6 @@ async def _handle_content_query(
     context = "\n\n---\n\n".join(context_parts)
 
     try:
-        # Get answer from AI
         answer = await provider.answer_question(
             question=question,
             context=context,
