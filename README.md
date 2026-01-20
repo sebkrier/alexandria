@@ -1,6 +1,6 @@
 # Alexandria
 
-![Alexandria UI](UI.png?v=2)
+![Alexandria UI](https://raw.githubusercontent.com/sebkrier/alexandria/main/UI.png)
 
 A personal research library for storing, organizing, and retrieving articles with AI-powered summarization and categorization.
 
