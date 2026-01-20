@@ -37,8 +37,9 @@ async def test_process_article_success(
     """Test successful article processing with summary, tags, and category."""
     from tests.conftest import MockLiteLLMResponse
 
-    # Setup mock responses in sequence: summary, tags, category
+    # Setup mock responses in sequence: metadata, summary, tags, category
     mock_litellm.side_effect = [
+        MockLiteLLMResponse('{"title": "Test Title", "authors": ["Test Author"]}'),
         MockLiteLLMResponse(sample_summary_markdown),
         MockLiteLLMResponse(sample_tags_json),
         MockLiteLLMResponse(sample_category_json),
@@ -74,6 +75,7 @@ async def test_process_article_updates_status_to_completed(
     assert test_article_for_processing.processing_status == ProcessingStatus.PENDING
 
     mock_litellm.side_effect = [
+        MockLiteLLMResponse('{"title": "Test", "authors": []}'),
         MockLiteLLMResponse("## One-Line Summary\nTest summary."),
         MockLiteLLMResponse('[{"name": "test", "confidence": 0.9, "reasoning": "test"}]'),
         MockLiteLLMResponse(
@@ -111,6 +113,7 @@ async def test_process_article_with_existing_tags(
     existing_tag_name = test_tag.name  # "test-tag" from fixture
 
     mock_litellm.side_effect = [
+        MockLiteLLMResponse('{"title": "Test", "authors": []}'),
         MockLiteLLMResponse("## One-Line Summary\nTest summary."),
         MockLiteLLMResponse(
             f'[{{"name": "{existing_tag_name}", "confidence": 0.95, "reasoning": "Matches existing"}}]'
@@ -156,6 +159,7 @@ async def test_process_article_creates_new_category(
     new_subcategory_name = "New Subcategory"
 
     mock_litellm.side_effect = [
+        MockLiteLLMResponse('{"title": "Test", "authors": []}'),
         MockLiteLLMResponse("## One-Line Summary\nTest summary."),
         MockLiteLLMResponse('[{"name": "test", "confidence": 0.9, "reasoning": "test"}]'),
         MockLiteLLMResponse(
@@ -211,6 +215,7 @@ async def test_process_article_uses_existing_category(
     from tests.conftest import MockLiteLLMResponse
 
     mock_litellm.side_effect = [
+        MockLiteLLMResponse('{"title": "Test", "authors": []}'),
         MockLiteLLMResponse("## One-Line Summary\nTest summary."),
         MockLiteLLMResponse('[{"name": "test", "confidence": 0.9, "reasoning": "test"}]'),
         MockLiteLLMResponse(
@@ -317,6 +322,7 @@ async def test_process_article_low_confidence_tags_skipped(
     from tests.conftest import MockLiteLLMResponse
 
     mock_litellm.side_effect = [
+        MockLiteLLMResponse('{"title": "Test", "authors": []}'),
         MockLiteLLMResponse("## One-Line Summary\nTest summary."),
         MockLiteLLMResponse(
             "["
@@ -366,6 +372,7 @@ async def test_process_article_low_confidence_category_skipped(
     from tests.conftest import MockLiteLLMResponse
 
     mock_litellm.side_effect = [
+        MockLiteLLMResponse('{"title": "Test", "authors": []}'),
         MockLiteLLMResponse("## One-Line Summary\nTest summary."),
         MockLiteLLMResponse('[{"name": "test", "confidence": 0.9, "reasoning": "test"}]'),
         MockLiteLLMResponse(
