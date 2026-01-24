@@ -12,6 +12,7 @@ The main router combines all sub-routers for backwards compatibility.
 from fastapi import APIRouter
 
 # Import routers from sub-modules
+from app.api.htmx.ask import router as ask_router
 from app.api.htmx.bulk import router as bulk_router
 from app.api.htmx.main import router as main_router
 from app.api.htmx.reader import router as reader_router
@@ -24,4 +25,5 @@ router = APIRouter()
 router.include_router(settings_router)
 router.include_router(reader_router)
 router.include_router(bulk_router)
+router.include_router(ask_router)
 router.include_router(main_router)
