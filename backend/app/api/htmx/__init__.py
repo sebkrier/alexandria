@@ -14,6 +14,7 @@ from fastapi import APIRouter
 # Import routers from sub-modules
 from app.api.htmx.ask import router as ask_router
 from app.api.htmx.bulk import router as bulk_router
+from app.api.htmx.ingestion import router as ingestion_router
 from app.api.htmx.main import router as main_router
 from app.api.htmx.reader import router as reader_router
 from app.api.htmx.settings import router as settings_router
@@ -28,4 +29,5 @@ router.include_router(reader_router)
 router.include_router(bulk_router)
 router.include_router(ask_router)
 router.include_router(taxonomy_router)
+router.include_router(ingestion_router)
 router.include_router(main_router)
