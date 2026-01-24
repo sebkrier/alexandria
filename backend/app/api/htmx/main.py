@@ -899,6 +899,7 @@ async def delete_article_note(
         },
     )
 
+
 # =============================================================================
 # Remote Add Route
 # =============================================================================
@@ -921,6 +922,7 @@ async def remote_page(
             **sidebar_data,
         },
     )
+
 
 # =============================================================================
 # Test Routes (for development)
@@ -1054,4 +1056,3 @@ async def test_card(request: Request, view: str = "grid") -> Response:
             "view_mode": view,
         },
     )
-
