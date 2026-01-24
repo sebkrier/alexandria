@@ -18,7 +18,7 @@ router = APIRouter()
 async def list_tags(
     db: AsyncSession = Depends(get_db),
     current_user: User = Depends(get_current_user),
-):
+) -> list:
     """List all tags"""
     result = await db.execute(select(Tag).where(Tag.user_id == current_user.id).order_by(Tag.name))
     tags = result.scalars().all()
@@ -49,7 +49,7 @@ async def create_tag(
     data: TagCreate,
     db: AsyncSession = Depends(get_db),
     current_user: User = Depends(get_current_user),
-):
+) -> TagResponse:
     """Create a new tag"""
     # Check if tag with same name exists
     result = await db.execute(
@@ -87,7 +87,7 @@ async def delete_tag(
     tag_id: UUID,
     db: AsyncSession = Depends(get_db),
     current_user: User = Depends(get_current_user),
-):
+) -> None:
     """Delete a tag"""
     result = await db.execute(select(Tag).where(Tag.id == tag_id, Tag.user_id == current_user.id))
     tag = result.scalar_one_or_none()

@@ -60,7 +60,7 @@ async def build_category_tree(
 async def list_categories(
     db: AsyncSession = Depends(get_db),
     current_user: User = Depends(get_current_user),
-):
+) -> list:
     """Get category tree"""
     return await build_category_tree(db, current_user.id)
 
@@ -70,7 +70,7 @@ async def create_category(
     data: CategoryCreate,
     db: AsyncSession = Depends(get_db),
     current_user: User = Depends(get_current_user),
-):
+) -> CategoryResponse:
     """Create a new category"""
     # Get max position for ordering
     result = await db.execute(
@@ -110,7 +110,7 @@ async def update_category(
     data: CategoryUpdate,
     db: AsyncSession = Depends(get_db),
     current_user: User = Depends(get_current_user),
-):
+) -> CategoryResponse:
     """Update a category"""
     result = await db.execute(
         select(Category).where(Category.id == category_id, Category.user_id == current_user.id)
@@ -160,7 +160,7 @@ async def delete_category(
     category_id: UUID,
     db: AsyncSession = Depends(get_db),
     current_user: User = Depends(get_current_user),
-):
+) -> None:
     """Delete a category"""
     result = await db.execute(
         select(Category).where(Category.id == category_id, Category.user_id == current_user.id)

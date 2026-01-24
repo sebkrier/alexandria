@@ -202,7 +202,7 @@ async def create_article_from_upload(
     file: UploadFile = File(...),
     db: AsyncSession = Depends(get_db),
     current_user: User = Depends(get_current_user),
-):
+) -> ArticleResponse:
     """Create a new article from an uploaded PDF"""
     if not file.filename.lower().endswith(".pdf"):
         raise HTTPException(
@@ -377,7 +377,7 @@ async def get_article(
     article_id: UUID,
     db: AsyncSession = Depends(get_db),
     current_user: User = Depends(get_current_user),
-):
+) -> ArticleResponse:
     """Get a single article by ID"""
     result = await db.execute(
         select(Article)
@@ -404,7 +404,7 @@ async def get_article_text(
     article_id: UUID,
     db: AsyncSession = Depends(get_db),
     current_user: User = Depends(get_current_user),
-):
+) -> dict[str, str | None]:
     """Get the extracted text of an article"""
     result = await db.execute(
         select(Article).where(Article.id == article_id, Article.user_id == current_user.id)
@@ -429,7 +429,7 @@ async def get_article_text(
 async def get_unread_list(
     db: AsyncSession = Depends(get_db),
     current_user: User = Depends(get_current_user),
-):
+) -> UnreadListResponse:
     """Get list of unread article IDs in order (oldest first)"""
     result = await db.execute(
         select(Article.id)
@@ -450,7 +450,7 @@ async def get_unread_navigation(
     article_id: UUID,
     db: AsyncSession = Depends(get_db),
     current_user: User = Depends(get_current_user),
-):
+) -> UnreadNavigationResponse:
     """Get navigation info for unread reader (prev/next article)"""
     # Get all unread article IDs in order
     result = await db.execute(
@@ -491,7 +491,7 @@ async def update_article(
     data: ArticleUpdate,
     db: AsyncSession = Depends(get_db),
     current_user: User = Depends(get_current_user),
-):
+) -> ArticleResponse:
     """Update an article"""
     result = await db.execute(
         select(Article).where(Article.id == article_id, Article.user_id == current_user.id)
@@ -561,7 +561,7 @@ async def delete_article(
     article_id: UUID,
     db: AsyncSession = Depends(get_db),
     current_user: User = Depends(get_current_user),
-):
+) -> None:
     """Delete an article"""
     result = await db.execute(
         select(Article).where(Article.id == article_id, Article.user_id == current_user.id)
@@ -586,7 +586,7 @@ async def process_article(
     provider_id: UUID | None = None,
     db: AsyncSession = Depends(get_db),
     current_user: User = Depends(get_current_user),
-):
+) -> ArticleResponse:
     """
     Process an article with AI: generate summary, suggest tags, and categorize.
     This can be called manually or happens automatically after ingestion.
@@ -646,7 +646,7 @@ async def reprocess_article(
     provider_id: UUID | None = None,
     db: AsyncSession = Depends(get_db),
     current_user: User = Depends(get_current_user),
-):
+) -> ArticleResponse:
     """
     Re-run AI processing on an article.
     Useful if you want to regenerate the summary with a different model.
@@ -659,7 +659,7 @@ async def reorganize_articles(
     uncategorized_only: bool = Query(True, description="Only process articles without categories"),
     db: AsyncSession = Depends(get_db),
     current_user: User = Depends(get_current_user),
-):
+) -> dict:
     """
     Reorganize articles by running AI categorization on them.
     This will create new categories as needed and assign articles.
@@ -734,7 +734,7 @@ async def bulk_delete_articles(
     data: BulkDeleteRequest,
     db: AsyncSession = Depends(get_db),
     current_user: User = Depends(get_current_user),
-):
+) -> BulkDeleteResponse:
     """Delete multiple articles at once"""
     deleted = 0
     failed = []
@@ -766,7 +766,7 @@ async def bulk_update_color(
     data: BulkColorRequest,
     db: AsyncSession = Depends(get_db),
     current_user: User = Depends(get_current_user),
-):
+) -> BulkColorResponse:
     """Update color for multiple articles at once"""
     updated = 0
     failed = []
@@ -798,7 +798,7 @@ async def bulk_reanalyze_articles(
     data: BulkReanalyzeRequest,
     db: AsyncSession = Depends(get_db),
     current_user: User = Depends(get_current_user),
-):
+) -> BulkReanalyzeResponse:
     """Re-analyze multiple articles (regenerate summary, tags, categories)"""
     queued = 0
     skipped = 0
@@ -843,7 +843,7 @@ async def ask_question(
     data: AskRequest,
     db: AsyncSession = Depends(get_db),
     current_user: User = Depends(get_current_user),
-):
+) -> AskResponse:
     """
     Ask a question about your saved articles.
     Automatically routes between:
