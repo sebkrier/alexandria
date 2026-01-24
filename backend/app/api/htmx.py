@@ -10,7 +10,7 @@ from pathlib import Path
 from uuid import UUID
 
 from fastapi import APIRouter, BackgroundTasks, Depends, Query, Request
-from fastapi.responses import HTMLResponse, StreamingResponse
+from fastapi.responses import HTMLResponse, Response, StreamingResponse
 from fastapi.templating import Jinja2Templates
 from sqlalchemy import delete, func, or_, select
 from sqlalchemy.ext.asyncio import AsyncSession
@@ -219,7 +219,7 @@ async def index_page(
     color_id: UUID | None = None,
     db: AsyncSession = Depends(get_db),
     current_user: User = Depends(get_current_user),
-):
+) -> Response:
     """Main article list page."""
     # Fetch articles
     articles, total = await fetch_articles(
@@ -268,7 +268,7 @@ async def articles_partial(
     is_read: bool | None = None,
     db: AsyncSession = Depends(get_db),
     current_user: User = Depends(get_current_user),
-):
+) -> Response:
     """Article list partial for HTMX requests. Returns all articles (no pagination)."""
     # Fetch all articles (no pagination)
     articles, total = await fetch_articles(
@@ -422,7 +422,7 @@ async def get_article_card(
     view_mode: str = Query("grid", description="View mode: grid or list"),
     db: AsyncSession = Depends(get_db),
     current_user: User = Depends(get_current_user),
-):
+) -> Response:
     """Get a single article card - used for polling during processing."""
     query = (
         select(Article)
@@ -462,7 +462,7 @@ async def article_detail_page(
     article_id: UUID,
     db: AsyncSession = Depends(get_db),
     current_user: User = Depends(get_current_user),
-):
+) -> Response:
     """Article detail page."""
     from app.models.note import Note
 
@@ -611,7 +611,7 @@ async def delete_article(
     article_id: UUID,
     db: AsyncSession = Depends(get_db),
     current_user: User = Depends(get_current_user),
-):
+) -> Response:
     """Delete a single article via HTMX."""
     # Verify article exists and belongs to user
     result = await db.execute(
@@ -657,7 +657,7 @@ async def toggle_article_read(
     article_id: UUID,
     db: AsyncSession = Depends(get_db),
     current_user: User = Depends(get_current_user),
-):
+) -> Response:
     """Toggle article read/unread status via HTMX."""
     result = await db.execute(
         select(Article).where(
@@ -705,7 +705,7 @@ async def update_article_color(
     article_id: UUID,
     db: AsyncSession = Depends(get_db),
     current_user: User = Depends(get_current_user),
-):
+) -> Response:
     """Update article color via HTMX."""
     form = await request.form()
     color_id_str = form.get("color_id")
@@ -757,7 +757,7 @@ async def update_article_categories(
     article_id: UUID,
     db: AsyncSession = Depends(get_db),
     current_user: User = Depends(get_current_user),
-):
+) -> Response:
     """Update article categories via HTMX."""
     form = await request.form()
     # Get all category_ids from form (checkboxes send multiple values)
@@ -819,7 +819,7 @@ async def update_article_tags(
     article_id: UUID,
     db: AsyncSession = Depends(get_db),
     current_user: User = Depends(get_current_user),
-):
+) -> Response:
     """Update article tags via HTMX."""
     form = await request.form()
     # Get all tag_ids from form (checkboxes send multiple values)
@@ -879,7 +879,7 @@ async def create_article_note(
     article_id: UUID,
     db: AsyncSession = Depends(get_db),
     current_user: User = Depends(get_current_user),
-):
+) -> Response:
     """Create a note for an article via HTMX."""
     from app.models.note import Note
 
@@ -934,7 +934,7 @@ async def reprocess_article(
     background_tasks: BackgroundTasks,
     db: AsyncSession = Depends(get_db),
     current_user: User = Depends(get_current_user),
-):
+) -> Response:
     """Reprocess an article (regenerate summary and categories) via HTMX."""
     # Fetch article
     result = await db.execute(
@@ -1010,7 +1010,7 @@ async def get_article_processing_status(
     article_id: UUID,
     db: AsyncSession = Depends(get_db),
     current_user: User = Depends(get_current_user),
-):
+) -> Response:
     """Get article processing status - used for polling during reprocessing."""
     result = await db.execute(
         select(Article).where(
@@ -1096,7 +1096,7 @@ async def delete_article_note(
     note_id: UUID,
     db: AsyncSession = Depends(get_db),
     current_user: User = Depends(get_current_user),
-):
+) -> Response:
     """Delete a note via HTMX."""
     from app.models.note import Note
 
@@ -1144,7 +1144,7 @@ async def settings_page(
     request: Request,
     db: AsyncSession = Depends(get_db),
     current_user: User = Depends(get_current_user),
-):
+) -> Response:
     """Settings page with AI providers and colors."""
     from app.ai.factory import get_available_providers
     from app.ai.prompts import (
@@ -1245,7 +1245,7 @@ async def settings_page(
 async def add_provider_modal(
     request: Request,
     current_user: User = Depends(get_current_user),
-):
+) -> Response:
     """Return the add provider modal HTML."""
     from app.ai.factory import get_available_providers
 
@@ -1265,7 +1265,7 @@ async def create_provider(
     request: Request,
     db: AsyncSession = Depends(get_db),
     current_user: User = Depends(get_current_user),
-):
+) -> Response:
     """Create a new AI provider."""
     from app.models.ai_provider import AIProvider as AIProviderModel
     from app.models.ai_provider import ProviderName
@@ -1309,7 +1309,7 @@ async def test_provider(
     provider_id: UUID,
     db: AsyncSession = Depends(get_db),
     current_user: User = Depends(get_current_user),
-):
+) -> Response:
     """Test an AI provider connection."""
     from app.ai.factory import get_ai_provider
     from app.models.ai_provider import AIProvider as AIProviderModel
@@ -1371,7 +1371,7 @@ async def set_default_provider(
     provider_id: UUID,
     db: AsyncSession = Depends(get_db),
     current_user: User = Depends(get_current_user),
-):
+) -> Response:
     """Set a provider as default."""
     from app.models.ai_provider import AIProvider as AIProviderModel
 
@@ -1408,7 +1408,7 @@ async def delete_provider(
     provider_id: UUID,
     db: AsyncSession = Depends(get_db),
     current_user: User = Depends(get_current_user),
-):
+) -> Response:
     """Delete an AI provider."""
     from app.models.ai_provider import AIProvider as AIProviderModel
 
@@ -1486,7 +1486,7 @@ async def update_color(
     color_id: UUID,
     db: AsyncSession = Depends(get_db),
     current_user: User = Depends(get_current_user),
-):
+) -> Response:
     """Update a color label name."""
     form = await request.form()
     name = form.get("name")
@@ -1519,7 +1519,7 @@ async def create_color(
     request: Request,
     db: AsyncSession = Depends(get_db),
     current_user: User = Depends(get_current_user),
-):
+) -> Response:
     """Create a new color label."""
     form = await request.form()
     name = form.get("name", "New Color")
@@ -1558,7 +1558,7 @@ async def delete_color(
     color_id: UUID,
     db: AsyncSession = Depends(get_db),
     current_user: User = Depends(get_current_user),
-):
+) -> Response:
     """Delete a color label. Articles with this color will have their color cleared."""
     # Find the color
     result = await db.execute(
@@ -1600,7 +1600,7 @@ async def delete_color(
 async def add_article_modal(
     request: Request,
     current_user: User = Depends(get_current_user),
-):
+) -> Response:
     """Return the add article modal HTML."""
     return templates.TemplateResponse(
         request=request,
@@ -1620,7 +1620,7 @@ async def add_article_url(
     background_tasks: BackgroundTasks,
     db: AsyncSession = Depends(get_db),
     current_user: User = Depends(get_current_user),
-):
+) -> Response:
     """Add an article from URL via HTMX."""
     from app.extractors import extract_content
 
@@ -1695,7 +1695,7 @@ async def upload_article_pdf(
     background_tasks: BackgroundTasks,
     db: AsyncSession = Depends(get_db),
     current_user: User = Depends(get_current_user),
-):
+) -> Response:
     """Upload a PDF article via HTMX."""
     import tempfile
     from pathlib import Path
@@ -1791,7 +1791,7 @@ async def bulk_mark_read(
     request: Request,
     db: AsyncSession = Depends(get_db),
     current_user: User = Depends(get_current_user),
-):
+) -> Response:
     """Mark selected articles as read and optionally assign a color."""
     import json
 
@@ -1854,7 +1854,7 @@ async def bulk_mark_unread(
     request: Request,
     db: AsyncSession = Depends(get_db),
     current_user: User = Depends(get_current_user),
-):
+) -> Response:
     """Mark selected articles as unread."""
     import json
 
@@ -1914,7 +1914,7 @@ async def sidebar_unread_count(
     request: Request,
     db: AsyncSession = Depends(get_db),
     current_user: User = Depends(get_current_user),
-):
+) -> Response:
     """Return the sidebar unread count partial for HTMX updates."""
     # Count unread articles
     result = await db.execute(
@@ -1940,7 +1940,7 @@ async def bulk_color_picker(
     request: Request,
     db: AsyncSession = Depends(get_db),
     current_user: User = Depends(get_current_user),
-):
+) -> Response:
     """Return the color picker dropdown for bulk mark as read."""
     colors = await fetch_colors(db, current_user.id)
 
@@ -1956,7 +1956,7 @@ async def bulk_delete(
     request: Request,
     db: AsyncSession = Depends(get_db),
     current_user: User = Depends(get_current_user),
-):
+) -> Response:
     """Delete selected articles."""
     import json
 
@@ -2016,7 +2016,7 @@ async def bulk_update_color(
     request: Request,
     db: AsyncSession = Depends(get_db),
     current_user: User = Depends(get_current_user),
-):
+) -> Response:
     """Update color for selected articles."""
     import json
 
@@ -2078,7 +2078,7 @@ async def bulk_reanalyze(
     background_tasks: BackgroundTasks,
     db: AsyncSession = Depends(get_db),
     current_user: User = Depends(get_current_user),
-):
+) -> Response:
     """Re-analyze selected articles (re-generate summary and categories)."""
     import json
 
@@ -2167,7 +2167,7 @@ async def remote_page(
     request: Request,
     db: AsyncSession = Depends(get_db),
     current_user: User = Depends(get_current_user),
-):
+) -> Response:
     """Remote add page - WhatsApp bot setup instructions."""
     sidebar_data = await fetch_sidebar_data(db, current_user.id)
 
@@ -2191,7 +2191,7 @@ async def ask_page(
     request: Request,
     db: AsyncSession = Depends(get_db),
     current_user: User = Depends(get_current_user),
-):
+) -> Response:
     """Chat page for asking questions about your library."""
     # Fetch sidebar data
     sidebar_data = await fetch_sidebar_data(db, current_user.id)
@@ -2220,7 +2220,7 @@ async def ask_query(
     request: Request,
     db: AsyncSession = Depends(get_db),
     current_user: User = Depends(get_current_user),
-):
+) -> Response:
     """Handle a question about the user's library with streaming response."""
     import html
     import logging
@@ -2493,7 +2493,7 @@ async def ask_query(
 
 
 @router.get("/test", response_class=HTMLResponse)
-async def test_page(request: Request):
+async def test_page(request: Request) -> Response:
     """Test page to verify HTMX + Jinja2 setup is working."""
     return templates.TemplateResponse(
         request=request,
@@ -2512,7 +2512,7 @@ async def test_page(request: Request):
 
 
 @router.get("/test/click", response_class=HTMLResponse)
-async def test_click(request: Request):
+async def test_click(request: Request) -> Response:
     """Partial response for HTMX click test."""
     import random  # noqa: S311
 
@@ -2608,7 +2608,7 @@ This guide explores the architecture, training methods, and applications of mode
 
 
 @router.get("/test/card", response_class=HTMLResponse)
-async def test_card(request: Request, view: str = "grid"):
+async def test_card(request: Request, view: str = "grid") -> Response:
     """Test page to preview article cards with mock data."""
     return templates.TemplateResponse(
         request=request,
@@ -2646,7 +2646,7 @@ async def reader_index(
     request: Request,
     db: AsyncSession = Depends(get_db),
     current_user: User = Depends(get_current_user),
-):
+) -> Response:
     """Reader page - redirects to first unread article or shows 'all caught up'."""
     from fastapi.responses import RedirectResponse
 
@@ -2670,7 +2670,7 @@ async def reader_article(
     article_id: UUID,
     db: AsyncSession = Depends(get_db),
     current_user: User = Depends(get_current_user),
-):
+) -> Response:
     """Show a specific article in reader mode."""
 
     # Fetch the article with notes
@@ -2757,7 +2757,7 @@ async def reader_mark_read(
     article_id: UUID,
     db: AsyncSession = Depends(get_db),
     current_user: User = Depends(get_current_user),
-):
+) -> Response:
     """Mark article as read and redirect to next unread article."""
     from fastapi.responses import RedirectResponse
 
@@ -2791,7 +2791,7 @@ async def reader_set_color(
     article_id: UUID,
     db: AsyncSession = Depends(get_db),
     current_user: User = Depends(get_current_user),
-):
+) -> Response:
     """Set or clear the color label on an article and reload the reader page."""
     from fastapi.responses import RedirectResponse
 
@@ -2825,7 +2825,7 @@ async def taxonomy_optimize_modal(
     request: Request,
     db: AsyncSession = Depends(get_db),
     current_user: User = Depends(get_current_user),
-):
+) -> Response:
     """Show the taxonomy optimization modal with loading state."""
     # Count articles
     result = await db.execute(
@@ -2848,7 +2848,7 @@ async def taxonomy_analyze(
     request: Request,
     db: AsyncSession = Depends(get_db),
     current_user: User = Depends(get_current_user),
-):
+) -> Response:
     """Run AI analysis and return the preview of proposed changes."""
     from app.ai.factory import get_default_provider
     from app.ai.llm import LiteLLMProvider
@@ -3006,7 +3006,7 @@ async def taxonomy_apply(
     request: Request,
     db: AsyncSession = Depends(get_db),
     current_user: User = Depends(get_current_user),
-):
+) -> Response:
     """Apply the proposed taxonomy changes."""
     import json
 
