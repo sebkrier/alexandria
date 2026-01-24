@@ -1,0 +1,56 @@
+name: E2E Tests
+
+on:
+  push:
+    branches: ["**"]
+  pull_request:
+    branches: ["**"]
+
+jobs:
+  e2e:
+    name: Playwright Browser Tests
+    runs-on: ubuntu-latest
+    defaults:
+      run:
+        working-directory: backend
+
+    services:
+      postgres:
+        image: pgvector/pgvector:pg15
+        env:
+          POSTGRES_USER: postgres
+          POSTGRES_PASSWORD: testpass
+          POSTGRES_DB: alexandria_test
+        ports:
+          - 5432:5432
+        options: >-
+          --health-cmd pg_isready
+          --health-interval 10s
+          --health-timeout 5s
+          --health-retries 5
+
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Setup pixi
+        uses: prefix-dev/setup-pixi@v0.8.1
+        with:
+          manifest-path: backend/pixi.toml
+
+      - name: Setup environment
+        run: cp .env.ci .env
+
+      - name: Install Playwright browsers
+        run: pixi run playwright-install
+
+      - name: Run database migrations
+        run: pixi run migrate
+        env:
+          DATABASE_URL: postgresql+asyncpg://postgres:testpass@localhost:5432/alexandria_test
+
+      - name: Run E2E tests
+        run: pixi run e2e-headless
+        env:
+          DATABASE_URL: postgresql+asyncpg://postgres:testpass@localhost:5432/alexandria_test
+          TEST_DATABASE_URL: postgresql+asyncpg://postgres:testpass@localhost:5432/alexandria_test

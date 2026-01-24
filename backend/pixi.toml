@@ -11,12 +11,18 @@ uv = "*"
 
 [tasks]
 dev = "uvicorn app.main:app --reload --port 8000"
-test = "pytest -v"
+test = "pytest -v --cov=app --cov-report=term-missing --ignore=tests/e2e"
+test-db-setup = "bash -c 'PGPASSWORD=localdev psql -h localhost -U postgres -c \"CREATE DATABASE alexandria_test\" 2>/dev/null || true && DATABASE_URL=postgresql+asyncpg://postgres:localdev@localhost:5432/alexandria_test alembic upgrade head'"
+test-full = "pixi run test-db-setup && pixi run test"
 sync = "uv sync"
 migrate = "alembic upgrade head"
 lint = "ruff check ."
 format = "ruff format ."
 lint-fix = "ruff check --fix ."
+playwright-install = "playwright install chromium"
+e2e = "pytest tests/e2e -v --headed"
+e2e-headless = "pytest tests/e2e -v"
+e2e-debug = "pytest tests/e2e -v --headed --slowmo=500"
 
 [pypi-dependencies]
 alexandria = { path = ".", editable = true }
