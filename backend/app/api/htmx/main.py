@@ -1,8 +1,13 @@
 """
-HTMX Routes - HTML pages served by FastAPI with Jinja2 templates.
+Core HTMX routes for article operations.
 
-These routes return HTML instead of JSON, and are used by the HTMX frontend.
-The JSON API routes in /api/* remain unchanged for backwards compatibility.
+Contains:
+- Index page and article list views
+- Article detail, card, and status endpoints
+- Article CRUD (delete, toggle-read, update color/categories/tags)
+- Article notes management
+- Article reprocessing
+- Remote add page and test routes
 """
 
 import logging
