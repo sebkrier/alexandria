@@ -16,6 +16,15 @@ from sqlalchemy import delete, func, or_, select
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy.orm import selectinload
 
+# Import helpers from the htmx helpers module
+from app.api.htmx.helpers import (
+    article_to_detail_dict,
+    article_to_dict,
+    fetch_categories_with_counts,
+    fetch_colors,
+    fetch_sidebar_data,
+    fetch_tags,
+)
 from app.database import get_db
 from app.models.article import Article, ProcessingStatus, SourceType
 from app.models.article_category import ArticleCategory
@@ -25,7 +34,6 @@ from app.models.color import Color
 from app.models.tag import Tag
 from app.models.user import User
 from app.tasks import process_article_background
-from app.utils.article_helpers import calculate_reading_time, determine_media_type_str
 from app.utils.auth import get_current_user
 
 logger = logging.getLogger(__name__)
@@ -35,172 +43,6 @@ router = APIRouter()
 # Template configuration
 TEMPLATES_DIR = Path(__file__).parent.parent.parent / "templates"
 templates = Jinja2Templates(directory=str(TEMPLATES_DIR))
-
-
-# =============================================================================
-# Helper functions for converting models to template-friendly dicts
-# =============================================================================
-
-
-def article_to_dict(article: Article) -> dict:
-    """Convert Article model to a dict for templates"""
-    categories = []
-    for ac in article.categories:
-        categories.append(
-            {
-                "id": str(ac.category.id),
-                "name": ac.category.name,
-                "is_primary": ac.is_primary,
-            }
-        )
-
-    tags = []
-    for at in article.tags:
-        tags.append(
-            {
-                "id": str(at.tag.id),
-                "name": at.tag.name,
-                "color": at.tag.color,
-            }
-        )
-
-    color = None
-    if article.color:
-        color = {
-            "id": str(article.color.id),
-            "hex_value": article.color.hex_value,
-            "name": article.color.name,
-        }
-
-    # Handle source_type - might be enum or string
-    source_type_val = article.source_type
-    if hasattr(source_type_val, "value"):
-        source_type_str = source_type_val.value
-    else:
-        source_type_str = str(source_type_val) if source_type_val else "url"
-
-    # Handle processing_status - might be enum or string
-    proc_status = article.processing_status
-    if hasattr(proc_status, "value"):
-        proc_status_str = proc_status.value
-    else:
-        proc_status_str = str(proc_status) if proc_status else "pending"
-
-    return {
-        "id": str(article.id),
-        "source_type": source_type_str,
-        "media_type": determine_media_type_str(article.source_type, article.original_url),
-        "original_url": article.original_url,
-        "title": article.title or "Untitled",
-        "authors": article.authors or [],
-        "summary": article.summary,
-        "is_read": article.is_read,
-        "reading_time_minutes": calculate_reading_time(article.word_count),
-        "processing_status": proc_status_str,
-        "color": color,
-        "categories": categories,
-        "tags": tags,
-        "created_at": article.created_at,
-    }
-
-
-# =============================================================================
-# Sidebar data helpers
-# =============================================================================
-
-
-async def fetch_sidebar_data(db: AsyncSession, user_id: UUID) -> dict:
-    """Fetch all data needed for the sidebar."""
-    categories = await fetch_categories_with_counts(db, user_id)
-    colors = await fetch_colors(db, user_id)
-    unread_count = await fetch_unread_count(db, user_id)
-
-    return {
-        "categories": categories,
-        "colors": colors,
-        "unread_count": unread_count,
-    }
-
-
-async def fetch_categories_with_counts(db: AsyncSession, user_id: UUID) -> list[dict]:
-    """Fetch categories with article counts, organized in a tree structure."""
-    # Get all categories for user
-    result = await db.execute(
-        select(Category)
-        .where(Category.user_id == user_id)
-        .order_by(Category.position, Category.name)
-    )
-    categories = result.scalars().all()
-
-    # Get article counts per category (direct counts only)
-    count_result = await db.execute(
-        select(ArticleCategory.category_id, func.count(ArticleCategory.article_id))
-        .join(Article, Article.id == ArticleCategory.article_id)
-        .where(Article.user_id == user_id)
-        .group_by(ArticleCategory.category_id)
-    )
-    direct_counts = {row[0]: row[1] for row in count_result.all()}
-
-    # Build tree structure with recursive counts
-    def build_tree(parent_id: UUID | None) -> list[dict]:
-        children = []
-        for cat in categories:
-            if cat.parent_id == parent_id:
-                child_nodes = build_tree(cat.id)
-                # Sum direct count + all descendant counts
-                direct_count = direct_counts.get(cat.id, 0)
-                descendant_count = sum(c["article_count"] for c in child_nodes)
-                children.append(
-                    {
-                        "id": str(cat.id),
-                        "name": cat.name,
-                        "article_count": direct_count + descendant_count,
-                        "children": child_nodes,
-                    }
-                )
-        return children
-
-    return build_tree(None)
-
-
-async def fetch_colors(db: AsyncSession, user_id: UUID) -> list[dict]:
-    """Fetch all colors for user."""
-    result = await db.execute(
-        select(Color).where(Color.user_id == user_id).order_by(Color.position, Color.name)
-    )
-    colors = result.scalars().all()
-
-    return [
-        {
-            "id": str(color.id),
-            "name": color.name,
-            "hex_value": color.hex_value,
-        }
-        for color in colors
-    ]
-
-
-async def fetch_tags(db: AsyncSession, user_id: UUID) -> list[dict]:
-    """Fetch all tags for user."""
-    result = await db.execute(select(Tag).where(Tag.user_id == user_id).order_by(Tag.name))
-    tags = result.scalars().all()
-
-    return [
-        {
-            "id": str(tag.id),
-            "name": tag.name,
-            "color": tag.color,
-        }
-        for tag in tags
-    ]
-
-
-async def fetch_unread_count(db: AsyncSession, user_id: UUID) -> int:
-    """Count unread articles (is_read == False)."""
-    result = await db.execute(
-        select(func.count(Article.id)).where(Article.user_id == user_id, Article.is_read.is_(False))
-    )
-    return result.scalar() or 0
 
 
 # =============================================================================
@@ -522,87 +364,6 @@ async def article_detail_page(
             "all_tags": all_tags,
         },
     )
-
-
-def article_to_detail_dict(article: Article) -> dict:
-    """Convert Article model to a detailed dict for article detail template."""
-    categories = []
-    for ac in article.categories:
-        categories.append(
-            {
-                "id": str(ac.category.id),
-                "name": ac.category.name,
-                "is_primary": ac.is_primary,
-            }
-        )
-
-    tags = []
-    for at in article.tags:
-        tags.append(
-            {
-                "id": str(at.tag.id),
-                "name": at.tag.name,
-                "color": at.tag.color,
-            }
-        )
-
-    color = None
-    if article.color:
-        color = {
-            "id": str(article.color.id),
-            "hex_value": article.color.hex_value,
-            "name": article.color.name,
-        }
-
-    # Handle source_type - might be enum or string
-    source_type_val = article.source_type
-    if hasattr(source_type_val, "value"):
-        source_type_str = source_type_val.value
-    else:
-        source_type_str = str(source_type_val) if source_type_val else "url"
-
-    # Handle processing_status - might be enum or string
-    proc_status = article.processing_status
-    if hasattr(proc_status, "value"):
-        proc_status_str = proc_status.value
-    else:
-        proc_status_str = str(proc_status) if proc_status else "pending"
-
-    # Include notes if loaded (check if relationship is actually loaded to avoid lazy load in async)
-    notes = []
-    from sqlalchemy import inspect
-
-    insp = inspect(article)
-    if "notes" in insp.dict:  # Only access if already loaded
-        for note in sorted(article.notes, key=lambda n: n.created_at, reverse=True):
-            notes.append(
-                {
-                    "id": str(note.id),
-                    "content": note.content,
-                    "created_at": note.created_at,
-                }
-            )
-
-    return {
-        "id": str(article.id),
-        "source_type": source_type_str,
-        "media_type": determine_media_type_str(article.source_type, article.original_url),
-        "original_url": article.original_url,
-        "title": article.title or "Untitled",
-        "authors": article.authors or [],
-        "summary": article.summary,
-        "summary_model": article.summary_model,
-        "is_read": article.is_read,
-        "reading_time_minutes": calculate_reading_time(article.word_count),
-        "processing_status": proc_status_str,
-        "processing_error": article.processing_error,
-        "publication_date": article.publication_date,
-        "color": color,
-        "categories": categories,
-        "tags": tags,
-        "notes": notes,
-        "created_at": article.created_at,
-    }
 
 
 @router.delete("/article/{article_id}", response_class=HTMLResponse)
