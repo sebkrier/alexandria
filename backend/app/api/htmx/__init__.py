@@ -2,9 +2,14 @@
 HTMX Routes Package - HTML pages served by FastAPI with Jinja2 templates.
 
 This package contains all HTMX routes split into feature modules:
-- main: Core article routes (index, article detail, etc.)
+- main: Core article routes (index, article list, detail, CRUD, notes)
 - settings: AI providers and color management
-- (more modules will be added as refactoring continues)
+- reader: Reader mode for reading through unread articles
+- bulk: Bulk article operations (mark read/unread, delete, color, reanalyze)
+- ask: AI-powered Q&A about your library
+- taxonomy: AI-powered category reorganization
+- ingestion: URL and PDF article ingestion
+- helpers/: Shared helper functions (converters, data fetchers)
 
 The main router combines all sub-routers for backwards compatibility.
 """
