@@ -13,8 +13,6 @@ from fastapi import (
     UploadFile,
     status,
 )
-
-logger = logging.getLogger(__name__)
 from sqlalchemy import delete, func, or_, select
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy.orm import selectinload
@@ -30,7 +28,7 @@ from app.ai.query_router import (
     format_metadata_for_llm,
 )
 from app.ai.service import AIService
-from app.database import async_session_maker, get_db
+from app.database import get_db
 from app.extractors import extract_content
 from app.models.article import Article, ProcessingStatus, SourceType
 from app.models.article_category import ArticleCategory
@@ -51,87 +49,17 @@ from app.schemas.article import (
     BulkReanalyzeRequest,
     BulkReanalyzeResponse,
     CategoryBrief,
-    MediaType,
     TagBrief,
     UnreadListResponse,
     UnreadNavigationResponse,
 )
+from app.tasks import process_article_background
+from app.utils.article_helpers import calculate_reading_time, determine_media_type
 from app.utils.auth import get_current_user
 
+logger = logging.getLogger(__name__)
+
 router = APIRouter()
-
-
-async def process_article_background(article_id: UUID, user_id: UUID):
-    """Background task to process article with AI after creation"""
-    async with async_session_maker() as db:
-        try:
-            ai_service = AIService(db)
-            await ai_service.process_article(article_id=article_id, user_id=user_id)
-            logger.info(f"Background processing completed for article {article_id}")
-        except Exception as e:
-            logger.error(f"Background processing failed for article {article_id}: {e}")
-
-
-def calculate_reading_time(word_count: int | None) -> int | None:
-    """Calculate reading time in minutes (200 words per minute)"""
-    if word_count is None:
-        return None
-    return max(1, round(word_count / 200))
-
-
-def determine_media_type(source_type: SourceType, original_url: str | None) -> MediaType:
-    """Determine user-friendly media type from source_type and URL"""
-    # Direct mappings from source_type
-    if source_type == SourceType.ARXIV:
-        return MediaType.PAPER
-    if source_type == SourceType.VIDEO:
-        return MediaType.VIDEO
-    if source_type == SourceType.PDF:
-        return MediaType.PDF
-
-    # For URL source type, look at the URL to determine more specific type
-    if source_type == SourceType.URL and original_url:
-        url_lower = original_url.lower()
-
-        # Newsletter platforms
-        if "substack.com" in url_lower or "/p/" in url_lower:
-            return MediaType.NEWSLETTER
-
-        # Common blog platforms
-        blog_indicators = [
-            "medium.com",
-            "dev.to",
-            "hashnode.",
-            "wordpress.com",
-            "/blog/",
-            ".blog.",
-            "blogger.com",
-            "ghost.io",
-        ]
-        if any(indicator in url_lower for indicator in blog_indicators):
-            return MediaType.BLOG
-
-        # Academic/paper indicators
-        paper_indicators = [
-            "arxiv.org",
-            "doi.org",
-            "nature.com",
-            "science.org",
-            "ieee.org",
-            "acm.org",
-            "springer.com",
-            "wiley.com",
-            "researchgate.net",
-            "semanticscholar.org",
-            ".edu/",
-            "pubmed",
-            "ncbi.nlm.nih.gov",
-        ]
-        if any(indicator in url_lower for indicator in paper_indicators):
-            return MediaType.PAPER
-
-    # Default to article
-    return MediaType.ARTICLE
 
 
 def article_to_response(article: Article) -> ArticleResponse:
@@ -259,7 +187,7 @@ async def create_article_from_url(
         raise HTTPException(
             status_code=status.HTTP_400_BAD_REQUEST,
             detail=f"Failed to extract content from URL: {str(e)}",
-        )
+        ) from e
 
 
 @router.post("/upload", response_model=ArticleResponse, status_code=status.HTTP_201_CREATED)
@@ -332,7 +260,7 @@ async def create_article_from_upload(
         raise HTTPException(
             status_code=status.HTTP_400_BAD_REQUEST,
             detail=f"Failed to process PDF: {str(e)}",
-        )
+        ) from e
 
 
 @router.get("", response_model=ArticleListResponse)
@@ -500,7 +428,7 @@ async def get_unread_list(
     result = await db.execute(
         select(Article.id)
         .where(Article.user_id == current_user.id)
-        .where(Article.is_read == False)
+        .where(Article.is_read.is_(False))
         .order_by(Article.created_at.asc())
     )
     article_ids = [row[0] for row in result.all()]
@@ -522,7 +450,7 @@ async def get_unread_navigation(
     result = await db.execute(
         select(Article.id)
         .where(Article.user_id == current_user.id)
-        .where(Article.is_read == False)
+        .where(Article.is_read.is_(False))
         .order_by(Article.created_at.asc())
     )
     unread_ids = [row[0] for row in result.all()]
@@ -698,12 +626,12 @@ async def process_article(
         raise HTTPException(
             status_code=status.HTTP_400_BAD_REQUEST,
             detail=str(e),
-        )
+        ) from e
     except Exception as e:
         raise HTTPException(
             status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
             detail=f"Processing failed: {str(e)}",
-        )
+        ) from e
 
 
 @router.post("/{article_id}/reprocess", response_model=ArticleResponse)
@@ -782,12 +710,12 @@ async def reorganize_articles(
         raise HTTPException(
             status_code=status.HTTP_400_BAD_REQUEST,
             detail=str(e),
-        )
+        ) from e
     except Exception as e:
         raise HTTPException(
             status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
             detail=f"Reorganization failed: {str(e)}",
-        )
+        ) from e
 
 
 # =============================================================================
@@ -973,7 +901,7 @@ async def _handle_metadata_query(
         raise HTTPException(
             status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
             detail=f"Failed to process metadata query: {str(e)}",
-        )
+        ) from e
 
 
 async def _handle_content_query(
@@ -1192,4 +1120,4 @@ async def _handle_content_query(
         raise HTTPException(
             status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
             detail=f"Failed to answer question: {str(e)}",
-        )
+        ) from e

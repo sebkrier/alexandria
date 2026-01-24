@@ -7,7 +7,14 @@ import httpx
 from bs4 import BeautifulSoup
 
 from app.extractors.base import BaseExtractor, ExtractedContent
-
+from app.extractors.constants import (
+    ARCHIVE_TIMEOUT,
+    BROWSER_HEADERS,
+    BYPASS_TIMEOUT,
+    DEFAULT_TIMEOUT,
+    GOOGLE_REFERER_HEADERS,
+    MOBILE_HEADERS,
+)
 
 logger = logging.getLogger(__name__)
 
@@ -15,41 +22,12 @@ logger = logging.getLogger(__name__)
 class URLExtractor(BaseExtractor):
     """Extract content from general web URLs using multiple strategies"""
 
-    TIMEOUT = 30.0
+    TIMEOUT = DEFAULT_TIMEOUT
 
-    # Browser-like headers to avoid 403 blocks
-    HEADERS = {
-        "User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/122.0.0.0 Safari/537.36",
-        "Accept": "text/html,application/xhtml+xml,application/xml;q=0.9,image/avif,image/webp,image/apng,*/*;q=0.8",
-        "Accept-Language": "en-US,en;q=0.9",
-        "Accept-Encoding": "gzip, deflate",
-        "DNT": "1",
-        "Connection": "keep-alive",
-        "Upgrade-Insecure-Requests": "1",
-        "Sec-Fetch-Dest": "document",
-        "Sec-Fetch-Mode": "navigate",
-        "Sec-Fetch-Site": "none",
-        "Sec-Fetch-User": "?1",
-        "Sec-CH-UA": '"Chromium";v="122", "Not(A:Brand";v="24", "Google Chrome";v="122"',
-        "Sec-CH-UA-Mobile": "?0",
-        "Sec-CH-UA-Platform": '"Windows"',
-        "Cache-Control": "max-age=0",
-    }
-
-    # Headers that pretend we came from Google (helps with some paywalls)
-    HEADERS_FROM_GOOGLE = {
-        **HEADERS,
-        "Referer": "https://www.google.com/",
-        "Sec-Fetch-Site": "cross-site",
-    }
-
-    # Mobile headers (some sites serve more content to mobile)
-    MOBILE_HEADERS = {
-        "User-Agent": "Mozilla/5.0 (iPhone; CPU iPhone OS 17_0 like Mac OS X) AppleWebKit/605.1.15 (KHTML, like Gecko) Version/17.0 Mobile/15E148 Safari/604.1",
-        "Accept": "text/html,application/xhtml+xml,application/xml;q=0.9,*/*;q=0.8",
-        "Accept-Language": "en-US,en;q=0.9",
-        "Accept-Encoding": "gzip, deflate",
-    }
+    # Headers are now sourced from constants module
+    HEADERS = BROWSER_HEADERS
+    HEADERS_FROM_GOOGLE = GOOGLE_REFERER_HEADERS
+    MOBILE_HEADERS = MOBILE_HEADERS
 
     @staticmethod
     def can_handle(url: str) -> bool:
@@ -171,7 +149,7 @@ class URLExtractor(BaseExtractor):
         # First, check if there's a cached version
         api_url = f"https://archive.org/wayback/available?url={quote(url, safe='')}"
 
-        async with httpx.AsyncClient(timeout=15.0) as client:
+        async with httpx.AsyncClient(timeout=ARCHIVE_TIMEOUT) as client:
             try:
                 response = await client.get(api_url)
                 data = response.json()
@@ -192,7 +170,7 @@ class URLExtractor(BaseExtractor):
         cache_url = f"https://webcache.googleusercontent.com/search?q=cache:{quote(url, safe='')}"
 
         async with httpx.AsyncClient(
-            timeout=15.0, headers=self.HEADERS_FROM_GOOGLE, follow_redirects=True
+            timeout=ARCHIVE_TIMEOUT, headers=self.HEADERS_FROM_GOOGLE, follow_redirects=True
         ) as client:
             try:
                 response = await client.get(cache_url)
@@ -208,7 +186,7 @@ class URLExtractor(BaseExtractor):
         bypass_url = f"https://12ft.io/{url}"
 
         async with httpx.AsyncClient(
-            timeout=20.0, headers=self.HEADERS, follow_redirects=True
+            timeout=BYPASS_TIMEOUT, headers=self.HEADERS, follow_redirects=True
         ) as client:
             try:
                 response = await client.get(bypass_url)
@@ -220,7 +198,9 @@ class URLExtractor(BaseExtractor):
 
         return None
 
-    def _extract_metadata_from_html(self, html: str) -> tuple[str | None, list[str], datetime | None, str | None]:
+    def _extract_metadata_from_html(
+        self, html: str
+    ) -> tuple[str | None, list[str], datetime | None, str | None]:
         """
         Extract metadata (title, authors, date, image) from HTML meta tags.
 
@@ -322,7 +302,8 @@ class URLExtractor(BaseExtractor):
                 "authors": [],
                 "publication_date": None,
             }
-        except Exception:
+        except Exception as e:
+            logger.warning(f"Readability extraction failed for {url}: {e}")
             return {}
 
     def _extract_with_beautifulsoup(self, html: str, url: str) -> dict:

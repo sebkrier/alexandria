@@ -122,5 +122,6 @@ def is_model_available() -> bool:
     try:
         get_embedding_model()
         return True
-    except Exception:
+    except Exception as e:
+        logger.debug(f"Embedding model not available: {e}")
         return False

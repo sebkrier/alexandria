@@ -7,6 +7,7 @@ from urllib.parse import unquote, urlparse
 import httpx
 
 from app.extractors.base import BaseExtractor, ExtractedContent
+from app.extractors.constants import PDF_HEADERS, PDF_TIMEOUT
 
 logger = logging.getLogger(__name__)
 
@@ -14,13 +15,8 @@ logger = logging.getLogger(__name__)
 class PDFExtractor(BaseExtractor):
     """Extract content from PDF files using PyMuPDF"""
 
-    TIMEOUT = 60.0  # PDFs can be large, allow more time
-
-    HEADERS = {
-        "User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/121.0.0.0 Safari/537.36",
-        "Accept": "application/pdf,*/*",
-        "Accept-Language": "en-US,en;q=0.9",
-    }
+    TIMEOUT = PDF_TIMEOUT
+    HEADERS = PDF_HEADERS
 
     @staticmethod
     def can_handle(url: str) -> bool:
@@ -89,8 +85,8 @@ class PDFExtractor(BaseExtractor):
         if temp_file:
             try:
                 Path(temp_file).unlink()
-            except Exception:
-                pass
+            except Exception as e:
+                logger.debug(f"Failed to clean up temp file {temp_file}: {e}")
 
         return ExtractedContent(
             title=title,
@@ -153,7 +149,7 @@ class PDFExtractor(BaseExtractor):
                 if confirm_match:
                     confirm_token = confirm_match.group(1)
                     confirmed_url = f"{url}&confirm={confirm_token}"
-                    logger.info(f"Retrying Google Drive download with confirm token")
+                    logger.info("Retrying Google Drive download with confirm token")
                     response = await client.get(confirmed_url)
                     response.raise_for_status()
                     content_type = response.headers.get("content-type", "")
@@ -186,8 +182,8 @@ class PDFExtractor(BaseExtractor):
             filename = " ".join(filename.split())
             if len(filename) > 5:
                 return filename
-        except Exception:
-            pass
+        except Exception as e:
+            logger.debug(f"Could not extract title from URL {url}: {e}")
         return None
 
     def _extract_title_and_authors_from_font(self, doc) -> tuple[str | None, list[str]]:
@@ -265,7 +261,7 @@ class PDFExtractor(BaseExtractor):
                 title_end_y = 0
 
             # Look for author-sized text after title
-            font_sizes = sorted(set(t["size"] for t in top_items), reverse=True)
+            font_sizes = sorted({t["size"] for t in top_items}, reverse=True)
             author_font_sizes = font_sizes[1:4] if len(font_sizes) > 1 else []  # 2nd-4th largest
 
             authors = []

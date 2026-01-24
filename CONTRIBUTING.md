@@ -34,8 +34,14 @@ pixi run migrate
 # Start development server
 pixi run dev
 
+# Set up test database (one-time, or after schema changes)
+pixi run test-db-setup
+
 # Run tests
 pixi run test
+
+# Or run setup + tests together
+pixi run test-full
 
 # Lint and format code
 pixi run lint        # Check for issues

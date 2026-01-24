@@ -139,9 +139,6 @@ async def export_library(
 
     tags_export = [TagExport(name=tag.name, color=tag.color) for tag in tags]
 
-    # Build tag lookup by ID
-    tag_lookup = {tag.id: tag.name for tag in tags}
-
     # Fetch all articles with relationships
     result = await db.execute(
         select(Article)
@@ -268,7 +265,7 @@ async def import_library(
         raise HTTPException(
             status_code=status.HTTP_400_BAD_REQUEST,
             detail=f"Invalid JSON file: {str(e)}",
-        )
+        ) from e
 
     # Validate structure
     if "version" not in data or "articles" not in data:

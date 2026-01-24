@@ -14,8 +14,8 @@ from pydantic import BaseModel
 from app.ai.base import (
     AIProvider,
     CategoryInfo,
-    CategorySuggestion,
     CategoryStructure,
+    CategorySuggestion,
     DocumentMetadata,
     SubcategoryAssignment,
     Summary,
@@ -127,7 +127,6 @@ async def complete_stream(
 
     Yields chunks of the response as they arrive.
     """
-    from typing import AsyncGenerator
 
     prefix = PROVIDER_PREFIXES.get(provider, "")
     full_model = f"{prefix}{model}"

@@ -1,11 +1,18 @@
+from __future__ import annotations
+
 import uuid
 from datetime import datetime
+from typing import TYPE_CHECKING
 
 from sqlalchemy import DateTime, ForeignKey, String
 from sqlalchemy.dialects.postgresql import UUID
 from sqlalchemy.orm import Mapped, mapped_column, relationship
 
 from app.database import Base
+
+if TYPE_CHECKING:
+    from app.models.article_tag import ArticleTag
+    from app.models.user import User
 
 
 class Tag(Base):
@@ -20,5 +27,5 @@ class Tag(Base):
     created_at: Mapped[datetime] = mapped_column(DateTime, default=datetime.utcnow)
 
     # Relationships
-    user: Mapped["User"] = relationship(back_populates="tags")
-    articles: Mapped[list["ArticleTag"]] = relationship(back_populates="tag")
+    user: Mapped[User] = relationship(back_populates="tags")
+    articles: Mapped[list[ArticleTag]] = relationship(back_populates="tag")
