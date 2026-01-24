@@ -237,7 +237,7 @@ async def import_library(
     merge: bool = True,
     db: AsyncSession = Depends(get_db),
     current_user: User = Depends(get_current_user),
-):
+) -> ImportStats:
     """
     Import a library backup JSON file.
 

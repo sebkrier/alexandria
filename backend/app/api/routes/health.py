@@ -12,7 +12,7 @@ router = APIRouter()
 
 
 @router.get("")
-async def health_check(db: AsyncSession = Depends(get_db)):
+async def health_check(db: AsyncSession = Depends(get_db)) -> dict[str, str]:
     """Health check endpoint"""
     # Check database connection
     db_status = "connected"

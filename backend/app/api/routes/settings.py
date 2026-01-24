@@ -51,7 +51,7 @@ def provider_to_response(provider: AIProviderModel) -> AIProviderResponse:
 
 
 @router.get("/providers/available", response_model=AvailableProvidersResponse)
-async def get_available_ai_providers():
+async def get_available_ai_providers() -> AvailableProvidersResponse:
     """Get information about available AI providers and their models"""
     return AvailableProvidersResponse(providers=get_available_providers())
 
@@ -60,7 +60,7 @@ async def get_available_ai_providers():
 async def list_providers(
     db: AsyncSession = Depends(get_db),
     current_user: User = Depends(get_current_user),
-):
+) -> list:
     """List all configured AI providers"""
     result = await db.execute(
         select(AIProviderModel)
@@ -77,7 +77,7 @@ async def create_provider(
     data: AIProviderCreate,
     db: AsyncSession = Depends(get_db),
     current_user: User = Depends(get_current_user),
-):
+) -> AIProviderResponse:
     """Add a new AI provider configuration"""
     # Check if this is the first provider (make it default)
     result = await db.execute(
@@ -110,7 +110,7 @@ async def get_provider(
     provider_id: UUID,
     db: AsyncSession = Depends(get_db),
     current_user: User = Depends(get_current_user),
-):
+) -> AIProviderResponse:
     """Get a single AI provider configuration"""
     result = await db.execute(
         select(AIProviderModel).where(
@@ -135,7 +135,7 @@ async def update_provider(
     data: AIProviderUpdate,
     db: AsyncSession = Depends(get_db),
     current_user: User = Depends(get_current_user),
-):
+) -> AIProviderResponse:
     """Update an AI provider configuration"""
     result = await db.execute(
         select(AIProviderModel).where(
@@ -191,7 +191,7 @@ async def delete_provider(
     provider_id: UUID,
     db: AsyncSession = Depends(get_db),
     current_user: User = Depends(get_current_user),
-):
+) -> None:
     """Delete an AI provider configuration"""
     result = await db.execute(
         select(AIProviderModel).where(
@@ -228,7 +228,7 @@ async def test_provider(
     provider_id: UUID,
     db: AsyncSession = Depends(get_db),
     current_user: User = Depends(get_current_user),
-):
+) -> AIProviderTestResult:
     """Test an AI provider configuration"""
     result = await db.execute(
         select(AIProviderModel).where(
@@ -272,7 +272,7 @@ async def test_provider(
 async def list_colors(
     db: AsyncSession = Depends(get_db),
     current_user: User = Depends(get_current_user),
-):
+) -> list[dict]:
     """List all color configurations"""
     result = await db.execute(
         select(Color).where(Color.user_id == current_user.id).order_by(Color.position)
@@ -335,7 +335,7 @@ async def update_color(
 @router.get("/prompts/summary", response_model=PromptResponse)
 async def get_summary_prompt(
     current_user: User = Depends(get_current_user),
-):
+) -> PromptResponse:
     """Get the current summarization prompt"""
     return PromptResponse(
         system_prompt=SUMMARY_SYSTEM_PROMPT,

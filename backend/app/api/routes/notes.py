@@ -38,7 +38,7 @@ async def get_article_notes(
     article_id: UUID,
     db: AsyncSession = Depends(get_db),
     current_user: User = Depends(get_current_user),
-):
+) -> list:
     """Get all notes for an article"""
     # Verify article belongs to user
     result = await db.execute(
@@ -81,7 +81,7 @@ async def create_note(
     data: NoteCreate,
     db: AsyncSession = Depends(get_db),
     current_user: User = Depends(get_current_user),
-):
+) -> NoteResponse:
     """Create a new note for an article"""
     # Verify article belongs to user
     result = await db.execute(
@@ -122,7 +122,7 @@ async def update_note(
     data: NoteUpdate,
     db: AsyncSession = Depends(get_db),
     current_user: User = Depends(get_current_user),
-):
+) -> NoteResponse:
     """Update a note"""
     # Get note and verify ownership through article
     result = await db.execute(
@@ -159,7 +159,7 @@ async def delete_note(
     note_id: UUID,
     db: AsyncSession = Depends(get_db),
     current_user: User = Depends(get_current_user),
-):
+) -> None:
     """Delete a note"""
     # Get note and verify ownership through article
     result = await db.execute(
