@@ -180,10 +180,7 @@ async def create_article_from_url(
         return article_to_response(article)
 
     except Exception as e:
-        import traceback
-
-        print(f"ERROR extracting URL {url}:")
-        print(traceback.format_exc())
+        logger.exception(f"Failed to extract content from URL: {url}")
         raise HTTPException(
             status_code=status.HTTP_400_BAD_REQUEST,
             detail=f"Failed to extract content from URL: {str(e)}",
