@@ -59,6 +59,15 @@ from app.utils.auth import get_current_user
 
 logger = logging.getLogger(__name__)
 
+# Search configuration constants
+SEMANTIC_SEARCH_LIMIT = 10  # Max articles from vector similarity search
+KEYWORD_SEARCH_LIMIT = 10  # Max articles from full-text/keyword search
+MERGED_RESULTS_LIMIT = 15  # Max articles after merging semantic + keyword
+FALLBACK_RESULTS_LIMIT = 10  # Max recent articles when no search results
+MAX_SEARCH_WORDS = 10  # Max words to extract from query
+MAX_MATCH_WORDS = 5  # Max words for title/category/tag matching
+MIN_WORD_LENGTH = 3  # Minimum word length for keyword matching
+
 router = APIRouter()
 
 
@@ -948,7 +957,7 @@ async def _handle_content_query(
                     .where(Article.processing_status == ProcessingStatus.COMPLETED)
                     .where(Article.embedding.isnot(None))
                     .order_by(distance)
-                    .limit(10)
+                    .limit(SEMANTIC_SEARCH_LIMIT)
                 )
 
                 result = await db.execute(semantic_query)
@@ -968,14 +977,14 @@ async def _handle_content_query(
 
     try:
         # Build search terms
-        search_words = question.lower().split()[:10]
-        valid_words = [w for w in search_words if len(w) >= 3]
+        search_words = question.lower().split()[:MAX_SEARCH_WORDS]
+        valid_words = [w for w in search_words if len(w) >= MIN_WORD_LENGTH]
 
         # Build conditions for keyword matching
         conditions = []
 
         # Title substring match
-        for word in valid_words[:5]:
+        for word in valid_words[:MAX_MATCH_WORDS]:
             conditions.append(Article.title.ilike(f"%{word}%"))
 
         # Full-text search
@@ -988,7 +997,7 @@ async def _handle_content_query(
                 select(ArticleCategory.article_id)
                 .join(Category, Category.id == ArticleCategory.category_id)
                 .where(Category.user_id == user_id)
-                .where(or_(*[Category.name.ilike(f"%{w}%") for w in valid_words[:5]]))
+                .where(or_(*[Category.name.ilike(f"%{w}%") for w in valid_words[:MAX_MATCH_WORDS]]))
             )
             conditions.append(Article.id.in_(category_subq))
 
@@ -997,7 +1006,7 @@ async def _handle_content_query(
                 select(ArticleTag.article_id)
                 .join(Tag, Tag.id == ArticleTag.tag_id)
                 .where(Tag.user_id == user_id)
-                .where(or_(*[Tag.name.ilike(f"%{w}%") for w in valid_words[:5]]))
+                .where(or_(*[Tag.name.ilike(f"%{w}%") for w in valid_words[:MAX_MATCH_WORDS]]))
             )
             conditions.append(Article.id.in_(tag_subq))
 
@@ -1011,7 +1020,7 @@ async def _handle_content_query(
                 .where(Article.processing_status == ProcessingStatus.COMPLETED)
                 .where(or_(*conditions))
                 .order_by(ts_rank.desc())
-                .limit(10)
+                .limit(KEYWORD_SEARCH_LIMIT)
             )
 
             result = await db.execute(keyword_query)
@@ -1056,7 +1065,7 @@ async def _handle_content_query(
     # Sort by combined score
     sorted_ids = sorted(article_scores.keys(), key=lambda x: article_scores[x], reverse=True)
 
-    for article_id in sorted_ids[:15]:  # Top 15 results
+    for article_id in sorted_ids[:MERGED_RESULTS_LIMIT]:
         if article_id not in seen_ids:
             seen_ids.add(article_id)
             merged_articles.append(all_articles[article_id])
@@ -1073,7 +1082,7 @@ async def _handle_content_query(
             .where(Article.user_id == user_id)
             .where(Article.processing_status == ProcessingStatus.COMPLETED)
             .order_by(Article.created_at.desc())
-            .limit(10)
+            .limit(FALLBACK_RESULTS_LIMIT)
         )
         result = await db.execute(query)
         merged_articles = list(result.scalars().all())
